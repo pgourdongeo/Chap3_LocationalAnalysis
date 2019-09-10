@@ -1,0 +1,60 @@
+
+library(tidyverse)
+library(skimr)
+DataRep <- path.expand ('DataSource/')
+
+list.files(DataRep)
+
+Projects <- read.csv2("DataSource/Keep_ClosedProject_LeadPartner_Project.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
+
+skim(Projects)
+
+
+Partners <- read.csv2("DataSource/Keep_ClosedProject_Partner.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
+
+skim(Partners)
+
+
+#### Geocoding Partner
+
+Partners$Town <- trimws(Partners$Town)
+Partners$Postal.code2 <- gsub("\\s", "", Partners$Postal.code)  
+Partners$location <- paste(Partners$Postal.code,", ",Partners$Town,", ",Partners$Country, sep = "")
+
+Partners$location2 <- paste(Partners$Town,", ",Partners$Country, sep = "")
+PartnerLocation <- Partners$location %>% unique()
+
+P <- sample(PartnerLocation, size = 10)
+library(photon)
+
+GeoCoord <- geocode(PartnerLocation, limit = 1)
+
+skim(GeoCoord)
+
+NoGeo <- GeoCoord %>% filter(!is.na(msg))
+### Geocode remaining
+write.csv2(GeoCoord, file = "GeoCoord.csv", row.names = F, fileEncoding = "UTF-8")
+
+test <-sample_n(NoGeo, size=10)
+
+test <-geocode(test$location, limit = 2)
+?geocode
+?osm_geocode
+
+
+### Jointure + selection des villes (group by region et name , select first)
+
+## Get Population (admin )
+City <- Partners$Town %>% unique()
+Partner
+library(httr)
+library(jsonlite)
+urlygi <- "https://public.opendatasoft.com/api/records/1.0/search/?dataset=worldcitiespop&q=paris&sort=population&facet=country"
+blob <- fromJSON(urlygi)
+blob$records -> foo
+
+baseURL <- "https://public.opendatasoft.com/api/records/1.0/search/?dataset=worldcitiespop&q={ville}&sort=population&facet=country&geofilter.distance={lat}%2C{long}%2C{distance_max}"
+library(glue)
+foo <- fromJSON(glue(baseURL, ville = "Mol", long = 5.115527, lat = 51.18404, distance_max = 10000)) %>%
+  magrittr::extract2("records")
+url <- "https://public.opendatasoft.com/api/records/1.0/search/?dataset=worldcitiespop&q=paris&sort=population&facet=country&geofilter.distance=48.866667%2C2.333333%2C10000"
