@@ -6,20 +6,36 @@ library(photon)
 library(countrycode)
 library(cartography)
 library(sf)
-
+library(readr)
 DataRep <- path.expand ('DataSource/')
 
 list.files(DataRep)
 
+<<<<<<< Updated upstream
 Projects <- read.csv2("DataSource/Keep_ClosedProject_LeadPartner_Project.csv", stringsAsFactors = F, fileEncoding = "UTF-8", na.strings = "NA")
+=======
+
+
+Projects <- read_csv2("DataSource/Keep_ClosedProject_LeadPartner_Project.csv",
+                     locale = locale(encoding = "UTF-8"))
+>>>>>>> Stashed changes
 
 skim(Projects)
 
 
+<<<<<<< Updated upstream
 Partners <- read.csv2("DataSource/Keep_ClosedProject_Partner.csv", stringsAsFactors = F, fileEncoding = "UTF-8", na.strings = "NA")
 
 skim(Partners)
 
+=======
+Partners <- read_csv2("DataSource/Keep_ClosedProject_Partner.csv",
+                      locale = locale(encoding = "UTF-8"))
+
+skim(Partners)
+
+geocode()
+>>>>>>> Stashed changes
 #### Geocoding Partners (all entities involved)
 
 # Work on addresses (retrieve unique addresses from the 30. 000 partners )
@@ -34,7 +50,7 @@ PartnerLocation <- Partners$location %>% unique()
 ##Test geocode on a sample first
 #P <- sample(PartnerLocation, size = 10)
 
-
+library(ggmap)
 GeoCoord <- geocode(PartnerLocation, limit = 1)
 
 skim(GeoCoord)
