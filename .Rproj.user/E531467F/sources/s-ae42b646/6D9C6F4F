@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1568119172648.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "6D9C6F4F",
+    "lastKnownWriteTime" : 1568132250,
+    "last_content_update" : 1568132250403,
+    "path" : "~/BD_Keep_Interreg/Chap3_LocationalAnalysis/IndexingPopulation_Geocodage.R",
+    "project_path" : "Chap3_LocationalAnalysis/IndexingPopulation_Geocodage.R",
+    "properties" : {
+        "cursorPosition" : "3,14",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
