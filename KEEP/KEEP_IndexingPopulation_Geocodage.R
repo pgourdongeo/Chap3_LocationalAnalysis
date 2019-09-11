@@ -11,15 +11,14 @@ DataRep <- path.expand ('DataSource/')
 
 list.files(DataRep)
 
-Projects <- read.csv2("DataSource/Keep_ClosedProject_LeadPartner_Project.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
+Projects <- read.csv2("DataSource/Keep_ClosedProject_LeadPartner_Project.csv", stringsAsFactors = F, fileEncoding = "UTF-8", na.strings = "NA")
 
 skim(Projects)
 
 
-Partners <- read.csv2("DataSource/Keep_ClosedProject_Partner.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
+Partners <- read.csv2("DataSource/Keep_ClosedProject_Partner.csv", stringsAsFactors = F, fileEncoding = "UTF-8", na.strings = "NA")
 
 skim(Partners)
-
 
 #### Geocoding Partners (all entities involved)
 

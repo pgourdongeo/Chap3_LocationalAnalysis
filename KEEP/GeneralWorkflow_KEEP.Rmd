@@ -1,9 +1,9 @@
 ---
 title: "General Workflow BD KEEP Interreg"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 # Data Description and sources
 
@@ -14,7 +14,6 @@ output:
 "Partner File" contains all the different partners (Lead Partner or not) and the name of the project in which it was involved. 
 
 There may be several involments for a single partner entity.
-
 
 # Main Goals
 
@@ -27,22 +26,7 @@ There may be several involments for a single partner entity.
 - To look for hierarchical structure : urban concentration, differenciation between countries, regions and cities. To test rank-size hypotheses.
 
 
-# Main steps needed
-
-- (1) Geocode all partners 
-- (2) Aggregate data : make a list of unique partners
-- (3) Correct error in geocoding
-- (4) First analysis of density (grid) with all Partners and lead Partners (and first with all involments)
-- (5) Spatial Joint with Urban Areas (UMZ database)
-- (6) Find a solution for entity outside urban areas (get an administrative population for example, or just filter the sample)
-- (7) Map aggregate participation at the urban areas level. and performe rank-size analysis (with participations and number of partners in Urban areas)
-- (8) Recognise Urban Governement and cities in the list of partner
-- (9) Filter the dataset to keep only projects that involved a majority of cities.
-- (10) Perform locational analysis on the filtered dataset
-
----
-
-```{r}
+```{r Data Structure}
 
 library(skimr)
 #Load Data
@@ -59,6 +43,34 @@ Partners <- read.csv2("DataSource/Keep_ClosedProject_Partner.csv", stringsAsFact
 
 skim(Partners)
 ```
+
+
+## Main steps needed
+
+- (1) Geocode all partners 
+- (2) Aggregate data : make a list of unique partners
+- (3) Correct error in geocoding
+- (4) First analysis of density (grid) with all Partners and lead Partners (and first with all involments)
+- (5) Spatial Joint with Urban Areas (UMZ database)
+- (6) Find a solution for entity outside urban areas (get an administrative population for example, or just filter the sample)
+- (7) Map aggregate participation at the urban areas level. and performe rank-size analysis (with participations and number of partners in Urban areas)
+- (8) Recognise Urban Governement and cities in the list of partner
+- (9) Filter the dataset to keep only projects that involved a majority of cities.
+- (10) Perform locational analysis on the filtered dataset
+
+## Steps
+
+### (1) Geocode :
+- Problem encodage, reading UTF-8 (windows issues described here [escaping-character-encoding-hell-r-windows](https://dss.iq.harvard.edu/blog/escaping-character-encoding-hell-r-windows))
+- Clean and concatenate location data to get a full address for each partner
+- Find solution for geocoding : photon too fuzzy. ggmap with account to Google geocoding API.
+- Merge geocode result to the Partners dataframe. Check the missing address and do manual geocoding
+- Create single ID for participation (n = 30 000) and single ID for partners
+- Check info about countries and see geocoding errors (mapping different sample with map view )
+
+---
+
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
