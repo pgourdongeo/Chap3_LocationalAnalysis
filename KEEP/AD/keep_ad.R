@@ -13,12 +13,12 @@ library(tidyverse)
 library(tidylog)
 library(skimr)
 #library(photon)
-library(countrycode)
+#library(countrycode)
 library(cartography)
 library(sf)
 library(ggmap)
 library(mapview)
-
+library(purrr)
 
 
 # Projects <- read.csv2("DataSource/Keep_ClosedProject_LeadPartner_Project.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
@@ -88,11 +88,14 @@ Partners <- Partners %>%
   left_join(x = Partners, y = idPartners, by = "Project.Partner")
 
 
-# save Partners
+## save Partners
 write.csv2(Partners, "DataSource/PartnersGeoCode.csv", row.names = F, fileEncoding = "UTF-8")
 
 
-Partners <- read_csv2("AD/PartnersGeoCode.csv")
+
+
+Partners <- read.csv2("AD/PartnersGeoCode.csv")
+
 
 # check outside EU results
 outEU <- Partners %>% 
@@ -100,3 +103,76 @@ outEU <- Partners %>%
 outEUSP <- st_as_sf(outEU, coords = c("lon", "lat"), crs = 4326) %>% 
   st_transform(crs = 3035)
 mapview(outEUSP)
+
+# prepare data before re-geocoding outsiders
+outEU <- outEU %>% 
+  mutate(ShortLoc = str_c(tolower(Town), ", ", tolower(Country), sep = "")) 
+outEU$ShortLoc <- gsub(" cedex", "", outEU$ShortLoc)
+
+outEU <- outEU %>% 
+  mutate(ShortLoc = ifelse(ID_PARTICIPATION == "p5913", c("israel"),
+                           ifelse(ID_PARTICIPATION == "p26232", c("sweden"),
+                                  ifelse(ID_PARTICIPATION == "p29992", c("norway"),
+                           ShortLoc))))
+                           
+                                 
+OutsiderLocation <- outEU$ShortLoc %>% unique()
+is.na(OutsiderLocation)
+
+# Geocoding participation places with gmap
+
+register_google(key = "")
+
+ggcoord_outsider <- ggmap::geocode(OutsiderLocation, output = "all")
+
+save(ggcoord_outsider, file = "AD/ggcoord_outsider.RDS")
+
+str(ggcoord_outsider)
+names(ggcoord_outsider)
+length(ggcoord_outsider[[1]])
+
+
+# test purrr
+library(purrr)
+library(magrittr)
+
+results <- ggcoord_outsider %>% 
+  map("results") 
+str(results[1:3])
+
+ad <- results %>%
+  map(., 1) %>% 
+  map_dfr(., magrittr::extract, "formatted_address")
+loc <- results %>%
+  map(., 1) %>%
+  map("geometry") %>% 
+  map("location") %>% 
+  map_dfr(., magrittr::extract, c("lng", "lat"))
+adloc <- cbind(ad, loc) %>% 
+  transmute(formatted_address, new_lon = lng, new_lat = lat)
+
+#bidouille
+ol <- as.data.frame(OutsiderLocation)
+ol[63:67, 1] <- NA
+ol[118, 1] <- NA
+ol[212, 1] <- NA
+ol[214, 1] <- NA
+ol[216, 1] <- NA
+ol[226:228, 1] <- NA
+ol[236, 1] <- NA
+ol[239, 1] <- NA
+ol <- ol %>% 
+  filter(!is.na(OutsiderLocation))
+ol <- as.character(ol$OutsiderLocation)
+
+#join
+adloc$ShortLoc <- ol
+
+outEU <- left_join(outEU, adloc, "ShortLoc")
+
+save(outEU, file = "AD/outEU_newcoord.RDS")
+
+# Pour Paul
+outEU_nocoord <- outEU %>% 
+  filter(is.na(new_lon))
+save(outEU_nocoord, file = "AD/outEU_nocoord.RDS")
