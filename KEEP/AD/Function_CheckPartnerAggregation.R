@@ -12,7 +12,7 @@ skim(Partners)
 
 ### Sample
 
-SamplePartners <- sample_n(Partners, 120)
+SamplePartners <- sample_n(Partners, 10)
 
 
 ### Compute string dist on name (test)
@@ -55,83 +55,89 @@ PointPartners <- st_as_sf(UniquePartners, coords = c("lon", "lat"), crs = 4326) 
   #st_transform(crs = 3035)
 PointPartners
 
-
-coords_Partners <- st_coordinates(PointPartners)
-
-
-k10partners <- knn2nb(knearneigh(coords_Partners, k=10, longlat = TRUE), row.names = PointPartners$ID_PARTNER)
-
-
-distnei <- nbdists(k10partners, coords_Partners, longlat = TRUE)
-class(distnei)
-
-distnei <- unlist(distnei)
-
-summary(distnei)
+## Test neighbbos functions
+# coords_Partners <- st_coordinates(PointPartners)
+# 
+# 
+# k10partners <- knn2nb(knearneigh(coords_Partners, k=10, longlat = TRUE), row.names = PointPartners$ID_PARTNER)
+# d5kmNeir <- dnearneigh(coords_Partners,d1 = 0, d2 =5, longlat = TRUE)
+# 
+# 
+# distnei <- nbdists(k10partners, coords_Partners, longlat = TRUE)
+# class(distnei)
+# 
+# distnei <- unlist(distnei)
+# 
+# summary(distnei)
 
 
 #### Test sur un jeu de voisins
 
-k10partners[[1]]
-length(k10partners)
-test10voisin <- UniquePartners %>% filter(rownames(.) %in%  c(1,k10partners[[1]]))
-matchname10nei <- amatch(test10voisin$Project.Partner[1],test10voisin$Project.Partner[-1], method="cosine", maxDist = 0.5)
-matchname10nei
+# k10partners[[1]]
+# length(k10partners)
+# test10voisin <- UniquePartners %>% filter(rownames(.) %in%  c(1,k10partners[[1]]))
+# testD20voisin <- UniquePartners %>% filter(rownames(.) %in%  c(1,d20kmNeir[[1]]))
+# matchname10nei <- amatch(test10voisin$Project.Partner[1],test10voisin$Project.Partner[-1], method="cosine", maxDist = 0.5)
+# matchname10nei
+# 
 
-matchname10nei2 <-
 ## 8ème voisin candidat 
 
-### Test pour pouvoir regrouper les listes avec des éléments communs
-
-testlist<- list(c(1,2), c(2,1,3))
-
-result <- testlist %>% 
-  # check whether any numbers of an element are in any of the elements
-  map(~map_lgl(testlist, compose(any, `%in%`), .x)) %>% 
-  unique() %>%    # drop duplicated groups
-  map(~reduce(testlist[.x], union))   
-
-
-
 ########### Function
-library(svMisc)
 
-MergingCandidate <- function(sf,namevar = sf$VarName,k =10,maxDistCosine =0.5){
+
+MergingCandidate <- function(sf,
+                             namevar, 
+                             k= 10,
+                             maxDistCosine = 0.5, 
+                             controlVar, 
+                             ID){
+  #Load Package needed
   require(tidyverse, attach.required = TRUE)
   require(sf, attach.required = TRUE)
   require(spdep, attach.required = TRUE)
   require(stringdist, attach.required = TRUE)
-  require(svMisc)
-  coords_sf <- st_coordinates(sf)
+
   
-  kn10 <- knn2nb(knearneigh(coords_Partners, k=k, longlat = TRUE))
+  coords_sf <- st_coordinates(sf)#extract coordinates
   
+  kn10 <- knn2nb(knearneigh(coords_sf, k= k, longlat = TRUE))## Compute the k nearest neighbors list. Take a long time.
+ 
   results <- list()
   
   for(i in c(1: length(kn10))){
     
-    INeigh <- sf %>%  filter(rownames(.) %in%  c(i,kn10[[i]]))
-    results[[i]] <- c(i, amatch(INeigh$VarName[1],INeigh$VarName[-1], method="cosine", maxDist = maxDistCosine))
- 
-      progress(i, progress.bar = TRUE)
-      Sys.sleep(3)
-      if (i == length(kn10)) cat("Done!\n")
+    INeigh <- sf %>%  
+      filter(rownames(.) %in%  c(i,kn10[[i]])) %>%  # get the reference entity and its neighbors. Longer for a sf object ? 
+      filter(controlVar == controlVar[1])  ## Only keep Neigbors that have the same control variable than the reference entity
+    
+    Match <- amatch(INeigh$VarName[1],INeigh$VarName[-1], method="cosine", maxDist = maxDistCosine)# Find match under the cosine distance threshold
+    
+    NeigSame <- INeigh %>% filter(rownames(.) %in% Match) %>% 
+      select(ID)%>% 
+      as.data.frame()%>% 
+      select(-geometry) %>% 
+      deframe()#Vector with the neighbors that matched with the i entitu, by their ID
+    
+    VecPos  <- rownames(sf[sf$ID %in% NeigSame,])# rownames of the original df for the neighbors that potentially match
+    
+    results[[i]] <- c(i, VecPos)
     }
-  
-  result <- results %>% 
-    # check whether any numbers of an element are in any of the elements
-    map(~map_lgl(results, compose(any, `%in%`), .x)) %>% 
+  results2 <-  results %>%   discard(~length(.x) <= 1)   # drop list element with no similar neighbors 
+    
+  FinalMatch <- results2 %>% # Melt results : if element 1 is similar to its neighbor 2, and element 2 is similar to element 3. Then 1, 2, 3 are considered to be potential same entity
+    map(~map_lgl(results2, compose(any, `%in%`), .x)) %>%  # check whether any numbers of an element are in any of the elements
     unique() %>%    # drop duplicated groups
-    map(~reduce(results[.x], union)) 
-  
-  return(result)
+    map(~reduce(results2[.x], union)) 
+  FinalMatch
+  return(FinalMatch)
 }
 
 
 ### test function
 
 
-sf <- sample_n(Partners, 30)
+sf <- sample_n(Partners, 50)
 
 
 sf<-sf %>% distinct(ID_PARTNER, .keep_all= TRUE)
@@ -140,28 +146,45 @@ sf<-sf %>% distinct(ID_PARTNER, .keep_all= TRUE)
 sf <- st_as_sf(sf, coords = c("lon", "lat"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") 
 
+sf <- PointPartners
 
-
-MergingCandidate(PointPartnerstest, namevar = PointPartnerstest$Project.Partner,k=10, maxDistCosine = 0.5)
+MergingCandidate(sf , namevar = "Project.Partner",k=3 , maxDistCosine = 0.3, controlVar = "Country",
+                ID = "ID_PARTNER")
 
 coords_sf <- st_coordinates(sf)
 
-kn10 <- knn2nb(knearneigh(coords_Partners, k=5, longlat = TRUE))
+kn10 <- knn2nb(knearneigh(coords_sf, k=4, longlat = TRUE))
 
 results <- list()
 
 for(i in c(1: length(kn10))){
-  
-  INeigh <- sf %>%  filter(rownames(.) %in%  c(i,kn10[[i]]))
-  results[[i]] <- c(i, amatch(INeigh$VarName[1],INeigh$VarName[-1], method="cosine", maxDist = 0.5))
-  
-  progress(i, progress.bar = TRUE)
-  Sys.sleep(3)
-  if (i == length(kn10)) cat("Done!\n")
-}
 
-result <- results %>% 
+  INeigh <- sf %>%  filter(rownames(.) %in%  c(i,kn10[[i]]))%>% filter(Country == Country[1])
+
+  Match <- amatch(INeigh$Project.Partner[1],INeigh$Project.Partner[-1], method="cosine", maxDist = 0.3)
+
+NeigSame <- INeigh %>% filter(rownames(.) %in% Match) %>%
+    select(ID_PARTNER)%>%
+    as.data.frame()%>%
+    select(-geometry) %>%
+    deframe()
+
+ VecPos  <- rownames(sf[sf$ID_PARTNER %in% NeigSame,])
+
+ results[[i]] <- c(i, VecPos)
+}
+results2 <-  results %>%   discard(~length(.x) <= 1)
+
+result <- results2 %>%
   # check whether any numbers of an element are in any of the elements
-  map(~map_lgl(results, compose(any, `%in%`), .x)) %>% 
+  map(~map_lgl(results2, compose(any, `%in%`), .x)) %>%
   unique() %>%    # drop duplicated groups
-  map(~reduce(results[.x], union)) 
+  map(~reduce(results2[.x], union))
+
+
+#### Create df of verification
+
+
+df1 <- PointPartners %>%  filter(rownames(.) %in%  result[[1]])
+
+
