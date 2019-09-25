@@ -6,7 +6,7 @@ library(stringdist)
 ## Load Data
 setwd("~/BD_Keep_Interreg/KEEP/AD")
 list.files()
-Partners <- read.csv2("PartnersGeoCode.csv" , encoding = "UTF-8", stringsAsFactors = F)
+Partners <- read.csv2("AD/PartnersGeoCode.csv" , encoding = "UTF-8", stringsAsFactors = F)
 
 skim(Partners)
 
