@@ -23,21 +23,21 @@ stringdistmatrix(SamplePartners$Project.Partner, method = "cosine")
 vecchar <- c("Turin", "Torino", "Torun", "Athen Municipality", "Municipality of Athen", "Athne", "Athen")
 
 TestMetricdistString <-function(vecchar){
-  results <- list()
+ stringdisttest <- list()
   
-  results[["hamming"]] <-stringdistmatrix(vecchar, method="hamming", useNames = TRUE)
-  results[["qgram"]]  <-stringdistmatrix(vecchar, method="qgram", useNames = TRUE)
-  results[["cosine"]] <-stringdistmatrix(vecchar, method="cosine", useNames = TRUE)
-  results[["jaccard"]] <-stringdistmatrix(vecchar, method="jaccard", useNames = TRUE)
-  results[["lcs"]]   <-stringdistmatrix(vecchar, method="lcs", useNames = TRUE)
-  results[["lv"]]  <-stringdistmatrix(vecchar, method="lv", useNames = TRUE)
-  results[["osa"]] <-stringdistmatrix(vecchar, method= "osa", useNames = TRUE)
+ stringdisttest[["hamming"]] <-stringdistmatrix(vecchar, method="hamming", useNames = TRUE)
+ stringdisttest[["qgram"]]  <-stringdistmatrix(vecchar, method="qgram", useNames = TRUE)
+ stringdisttest[["cosine"]] <-stringdistmatrix(vecchar, method="cosine", useNames = TRUE)
+ stringdisttest[["jaccard"]] <-stringdistmatrix(vecchar, method="jaccard", useNames = TRUE)
+ stringdisttest[["lcs"]]   <-stringdistmatrix(vecchar, method="lcs", useNames = TRUE)
+ stringdisttest[["lv"]]  <-stringdistmatrix(vecchar, method="lv", useNames = TRUE)
+ stringdisttest[["osa"]] <-stringdistmatrix(vecchar, method= "osa", useNames = TRUE)
   
-  return(results)
+  return(stringdisttest)
   
 }
 
-
+stringditance <-TestMetricdistString(vecchar)
 
 
 ### Forme de la fonction => récupérer les 10 plus proches voisins
@@ -87,7 +87,7 @@ PointPartners
 
 
 MergingCandidate <- function(sf,
-                             namevar, 
+                             VarName, 
                              k= 10,
                              maxDistCosine = 0.5, 
                              controlVar, 
@@ -129,7 +129,7 @@ MergingCandidate <- function(sf,
     map(~map_lgl(results2, compose(any, `%in%`), .x)) %>%  # check whether any numbers of an element are in any of the elements
     unique() %>%    # drop duplicated groups
     map(~reduce(results2[.x], union)) 
-  FinalMatch
+
   return(FinalMatch)
 }
 
@@ -145,15 +145,15 @@ sf<-sf %>% distinct(ID_PARTNER, .keep_all= TRUE)
 #
 sf <- st_as_sf(sf, coords = c("lon", "lat"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") 
-
+sf
 sf <- PointPartners
 
-MergingCandidate(sf , namevar = "Project.Partner",k=3 , maxDistCosine = 0.3, controlVar = "Country",
+MergingCandidate(sf , VarName  = "Project.Partner",k=3 , maxDistCosine = 0.3, controlVar = "Country",
                 ID = "ID_PARTNER")
 
 coords_sf <- st_coordinates(sf)
 
-kn10 <- knn2nb(knearneigh(coords_sf, k=4, longlat = TRUE))
+kn10 <- knn2nb(knearneigh(coords_sf, k=10, longlat = TRUE))
 
 results <- list()
 
@@ -161,7 +161,7 @@ for(i in c(1: length(kn10))){
 
   INeigh <- sf %>%  filter(rownames(.) %in%  c(i,kn10[[i]]))%>% filter(Country == Country[1])
 
-  Match <- amatch(INeigh$Project.Partner[1],INeigh$Project.Partner[-1], method="cosine", maxDist = 0.3)
+  Match <- amatch(INeigh$Project.Partner[1],INeigh$Project.Partner[-1], method="jaccard", maxDist = 0.4)
 
 NeigSame <- INeigh %>% filter(rownames(.) %in% Match) %>%
     select(ID_PARTNER)%>%
@@ -173,6 +173,7 @@ NeigSame <- INeigh %>% filter(rownames(.) %in% Match) %>%
 
  results[[i]] <- c(i, VecPos)
 }
+
 results2 <-  results %>%   discard(~length(.x) <= 1)
 
 result <- results2 %>%
@@ -185,6 +186,7 @@ result <- results2 %>%
 #### Create df of verification
 
 
-df1 <- PointPartners %>%  filter(rownames(.) %in%  result[[1]])
+df1 <- sf %>%  filter(rownames(.) %in%  result[[1]])
 
-
+results[[1]]
+results2[[1]]
