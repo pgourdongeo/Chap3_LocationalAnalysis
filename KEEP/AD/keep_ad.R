@@ -56,11 +56,11 @@ ggcoord <- ggmap::geocode(PartnerLocation, output = "more")
 ggcoord$Location <- PartnerLocation
 write.csv2(ggcoord, "DataSource/ggcoordPartners.csv")
 
-# join coord to the db
+## join coord to the db
 Partners <- left_join(x = Partners, y = select(ggcoord, Location, lon, lat), by = "Location")
 
 
-# Add coord manual corrected
+## Add coord manual corrected
 noCoord <- Partners %>% 
   filter(is.na(lon))
 write.csv2(noCoord, "DataSource/nocoordPartners.csv")
@@ -72,7 +72,7 @@ Partners <- Partners %>%
   rbind(select(ggcoordcorr, -(X1)))
 
 
-# Add id to partners and to participations
+## Add ID partners and ID participations
 Partners <- Partners %>% 
   rownames_to_column(., "ID") %>% 
   mutate(ID_PARTICIPATION = str_c("p", ID, sep = "")) %>% 
@@ -89,7 +89,7 @@ Partners <- Partners %>%
 
 
 ## save Partners
-write.csv2(Partners, "DataSource/PartnersGeoCode.csv", row.names = F, fileEncoding = "UTF-8")
+#write.csv2(Partners, "DataSource/PartnersGeoCode.csv", row.names = F, fileEncoding = "UTF-8")
 
 
 
@@ -104,7 +104,7 @@ outEUSP <- st_as_sf(outEU, coords = c("lon", "lat"), crs = 4326) %>%
   st_transform(crs = 3035)
 mapview(outEUSP)
 
-# prepare data before re-geocoding outsiders
+## prepare data before re-geocoding outsiders
 outEU <- outEU %>% 
   mutate(ShortLoc = str_c(tolower(Town), ", ", tolower(Country), sep = "")) 
 outEU$ShortLoc <- gsub(" cedex", "", outEU$ShortLoc)
@@ -119,20 +119,21 @@ outEU <- outEU %>%
 OutsiderLocation <- outEU$ShortLoc %>% unique()
 is.na(OutsiderLocation)
 
-# Geocoding participation places with gmap
+## Geocoding participation places with gmap
 
 register_google(key = "")
 
 ggcoord_outsider <- ggmap::geocode(OutsiderLocation, output = "all")
 
-save(ggcoord_outsider, file = "AD/ggcoord_outsider.RDS")
+## save output
+#save(ggcoord_outsider, file = "AD/ggcoord_outsider.RDS")
 
 str(ggcoord_outsider)
 names(ggcoord_outsider)
 length(ggcoord_outsider[[1]])
 
 
-# test purrr
+## re-format output
 library(purrr)
 library(magrittr)
 
@@ -151,7 +152,7 @@ loc <- results %>%
 adloc <- cbind(ad, loc) %>% 
   transmute(formatted_address, new_lon = lng, new_lat = lat)
 
-#bidouille
+## filter na
 ol <- as.data.frame(OutsiderLocation)
 ol[63:67, 1] <- NA
 ol[118, 1] <- NA
@@ -165,14 +166,49 @@ ol <- ol %>%
   filter(!is.na(OutsiderLocation))
 ol <- as.character(ol$OutsiderLocation)
 
-#join
+## join
 adloc$ShortLoc <- ol
-
 outEU <- left_join(outEU, adloc, "ShortLoc")
 
-save(outEU, file = "AD/outEU_newcoord.RDS")
+## save
+#save(outEU, file = "AD/outEU_newcoord.RDS")
 
-# Pour Paul
+## Pour Paul
 outEU_nocoord <- outEU %>% 
   filter(is.na(new_lon))
-save(outEU_nocoord, file = "AD/outEU_nocoord.RDS")
+#save(outEU_nocoord, file = "AD/outEU_nocoord.RDS")
+
+
+Partners <- read.csv2("AD/PartnersGeoCode.csv")
+load("AD/outEU_newcoord.RDS")
+OutEUNoCoord <- read.csv2("AD/OutEU_nocoord_UTF8_corriges.csv")
+
+# FINAL JOIN
+
+outEU <- outEU %>% 
+  filter(!is.na(new_lon)) %>% 
+  rbind(OutEUNoCoord) 
+
+Partners2 <- left_join(Partners, select (outEU, ID_PARTICIPATION, lon = new_lon, lat = new_lat),
+                       by = "ID_PARTICIPATION")
+Partners2 <- Partners2 %>% 
+  filter(is.na(lon.y)) %>% 
+  select(-lon.y, -lat.y) %>% 
+  rename(lon = lon.x, lat = lat.x)
+
+outEU2 <- outEU %>% 
+  select(-lon, -lat, -ShortLoc, -formatted_address) %>% 
+  mutate(lon = new_lon, lat = new_lat) %>% 
+  select(-new_lon, -new_lat)
+
+Partner <- rbind(Partners2, outEU2, by = "ID_PARTICIPATION")
+Partner <- Partner %>% 
+  filter(!is.na(ID_PARTICIPATION))
+
+## save
+save(Partner, file = "AD/Keep_ClosedProject_Partner_corrected.RDS")
+
+
+
+
+
