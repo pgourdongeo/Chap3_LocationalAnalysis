@@ -1,54 +1,37 @@
 ---
-title: "General Workflow BD KEEP Interreg _ BD EUCICOP"
-output:
-  html_document:
-    df_print: paged
-  pdf_document: default
+title: "General Workflow BD ETMUN"
+author: "Paul Gourdon"
+date: "23/10/2019"
+output: html_document
 ---
 # Data Description and sources
 
- All data concerning closed project of Interreg programs. Sources : [BD KEEP](https://www.keep.eu/). MetaData available in the [FAQ](https://www.keep.eu/faqs#) in "Data. What kind of data is available in Keep? ".
- 
- 
-"LeadPartners file" contains all information about each project and its Lead Partner.
-"Partner File" contains all the different partners (Lead Partner or not) and the name of the project in which it was involved. 
+The ETMUN Database allows a Europe-wide approach to Transnational Municipal Networks.
 
-There may be several involments for a single partner entity.
+Most of the data come from a search of the 2015 Yearbook of International Organizatons provided by the Union of International Associations ([UIA KEEP](https://uia.org/)), an NGO based in Brussels. The other organizations come from an internet watch. 
+
+Once the various transnational organisations bringing together urban governments have been registered in the ETMUN database, the member cities of each organisation are manually collected (mainly on the websites of the associations).
+
+Each time, the full name of the member entity (municipality, intermunicipality, or sometimes association, company, administration) is registered, to which a abbreviated name (name of the simplified city, or name of the city in which the entity has its headquarters) is attached.
+
+ 
+"ETMUN Organization files" contains all information about each Transnational Municipal Network.
+"ETMUN Member cities" contains all the different member cities and the name of the associaton in which they are involved. 
+
 
 # Main Goals
 
-- To perform a locational analysis of the density of participation to Interreg programs.
+- To perform a locational analysis of the density of adhesions to Transnational Municipal Network.
 
-- To aggregate the different partner entity into the urban areas to which they belong.
+- To aggregate the different member entity into the urban areas to which they belong and have only one entry per city with the number of memberships.
 
-- To differentiate Lead Partner (that initiate the project) and its Partners.
-
-- To look for hierarchical structure : urban concentration, differenciation between countries, regions and cities. To test rank-size hypotheses.
-
-
-```{r Data Structure}
-
-library(skimr)
-#Load Data
-DataRep <- path.expand ('DataSource/')
-
-list.files(DataRep)
-
-Projects <- read.csv2("DataSource/Keep_ClosedProject_LeadPartner_Project.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
-
-skim(Projects)
-
-
-Partners <- read.csv2("DataSource/Keep_ClosedProject_Partner.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
-
-skim(Partners)
-```
+- To look for hierarchical structure regarding level of involvment in such organization : urban concentration, differenciation between countries, regions and cities. To test rank-size hypotheses.
 
 
 ## Main steps needed
 
-- (1) Geocode all partners 
-- (2) Aggregate data : make a list of unique partners
+- (1) Geocode all entities 
+- (2) Aggregate data : make a list of unique member cities
 - (3) Correct error in geocoding
 - (4) First analysis of density (grid) with all Partners and lead Partners (and first with all involments)
 - (5) Spatial Joint with Urban Areas (UMZ database)
