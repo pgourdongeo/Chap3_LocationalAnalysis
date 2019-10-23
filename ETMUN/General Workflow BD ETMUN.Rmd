@@ -16,7 +16,7 @@ Each time, the full name of the member entity (municipality, intermunicipality, 
 
  
 "ETMUN Organization files" contains all information about each Transnational Municipal Network.
-"ETMUN Member cities" contains all the different member cities and the name of the associaton in which they are involved. 
+"ETMUN Member cities" contains all the different member cities and the name of the associaton(s) in which they are involved. 
 
 
 # Main Goals
