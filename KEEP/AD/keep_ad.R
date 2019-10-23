@@ -1,8 +1,9 @@
 ###############################################################################
-# NAME
-# DESCRIPTION
-# AUTHOR
-# DATE
+#                                 GEOLOCALISATION 
+#
+# DESCRIPTION : Géolocalisation des projets enregistrés dans la BD 'Partner'
+# PG, AD
+# Septembre 2019
 ##############################################################################
 
 
