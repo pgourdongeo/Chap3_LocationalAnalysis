@@ -30,11 +30,11 @@ Each time, the full name of the member entity (municipality, intermunicipality, 
 
 ## Main steps needed
 
-- (1) Geocode all entities 
-- (2) Aggregate data : make a list of unique member cities
+- (1) first cleaning and enrichment of the ETMUN member cities database : get region and continent data from the country variable & correct / simplify the entity dictionary 
+- (2) Geocode all entities & aggregate data : make a list of unique member cities (correct name : manual or ask geonames API)
 - (3) Correct error in geocoding
-- (4) First analysis of density (grid) with all Partners and lead Partners (and first with all involments)
-- (5) Spatial Joint with Urban Areas (UMZ database)
+- (4) First analysis of density (grid) with all entities (involments)
+- (5) Spatial Joint with Urban Areas (UMZ database) and FUAS
 - (6) Find a solution for entity outside urban areas (get an administrative population for example, or just filter the sample)
 - (7) Map aggregate participation at the urban areas level. and performe rank-size analysis (with participations and number of partners in Urban areas)
 - (8) Recognise Urban Governement and cities in the list of partner

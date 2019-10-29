@@ -376,7 +376,7 @@ summary {
 <p>Most of the data come from a search of the 2015 Yearbook of International Organizatons provided by the Union of International Associations (<a href="https://uia.org/">UIA KEEP</a>), an NGO based in Brussels. The other organizations come from an internet watch.</p>
 <p>Once the various transnational organisations bringing together urban governments have been registered in the ETMUN database, the member cities of each organisation are manually collected (mainly on the websites of the associations).</p>
 <p>Each time, the full name of the member entity (municipality, intermunicipality, or sometimes association, company, administration) is registered, to which a abbreviated name (name of the simplified city, or name of the city in which the entity has its headquarters) is attached.</p>
-<p>“ETMUN Organization files” contains all information about each Transnational Municipal Network. “ETMUN Member cities” contains all the different member cities and the name of the associaton in which they are involved.</p>
+<p>“ETMUN Organization files” contains all information about each Transnational Municipal Network. “ETMUN Member cities” contains all the different member cities and the name of the associaton(s) in which they are involved.</p>
 </div>
 <div id="main-goals" class="section level1">
 <h1>Main Goals</h1>
@@ -389,19 +389,19 @@ summary {
 <h2>Main steps needed</h2>
 <ul>
 <li><ol style="list-style-type: decimal">
-<li>Geocode all entities</li>
+<li>first cleaning and enrichment of the ETMUN member cities database : get region and continent data from the country variable &amp; correct / simplify the entity dictionary</li>
 </ol></li>
 <li><ol start="2" style="list-style-type: decimal">
-<li>Aggregate data : make a list of unique member cities</li>
+<li>Geocode all entities &amp; aggregate data : make a list of unique member cities (correct name : manual or ask geonames API)</li>
 </ol></li>
 <li><ol start="3" style="list-style-type: decimal">
 <li>Correct error in geocoding</li>
 </ol></li>
 <li><ol start="4" style="list-style-type: decimal">
-<li>First analysis of density (grid) with all Partners and lead Partners (and first with all involments)</li>
+<li>First analysis of density (grid) with all entities (involments)</li>
 </ol></li>
 <li><ol start="5" style="list-style-type: decimal">
-<li>Spatial Joint with Urban Areas (UMZ database)</li>
+<li>Spatial Joint with Urban Areas (UMZ database) and FUAS</li>
 </ol></li>
 <li><ol start="6" style="list-style-type: decimal">
 <li>Find a solution for entity outside urban areas (get an administrative population for example, or just filter the sample)</li>
