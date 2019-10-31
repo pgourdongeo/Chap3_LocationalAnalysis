@@ -76,33 +76,20 @@ pt_in_grid <- function(feat, adm, cellsize){
 }
 
 ## Plot a map
-plot_grid <- function(grid, adm, sources, bks, col, titleLeg){
-  
-  
+plot_grid <- function(grid, adm, rec, sources, bks, col, titleLeg){
   
   #c(bottom, left, top, right)
   par(mar = c(0, 0, 0, 0)) # à ajuster
-  
-  # # plot
-  # layoutLayer(extent = st_geometry(grid),
-  #             title = "",
-  #             sources = sources,
-  #             author = "PG,AD, 2019",
-  #             horiz = T,
-  #             col = NA,
-  #             frame = T,
-  #             scale = 500,
-  #             posscale = "bottomright")
-  
+
   #plot(st_geometry(rec), border = NA, col = "#A6CAE0")
-  plot(st_geometry(adm), col = "ivory1")
+  #plot(st_geometry(adm), col = "ivory1")
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = TRUE)
+             legend.pos = "n")
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.5, add = T)
   #plot(st_geometry(rec), border = "black", col = NA, add = T)
   
   ## Add legend
-  legendChoro(#pos = c(1000000, 3000000), 
+  legendChoro(pos = c(1000000, 3000000), 
               title.cex = 0.8, 
               values.cex = 0.7,
               title.txt = titleLeg, 
@@ -116,12 +103,12 @@ plot_grid <- function(grid, adm, sources, bks, col, titleLeg){
               title = "",
               sources = sources,
               author = "PG,AD, 2019",
-              horiz = T,
+              horiz = F,
               col = NA,
-              frame = T,
+              frame = F,
               scale = 500,
-              posscale = "bottomright")
-  
+              posscale = "bottomleft"
+              )
   
 }
 
@@ -137,16 +124,19 @@ europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
-
+st_bbox(europegrided[[1]])
+st_bbox(sfEU)
+st_bbox(rec)
 
 ## Plot
 pdf(file = "europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
-          sources = "Sources : ", 
+          rec = rec,
+          sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018 ", 
           bks = bks, 
           col = cols, 
-          titleLeg = "Nombre de participations\npar carreau de 2 500 km2")
+          titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2")
 dev.off()
 
 
