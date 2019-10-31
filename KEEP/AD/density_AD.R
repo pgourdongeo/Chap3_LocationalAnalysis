@@ -78,29 +78,31 @@ pt_in_grid <- function(feat, adm, cellsize){
 ## Plot a map
 plot_grid <- function(grid, adm, sources, bks, col, titleLeg){
   
+  
+  
   #c(bottom, left, top, right)
   par(mar = c(0, 0, 0, 0)) # à ajuster
   
-  # plot
-  plot(st_geometry(rec), border = NA, col = "#A6CAE0")
-  plot(st_geometry(adm), col = "ivory1", add = T)
+  # # plot
+  # layoutLayer(extent = st_geometry(grid),
+  #             title = "",
+  #             sources = sources,
+  #             author = "PG,AD, 2019",
+  #             horiz = T,
+  #             col = NA,
+  #             frame = T,
+  #             scale = 500,
+  #             posscale = "bottomright")
+  
+  #plot(st_geometry(rec), border = NA, col = "#A6CAE0")
+  plot(st_geometry(adm), col = "ivory1")
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = TRUE)
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.5, add = T)
-  plot(st_geometry(rec), border = "black", col = NA, add = T)
-  
-  # Add a layout
-  layoutLayer(title = "",
-              sources = sources, 
-              author = "PG,AD, 2019", 
-              horiz = F,
-              col = NA,
-              frame = F,
-              scale = 100, 
-              posscale = "bottomleft")
+  #plot(st_geometry(rec), border = "black", col = NA, add = T)
   
   ## Add legend
-  legendChoro(pos = "topleft", 
+  legendChoro(#pos = c(1000000, 3000000), 
               title.cex = 0.8, 
               values.cex = 0.7,
               title.txt = titleLeg, 
@@ -108,6 +110,19 @@ plot_grid <- function(grid, adm, sources, bks, col, titleLeg){
               nodata = FALSE, 
               values.rnd = 0, 
               col = cols)
+  
+  # Add a layout
+  layoutLayer(#extent = rec,
+              title = "",
+              sources = sources,
+              author = "PG,AD, 2019",
+              horiz = T,
+              col = NA,
+              frame = T,
+              scale = 500,
+              posscale = "bottomright")
+  
+  
 }
 
 
@@ -122,14 +137,17 @@ europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
+
+
 ## Plot
+pdf(file = "europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
           sources = "Sources : ", 
           bks = bks, 
           col = cols, 
           titleLeg = "Nombre de participations\npar carreau de 2 500 km2")
-
+dev.off()
 
 
 
@@ -243,6 +261,7 @@ p
 
 # import data 
 umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 3035)
+#plot(st_geometry(umz))
 
 # Intersect umz and participations
 inter <- st_intersects(umz, sfPartner)
@@ -252,12 +271,16 @@ umz <- st_sf(umz,
              n = sapply(X = inter, FUN = length), 
              geometry = st_geometry(umz))
 
+# 2284 / 3962 umz with no project :
+# sum(umz$n == 0)
+# 3473 umz with less than 10 projects
+# sum(umz$n < 10)
+
 umz <- umz %>% 
   mutate(rank11 = row_number(desc(Pop2011)))
 
-plot(st_geometry(umz))
 # display barplot
-n <- ggplot(umz %>% dplyr::filter(n>10), aes(x = rank11, y = n)) +
+n <- ggplot(umz %>% dplyr::filter(n>=10), aes(x = rank11, y = n)) +
   geom_point () +
   theme_light() +
   scale_y_continuous(trans = 'log10') +
@@ -266,7 +289,7 @@ n <- ggplot(umz %>% dplyr::filter(n>10), aes(x = rank11, y = n)) +
 
 n
 
-n2 <- ggplot(umz %>% dplyr::filter(n>10), aes(x = Pop2011, y = n)) +
+n2 <- ggplot(umz %>% dplyr::filter(n>=10), aes(x = Pop2011, y = n)) +
   geom_point () +
   theme_light() +
   scale_y_continuous(trans = 'log10') +
@@ -282,30 +305,69 @@ n2
 
 # Estimer la regression linéaire
 require(stats)
-reg<-lm(log10(Pop2011) ~ log10(n), data = umz %>% dplyr::filter(n>10))
+reg<-lm(log10(Pop2011) ~ log10(n), data = umz %>% dplyr::filter(n>=10))
+coeff=coefficients(reg)
 reg
 
-coeff=coefficients(reg)
 # Equation de la droite de regression :
 eq = paste0("y = ", round(coeff[2],2), "*x + ", round(coeff[1],1))
 # Graphe
-n2 + geom_abline(intercept = 3.7, slope = 0.96, color="red",
+n2 + 
+  geom_abline(intercept = 3.7, slope = 0.96, color="red",
                  linetype="dashed", size=1.5) +
-  ggtitle(eq) + 
-  annotate(geom="text", x=15000, y=250, label="R2 = 0.33",
-                  color="blue")
+  #ggtitle(eq) + 
+  annotate(geom="text", x=20000, y=250, label= paste0(eq, "\nR2 = 0.33"),
+                  color="blue") 
+  
+
 
 summary(reg)
-
 residuals(reg)
 
-library(purrr)
-rez <- reg %>% 
-  map("residuals") 
+# library(purrr)
+# rez <- reg %>% 
+#   map("residuals") 
 
 umz <- umz %>% 
   mutate(Yest = (0.97 * log10(n)) + 3.7) %>% 
   mutate(rez = log10(Pop2011) - Yest)
+
+# Fonction pour identifier des outliers dans une distribution :
+is_outlier <- function(x) {
+  
+  return(x < quantile(x, 0.25) - (1.5 * IQR(x)) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+  
+}
+
+a <- umz %>% 
+  filter(n >=10) %>% 
+  st_drop_geometry() %>% 
+  select(rez)
+
+1.5*IQR(a$rez)
+quantile(a$rez, 0.25)-0.8361051
+quantile(a$rez, 0.75)+0.8361051
+
+d <- ggplot(umz %>% dplyr::filter(n >= 10), aes(x = rez)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+  geom_density(alpha = .2, fill = "#FF6666") +
+  geom_vline(aes(xintercept = -1.079464),
+                 color = "blue", linetype = "dashed", size=1) +
+  geom_vline(aes(xintercept = 1.150149),
+             color = "blue", linetype = "dashed", size=1)
+d
+# Ajout d'une variable Outlier au DF
+umz2 <- umz %>% 
+  group_by(n10 = n>=10) %>%
+  mutate(outlier_rez = ifelse(is_outlier(rez), 
+                              rez, 
+                              as.numeric(NA)))
+# add outliers name to the plot
+library(ggrepel)
+n2 + geom_label_repel(data = umz2 %>% filter(!is.na(outlier_rez)), 
+                      aes(label = paste(Name, Country, sep = ", ")),
+                      na.rm = TRUE, nudge_y = 0.05, color = "black")
+
 
 
 # FUNCTION - Display the residuals map
@@ -344,13 +406,15 @@ rezMap <- function(frame, bgmap, units, units2, titleLeg){
   
 }
 
-
 # defines a set of breaks and colors
 bks <- c(-1.26, -1, -0.5, 0.5, 1, 1.52)
 cols <- c("#1A7832","#AFD4A0", "#e8deae", carto.pal("wine.pal",2))
 # Plot the residuals map
-rezMap(frame = rec, bgmap = sfEU, units = umz %>% filter(n>10), 
-        titleLeg = "résidus\n(455/3962 umz avec n > 10)")
+rezMap(frame = rec, 
+       bgmap = sfEU, 
+       units = umz %>% filter(n>10), 
+       titleLeg = "résidus\n(umz avec moins de 10 projets = 88%)")
+
 
 
 ######################################
