@@ -8,7 +8,7 @@
 # Octobre 2019
 ##############################################################################
 ## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -300,18 +300,19 @@ n2
 require(stats)
 reg <- lm(log10(n)~log10(Pop2011) , data = umz %>% dplyr::filter(n > 10))
 coeff <- coefficients(reg)
-reg
+reg$coefficients
+
 summary(reg)
 
 # Equation de la droite de regression :
-eq = paste0("y = ", round(coeff[2],2), "*x + ", round(coeff[1],1))
+eq = paste0("y = 10^", round(reg$coefficients[1],2), "*x^", round(reg$coefficients[2],2))  # On fait l'inverse de lg(y), y = 10^b * x^a
 # Graphe
 n2 + 
   geom_abline(intercept = 3.7, slope = 0.97, color="red",
               linetype = "dashed", size=1.5) +
   #ggtitle(eq) + 
   annotate(geom="text", x= 20000, y= 250, label= paste0(eq, "\nR2 = 0.33"),
-                  color="blue") 
+                  color="black") 
   
 
 
@@ -374,7 +375,7 @@ umz <- umz %>%
                               as.numeric(NA)))
 # add outliers name to the plot
 library(ggrepel)
-pdf(file = "lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+#pdf(file = "lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 n2 + 
   geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
                       aes(label = paste(Name, Country, sep = ", ")),
@@ -382,7 +383,7 @@ n2 +
   geom_abline(intercept = 3.7, slope = 0.97, color="red",
               linetype = "dashed", size=1.5) +
   annotate(geom="text", x= 20000, y= 250, label= paste0(eq, "\nR2 = 0.33"),
-           color="blue") 
+           color="black") 
 dev.off()
 
 attend
