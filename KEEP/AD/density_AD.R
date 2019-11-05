@@ -6,7 +6,8 @@
 # PG, AD
 # Octobre 2019
 ##############################################################################
-
+## Working directory huma-num
+#setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -296,7 +297,7 @@ n2
 
 # Estimer la regression linéaire
 require(stats)
-reg <- lm(log10(Pop2011) ~ log10(n), data = umz %>% dplyr::filter(n > 10))
+reg <- lm(log10(n)~log10(Pop2011) , data = umz %>% dplyr::filter(n > 10))
 coeff <- coefficients(reg)
 reg
 summary(reg)
@@ -322,13 +323,11 @@ residuals(reg)
 
 # add residuals and standart residuals
 umz <- umz %>% 
-  group_by(n10 = n > 10) %>% 
-  mutate(Yest = (0.97 * log10(n)) + 3.7) %>% 
-  mutate(rez = log10(Pop2011) - Yest) %>% 
-  mutate(rezStand = rez / sd(rez)) %>% 
+  filter(n>10)%>%
+  mutate(rezStand = residuals(reg, type = "pearson")) %>% 
   ungroup()
 
-
+sdRez <- sd(umz$rezStand)
 
 # # Fonction pour identifier des outliers dans une distribution :
 # is_outlier <- function(x) {
@@ -364,7 +363,7 @@ umz <- umz %>%
 # Fonction pour identifier des outliers dans une distribution :
 is_outlier <- function(x) {
 
-  return(x < -2 | x > 2.5)
+  return(x < -2*sdRez | x > 2*sdRez)
 
 }
 # Ajout d'une variable Outlier au DF
@@ -385,7 +384,7 @@ n2 +
            color="blue") 
 dev.off()
 
-
+attend
 # FUNCTION - Display the residuals map
 rezMap <- function(frame, bgmap, units, units2, var, titleLeg){
   
