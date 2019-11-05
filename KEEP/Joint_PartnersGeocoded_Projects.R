@@ -150,7 +150,7 @@ ProjectsID <- ProjectsID %>% left_join(UniqueRefProj, by = "ref")
 skim(ProjectsID)
 
 PartnersCleanFinalCoordKProject <- PartnersCleanFinalCoord %>% mutate(ref = paste(Acronym, Programme, sep = "_") )
-PartnersCleanFinalCoordKProject <- PartnersCleanFinalCoordKProject %>% left_join(select(ProjectsID, ref, ID_PROJECT), by ="ref")
+PartnersCleanFinalCoordKProject <- PartnersCleanFinalCoordKProject %>% left_join(select(ProjectsID, ref, ID_PROJECT), by ="ref")%>%distinct()
 
 skim(PartnersCleanFinalCoordKProject)
 
