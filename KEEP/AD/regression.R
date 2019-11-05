@@ -8,7 +8,7 @@
 ##############################################################################
 
 ## Working directory huma-num
-setwd("~/BD_Keep_Interreg/KEEP")
+#setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -75,8 +75,8 @@ regUmz <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = Pop2011, y = n)) +
   theme_light() +
   scale_y_continuous(trans = 'log10') +
   scale_x_continuous(trans = 'log10') +
-  labs(x = "umz pop 2011 (log10)", 
-       y = "Nombre de participations (log10)") 
+  labs(x = "Population 2011 des agglomérations UMZ (log10)", 
+       y = "Nombre de participations aux projets Interreg \ndes entités localisées dans une UMZ (log10)") 
   #+ geom_smooth(method = 'lm')
 regUmz
 
@@ -165,7 +165,7 @@ umz <- umz %>%
                                    as.numeric(NA)))
 
 # add outliers name to the plot
-#pdf(file = "lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+pdf(file = "lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
 regUmz + 
   geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
                    aes(label = paste(Name, Country, sep = ", ")),

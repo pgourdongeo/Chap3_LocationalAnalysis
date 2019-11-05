@@ -154,12 +154,15 @@ UniqueRefProj$ref <- as.character(UniqueRefProj$ref)
 ProjectsID <- ProjectsID %>% left_join(UniqueRefProj, by = "ref")
 
 skim(ProjectsID)
-
+## Check doublon id project
+doublonProject <-ProjectsID %>% group_by(ID_PROJECT)%>% filter(n() > 1)
+## Key to join Partners and projects
 PartnersCleanFinalCoordKProject <- PartnersCleanFinalCoord %>% mutate(ref = paste(Acronym, Programme, sep = "_") )
 PartnersCleanFinalCoordKProject <- PartnersCleanFinalCoordKProject %>% left_join(select(ProjectsID, ref, ID_PROJECT), by ="ref")%>%distinct()
 
 skim(PartnersCleanFinalCoordKProject)
 
+## Verify with view
 PartnersCleanFinalCoordKProject[677,]
 
 ProjectsID[16757,]
@@ -169,7 +172,7 @@ ProjectsID[16757,]
 
 
 ProjectsIDFinal <- ProjectsID %>% select(-ref)
-
+skim(ProjectsIDFinal)
 write.csv2(ProjectsIDFinal, "DataSource/ProjectsID.csv", row.names= F, fileEncoding = "UTF-8 ")
 
 
