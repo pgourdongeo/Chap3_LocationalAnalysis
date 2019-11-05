@@ -9,6 +9,9 @@ Projects <- read.csv2("DataSource/ProjectsID.csv",stringsAsFactors = F)
 
 Partners <- read.csv2( "DataSource/PartnersIDProj.csv", stringsAsFactors = F)
 
+
+saveRDS(Projects, file = "DataSource/ProjectsID.rds")
+saveRDS(Partners, file = "DataSource/PartnersIDProj.rds")
 skim(Projects)
 
 # 
@@ -44,7 +47,7 @@ p
 
 mu <- TypePartners %>% group_by(Period) %>% summarise(grp.mean = mean(TotalPartners))
 p<-ggplot(TypePartners, aes(x=TotalPartners, color=Period, fill = Period)) +
-  geom_density(alpha=.4) +
+  geom_density(alpha=0.4) +
   geom_vline(data=mu, aes(xintercept=grp.mean, color=Period),
              linetype="dashed")+ scale_color_brewer(palette="Dark2") + scale_fill_brewer(palette="Dark2")+ 
  theme_linedraw()
