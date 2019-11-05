@@ -26,7 +26,8 @@ PartnersID <- PartnersID %>% mutate(Join = paste(Acronym, Project.Partner,Postal
 PartnersOriginal <- PartnersOriginal %>% mutate(Join = paste(Acronym, Project.Partner,Postal.code, sep="_"))%>% filter(!duplicated(Join))
 
 #identical(sort(PartnersID$Join), sort(PartnersOriginal$Join))
-
+skim(PartnersID)
+skim(PartnersOriginal)
 
     # join files with the new column
 Partners <- PartnersOriginal %>% 
@@ -34,6 +35,7 @@ Partners <- PartnersOriginal %>%
 
 skim(Partners)
 summary(is.na(Partners$ID_PARTICIPATION))
+
 
 # 3153 entities with no ID, because of character encoding issues 
 
@@ -96,26 +98,30 @@ skim(matched)
 ### Join 
 
 
-PartnersNoId <- PartnersNoId %>% left_join(select(matched, Name_to_be_Matched, Closest_Match_Found), by = c("Join"= "Name_to_be_Matched"))
+PartnersNoId <- PartnersNoId %>% left_join(matched, by = c("Join"= "Name_to_be_Matched"))
+skim(PartnersNoId)
 
-PartnersGetID <- PartnersNoId %>% select(-ID_PARTICIPATION, - ID_PARTNER) %>% left_join(select(PartnersIDpb, ID_PARTICIPATION, ID_PARTNER, Join), by = c("Closest_Match_Found" = "Join"))
+PartnersGetID <- PartnersNoId %>%select(-ID_PARTICIPATION,-ID_PARTNER) %>% left_join(select(PartnersIDpb, ID_PARTICIPATION, ID_PARTNER, Join), by = c("Closest_Match_Found" = "Join"))
 
 skim(PartnersGetID)
+
+PartnersGetIDGood <- PartnersGetID %>%filter(Max_Jaro_Winkler>0.67) 
 
 ### Bind the table to get the clean dataset with ID
 
 PartnersClean <- Partners %>%filter(!is.na(ID_PARTICIPATION))
 
-PartnersGetID <- PartnersGetID %>% select(-Closest_Match_Found)
+PartnersGetIDGood <- PartnersGetIDGood %>% select(-Closest_Match_Found, - Max_Jaro_Winkler, - Index_of_Closest_Match)
 
-PartnersClean <- rbind(PartnersClean, PartnersGetID)
+PartnersClean <- rbind(PartnersClean, PartnersGetIDGood)
 
 skim(PartnersClean)
 
 PartnersClean %>% filter(is.na(ID_PARTICIPATION))
-
-PartnersCleanFinal <- PartnersClean %>% filter(!is.na(ID_PARTICIPATION))%>% select(-Join)
-
+duplicate <-PartnersClean%>% group_by(ID_PARTICIPATION) %>% filter(n() > 1)
+### Drop 60 duplicated (encoding error)
+PartnersCleanFinal <- PartnersClean %>% filter(!is.na(ID_PARTICIPATION))%>% select(-Join)%>% filter(!duplicated(ID_PARTICIPATION))
+skim(PartnersCleanFinal)
 write.csv2(PartnersCleanFinal, "DataSource/PartnersWithID.csv", row.names= F, fileEncoding = "UTF-8 ")
 
 
@@ -169,3 +175,5 @@ write.csv2(ProjectsIDFinal, "DataSource/ProjectsID.csv", row.names= F, fileEncod
 
 PartnersProjectsKey <- PartnersCleanFinalCoordKProject %>% select(-ref)
 write.csv2(PartnersProjectsKey, "DataSource/PartnersIDProj.csv", row.names= F, fileEncoding = "UTF-8 ")
+saveRDS(Projects, file = "DataSource/ProjectsID.rds")
+saveRDS(Partners, file = "DataSource/PartnersIDProj.rds")

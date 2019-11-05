@@ -10,8 +10,7 @@ Projects <- read.csv2("DataSource/ProjectsID.csv",stringsAsFactors = F)
 Partners <- read.csv2( "DataSource/PartnersIDProj.csv", stringsAsFactors = F)
 
 
-saveRDS(Projects, file = "DataSource/ProjectsID.rds")
-saveRDS(Partners, file = "DataSource/PartnersIDProj.rds")
+
 skim(Projects)
 
 # 
