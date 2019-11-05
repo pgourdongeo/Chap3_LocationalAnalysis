@@ -81,10 +81,11 @@ plot_grid <- function(grid, adm, rec, sources, bks, col, titleLeg){
   #c(bottom, left, top, right)
   par(mar = c(0, 0, 0, 0)) # à ajuster
 
-  #plot(st_geometry(rec), border = NA, col = "#A6CAE0")
+  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   #plot(st_geometry(adm), col = "ivory1")
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n")
+             legend.pos = "n", add = T)
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.5, add = T)
   #plot(st_geometry(rec), border = "black", col = NA, add = T)
   
@@ -126,7 +127,7 @@ cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 st_bbox(europegrided[[1]])
 st_bbox(sfEU)
-st_bbox(rec)
+bb <- st_bbox(rec)
 
 ## Plot
 pdf(file = "europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
@@ -263,8 +264,8 @@ umz <- st_sf(umz,
 
 # 2284 / 3962 umz with no project :
 # sum(umz$n == 0)
-# 3473 umz with less than 10 projects
-# sum(umz$n < 10)
+# 3507 umz with less than 11 projects
+# sum(umz$n < 11)
 
 umz <- umz %>% 
   mutate(rank11 = row_number(desc(Pop2011)))
@@ -279,13 +280,13 @@ n <- ggplot(umz %>% dplyr::filter(n>=10), aes(x = rank11, y = n)) +
 
 n
 
-n2 <- ggplot(umz %>% dplyr::filter(n>=10), aes(x = Pop2011, y = n)) +
+n2 <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = Pop2011, y = n)) +
   geom_point () +
   theme_light() +
   scale_y_continuous(trans = 'log10') +
   scale_x_continuous(trans = 'log10') +
   labs(x = "umz pop 2011 (log10)", 
-       y = "Nombre de participations (log10") +
+       y = "Nombre de participations (log10)") +
   geom_smooth(method = 'lm')
 n2
 
@@ -295,18 +296,19 @@ n2
 
 # Estimer la regression linéaire
 require(stats)
-reg<-lm(log10(Pop2011) ~ log10(n), data = umz %>% dplyr::filter(n>=10))
-coeff=coefficients(reg)
+reg <- lm(log10(Pop2011) ~ log10(n), data = umz %>% dplyr::filter(n > 10))
+coeff <- coefficients(reg)
 reg
+summary(reg)
 
 # Equation de la droite de regression :
 eq = paste0("y = ", round(coeff[2],2), "*x + ", round(coeff[1],1))
 # Graphe
 n2 + 
-  geom_abline(intercept = 3.7, slope = 0.96, color="red",
-                 linetype="dashed", size=1.5) +
+  geom_abline(intercept = 3.7, slope = 0.97, color="red",
+              linetype = "dashed", size=1.5) +
   #ggtitle(eq) + 
-  annotate(geom="text", x=20000, y=250, label= paste0(eq, "\nR2 = 0.33"),
+  annotate(geom="text", x= 20000, y= 250, label= paste0(eq, "\nR2 = 0.33"),
                   color="blue") 
   
 
@@ -318,64 +320,88 @@ residuals(reg)
 # rez <- reg %>% 
 #   map("residuals") 
 
+# add residuals and standart residuals
 umz <- umz %>% 
+  group_by(n10 = n > 10) %>% 
   mutate(Yest = (0.97 * log10(n)) + 3.7) %>% 
-  mutate(rez = log10(Pop2011) - Yest)
+  mutate(rez = log10(Pop2011) - Yest) %>% 
+  mutate(rezStand = rez / sd(rez)) %>% 
+  ungroup()
+
+
+
+# # Fonction pour identifier des outliers dans une distribution :
+# is_outlier <- function(x) {
+#   
+#   return(x < quantile(x, 0.25) - (1.5 * IQR(x)) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+#   
+# }
+# 
+# a <- umz %>% 
+#   filter(n > 10) %>% 
+#   st_drop_geometry() %>% 
+#   select(rez)
+# 
+# 1.5*IQR(a$rez)
+# quantile(a$rez, 0.25)-0.8361051
+# quantile(a$rez, 0.75)+0.8361051
+# 
+# d <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = rez)) +
+#   geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+#   geom_density(alpha = .2, fill = "#FF6666") +
+#   geom_vline(aes(xintercept = -1.079464),
+#                  color = "blue", linetype = "dashed", size=1) +
+#   geom_vline(aes(xintercept = 1.150149),
+#              color = "blue", linetype = "dashed", size=1)
+
+# # Ajout d'une variable Outlier au DF
+# umz2 <- umz %>% 
+#   group_by(n10 = n > 10) %>%
+#   mutate(outlier_rez = ifelse(is_outlier(rez), 
+#                               rez, 
+#                               as.numeric(NA)))
 
 # Fonction pour identifier des outliers dans une distribution :
 is_outlier <- function(x) {
-  
-  return(x < quantile(x, 0.25) - (1.5 * IQR(x)) | x > quantile(x, 0.75) + 1.5 * IQR(x))
-  
+
+  return(x < -2 | x > 2.5)
+
 }
-
-a <- umz %>% 
-  filter(n >=10) %>% 
-  st_drop_geometry() %>% 
-  select(rez)
-
-1.5*IQR(a$rez)
-quantile(a$rez, 0.25)-0.8361051
-quantile(a$rez, 0.75)+0.8361051
-
-d <- ggplot(umz %>% dplyr::filter(n >= 10), aes(x = rez)) +
-  geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
-  geom_density(alpha = .2, fill = "#FF6666") +
-  geom_vline(aes(xintercept = -1.079464),
-                 color = "blue", linetype = "dashed", size=1) +
-  geom_vline(aes(xintercept = 1.150149),
-             color = "blue", linetype = "dashed", size=1)
-d
 # Ajout d'une variable Outlier au DF
-umz2 <- umz %>% 
-  group_by(n10 = n>=10) %>%
-  mutate(outlier_rez = ifelse(is_outlier(rez), 
-                              rez, 
+umz <- umz %>%
+  mutate(outlier_rezStand = ifelse(is_outlier(rezStand), 
+                              rezStand, 
                               as.numeric(NA)))
 # add outliers name to the plot
 library(ggrepel)
-n2 + geom_label_repel(data = umz2 %>% filter(!is.na(outlier_rez)), 
+pdf(file = "lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+n2 + 
+  geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
                       aes(label = paste(Name, Country, sep = ", ")),
-                      na.rm = TRUE, nudge_y = 0.05, color = "black")
-
+                      na.rm = TRUE, nudge_y = 0.05, color = "black") + 
+  geom_abline(intercept = 3.7, slope = 0.97, color="red",
+              linetype = "dashed", size=1.5) +
+  annotate(geom="text", x= 20000, y= 250, label= paste0(eq, "\nR2 = 0.33"),
+           color="blue") 
+dev.off()
 
 
 # FUNCTION - Display the residuals map
-rezMap <- function(frame, bgmap, units, units2, titleLeg){
+rezMap <- function(frame, bgmap, units, units2, var, titleLeg){
   
   #c(bottom, left, top, right)
   par(mar = c(0, 0, 0, 0)) # à ajuster
   
   # Plot
-  plot(st_geometry(frame), border = NA, col = "#A6CAE0")
-  plot(st_geometry(bgmap), col = "white", border = "ivory3", lwd = 0.5, add = T)
-  choroLayer(units, var = "rez", border = NA, breaks= bks, col= cols, 
-             legend.pos = "rez", add = TRUE)
+  plot(st_geometry(frame), border = NA, col = "#A6CAE0",
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  plot(st_geometry(bgmap), col = "ivory1", border = "ivory3", lwd = 0.5, add = T)
+  choroLayer(units, var = var, border = NA, breaks= bks, col= cols, 
+             legend.pos = var, add = TRUE)
   #plot(st_geometry(units), col = NA, border = "ivory4", lwd = 0.05, add = T)
-  plot(st_geometry(frame), border = "black", col = NA, add = T)
-  
+
   # Add legend
-  legendChoro(pos = "topleft", 
+  legendChoro(pos = c(1000000, 3000000), 
               title.cex = 0.8,
               values.cex = 0.7,
               title.txt = titleLeg, 
@@ -391,22 +417,35 @@ rezMap <- function(frame, bgmap, units, units2, titleLeg){
               horiz = F,
               col = NA, 
               frame = F, 
-              scale = 100, 
+              scale = 500, 
               posscale = "bottomleft")
   
 }
 
-# defines a set of breaks and colors
+# residuals 
+## defines a set of breaks and colors 
 bks <- c(-1.26, -1, -0.5, 0.5, 1, 1.52)
 cols <- c("#1A7832","#AFD4A0", "#e8deae", carto.pal("wine.pal",2))
-# Plot the residuals map
+
+## Plot the residuals map
 rezMap(frame = rec, 
        bgmap = sfEU, 
-       units = umz %>% filter(n>10), 
-       titleLeg = "résidus\n(umz avec moins de 10 projets = 88%)")
+       units = umz %>% filter(n > 10), 
+       var = "rez",
+       titleLeg = "résidus\n(umz avec moins de 11 projets = 88%)")
 
-
-
+# residuals standart
+## defines a set of breaks and colors 
+bks <- c(-2.8, -2, -1, 0, 1, 2, 3.4)
+cols <- carto.pal("green.pal",3 ,"wine.pal",3)
+## Plot the residuals map
+pdf(file = "rezS.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+rezMap(frame = rec, 
+       bgmap = sfEU, 
+       units = umz %>% filter(n > 10), 
+       var = "rezStand",
+       titleLeg = "résidus standardisés\n")
+dev.off()
 ######################################
 # Visualisation participation/fua
 ######################################
