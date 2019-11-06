@@ -7,7 +7,7 @@
 # Octobre 2019
 ##############################################################################
 ## Working directory huma-num
-setwd("~/BD_Keep_Interreg/KEEP")
+#setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -20,6 +20,8 @@ library(tidylog)
 library(skimr)
 library(lwgeom)
 library(ggplot2)
+library(readr)
+library(RColorBrewer)
 #library(ggpubr)
 #library(GGally)
 
@@ -79,9 +81,10 @@ pt_in_grid <- function(feat, adm, cellsize){
 ## Plot a map
 plot_grid <- function(grid, adm, rec, sources, bks, col, titleLeg){
   
+  bb <- st_bbox(rec)
   #c(bottom, left, top, right)
   par(mar = c(0, 0, 0, 0)) # à ajuster
-
+  
   plot(st_geometry(rec), border = NA, col = "#A6CAE0",
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   #plot(st_geometry(adm), col = "ivory1")
@@ -114,6 +117,93 @@ plot_grid <- function(grid, adm, rec, sources, bks, col, titleLeg){
   
 }
 
+## Plot 3 maps with a unique legend
+plot_grids <- function(grid1, grid2, grid3, 
+                       title1, title2, title3,
+                       adm, rec, sources, bks, col, titleLeg){
+  
+  bb <- st_bbox(rec)
+  
+  ## plot 3 maps on a single figure 
+  par(mar = c(0, 0, 0, 0), mfrow = c(3, 2), ps=15)
+  
+  ## plot1
+  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
+             legend.pos = "n", add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.2, add = T)
+  
+  # Add title
+  mtext(text = title1,
+        font = 2,
+        side = 3, 
+        line = -1, 
+        adj = 0,
+        cex =0.6)
+  
+
+  
+  ## empty plot
+  plot(st_geometry(rec), border = NA, col = NA,
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  
+  ## plot2
+  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  choroLayer(grid2, var = "n", border = NA, breaks= bks, col= cols, 
+             legend.pos = "n", add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.3, add = T)
+  
+  # Add title
+  mtext(text = title2,
+        font = 2,
+        side = 3,
+        line = -1,
+        adj = 0,
+        cex =0.6)
+  
+  ## empty plot
+  plot(st_geometry(rec), border = NA, col = NA,
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  
+  ## Add legend
+  legendChoro(pos = "right", 
+              title.cex = 0.7, 
+              values.cex = 0.6,
+              title.txt = titleLeg, 
+              breaks = bks, 
+              nodata = FALSE, 
+              values.rnd = 0, 
+              col = cols)
+  
+  ## plot3
+  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  choroLayer(grid3, var = "n", border = NA, breaks= bks, col= cols, 
+             legend.pos = "n", add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.4, add = T)
+  
+  # Add title
+  mtext(text = title3,
+        font = 2,
+        side = 3,
+        line = -1,
+        adj = 0,
+        cex =0.6)
+
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1, 
+        adj = 0,
+        cex =0.35)
+  
+}
+
 
 # Map
 
@@ -124,11 +214,14 @@ europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
 
 ## defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
-cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
+cols <- c("#e5dddb", carto.pal("brown.pal", length(bks) - 2))
 
-st_bbox(europegrided[[1]])
-st_bbox(sfEU)
-bb <- st_bbox(rec)
+# display.brewer.all()
+# cols <- c("#e5dddb", brewer.pal(n = length(bks) - 2, name = "Orange"))
+
+# st_bbox(europegrided[[1]])
+# st_bbox(sfEU)
+# bb <- st_bbox(rec)
 
 ## Plot
 pdf(file = "europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
@@ -153,12 +246,52 @@ Projects <- read.table("DataSource/ProjectsID.csv",
                        header = TRUE,
                        encoding="UTF-8")
 
-## join period
-test <- left_join(x = select(Partners2, ID_PARTICIPATION, ID_PARTNER, ID_PROJECT, lon, lat),
+## join period to participations
+partPeriod <- left_join(x = select(Partner2, ID_PARTICIPATION, ID_PARTNER, ID_PROJECT, lon, lat),
                   y = select(Projects, Period, ID_PROJECT),
                   by = "ID_PROJECT")
 
-test$dupli <- duplicated(test$ID_PARTICIPATION)
+## tibble to sf
+sfPartPeriod <- st_as_sf(partPeriod, coords = c("lon", "lat"), crs = 4326) %>%
+  st_sf(sf_column_name = "geometry") %>% 
+  st_transform(crs = 3035)
+
+# Visu data 
+par(mar = c(0,0,0,0))
+plot(st_geometry(sfEU))
+plot(st_geometry(sfPartPeriod), pch = 0, cex = 0.5, col = "blue", add = T)
+plot(st_geometry(rec), add = T)
+
+
+
+## defines a unique set of breaks for all maps 
+bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
+cols <- c("#e5dddb", carto.pal("brown.pal", length(bks) - 2))
+
+
+## prepare grids
+europegrided1 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2000-2006"), 
+                           adm = sfEU, cellsize = 50000)
+europegrided2 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2007-2013"), 
+                            adm = sfEU, cellsize = 50000)
+europegrided3 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2014-2020"), 
+                            adm = sfEU, cellsize = 50000)
+pdf(file = "europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
+plot_grids(grid1 = europegrided1[[1]], 
+           grid2 = europegrided2[[1]],
+           grid3 = europegrided3[[1]],
+           adm = sfEU,
+           rec = rec,
+           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018\nPG, AD, 2019", 
+           bks = bks, 
+           col = cols, 
+           title1 = "2000-2006",
+           title2 = "2007-2013",
+           title3 = "2014-2020",
+           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2")
+dev.off()
+
+
 
 
 ################################################
