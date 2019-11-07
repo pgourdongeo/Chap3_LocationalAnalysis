@@ -125,7 +125,7 @@ plot_grids <- function(grid1, grid2, grid3,
   bb <- st_bbox(rec)
   
   ## plot 3 maps on a single figure 
-  par(mar = c(0, 0, 0, 0), mfrow = c(3, 2), ps=15)
+  par(mar = c(0, 0, 0, 0), mfrow = c(2, 2), ps=15)
   
   ## plot1
   plot(st_geometry(rec), border = NA, col = "#A6CAE0",
@@ -142,18 +142,23 @@ plot_grids <- function(grid1, grid2, grid3,
         adj = 0,
         cex =0.6)
   
-
+  ## Add legend
+  legendChoro(pos = c(1000000, 1500000),
+              title.cex = 0.7,
+              values.cex = 0.5,
+              title.txt = titleLeg,
+              breaks = bks,
+              nodata = FALSE,
+              values.rnd = 0,
+              col = cols)
   
-  ## empty plot
-  plot(st_geometry(rec), border = NA, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   
   ## plot2
   plot(st_geometry(rec), border = NA, col = "#A6CAE0",
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid2, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.3, add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.2, add = T)
   
   # Add title
   mtext(text = title2,
@@ -162,27 +167,14 @@ plot_grids <- function(grid1, grid2, grid3,
         line = -1,
         adj = 0,
         cex =0.6)
-  
-  ## empty plot
-  plot(st_geometry(rec), border = NA, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  
-  ## Add legend
-  legendChoro(pos = "right", 
-              title.cex = 0.7, 
-              values.cex = 0.6,
-              title.txt = titleLeg, 
-              breaks = bks, 
-              nodata = FALSE, 
-              values.rnd = 0, 
-              col = cols)
+
   
   ## plot3
   plot(st_geometry(rec), border = NA, col = "#A6CAE0",
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid3, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.4, add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.2, add = T)
   
   # Add title
   mtext(text = title3,
@@ -191,6 +183,7 @@ plot_grids <- function(grid1, grid2, grid3,
         line = -1,
         adj = 0,
         cex =0.6)
+  
 
   # Add scalebar
   barscale(500, pos = c(6500000, 1000000))
@@ -224,7 +217,7 @@ cols <- c("#e5dddb", carto.pal("brown.pal", length(bks) - 2))
 # bb <- st_bbox(rec)
 
 ## Plot
-pdf(file = "europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
+#pdf(file = "europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
           rec = rec,
@@ -276,6 +269,14 @@ europegrided2 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2007-2013"
                             adm = sfEU, cellsize = 50000)
 europegrided3 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2014-2020"), 
                             adm = sfEU, cellsize = 50000)
+
+## to do : % empty
+# 7266 carreaux
+hist(europegrided1[[1]]$n)
+dplyr::filter(europegrided1[[1]], n == 0)
+skim(europegrided1[[1]])
+
+## display maps and save pdf
 pdf(file = "europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_grids(grid1 = europegrided1[[1]], 
            grid2 = europegrided2[[1]],
