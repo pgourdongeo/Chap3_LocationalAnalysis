@@ -56,7 +56,10 @@ Projects <- read.table("DataSource/ProjectsID.csv",
 nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
   st_make_valid()
 
+
+
 # Functions
+#================================================
 
 ## Build a regular grid and count points in each cell
 pt_in_grid <- function(feat, adm, cellsize){
@@ -271,8 +274,8 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources){
 }
 
 
-#================================================
 # Map participations/cell 2000-2018 - all partners
+#================================================
 
 ## 50 km cells
 europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
@@ -287,14 +290,13 @@ plot_grid(grid = europegrided[[1]],
           adm = sfEU,
           frame = rec,
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018 ", 
-          bks = bks, 
-          col = cols, 
           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
 
 
 
 # Maps participations/cell 2000-2006, 2007-2013 et 2014-2020
+#================================================
 
 ## Prepare data
 ### add period to participations
@@ -328,25 +330,23 @@ dplyr::filter(europegrided1[[1]], n == 0)
 skim(europegrided1[[1]])
 
 ## display maps and save pdf
-#pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
+pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_grids(grid1 = europegrided1[[1]], 
            grid2 = europegrided2[[1]],
            grid3 = europegrided3[[1]],
-           adm = sfEU,
-           frame = rec,
-           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018\nPG, AD, 2019", 
-           bks = bks, 
-           col = cols, 
            title1 = "2000-2006",
            title2 = "2007-2013",
            title3 = "2014-2020",
-           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
+           adm = sfEU,
+           frame = rec,
+           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)",
+           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018\nPG, AD, 2019")
 dev.off()
 
 
 
-#================================================
 # map lead partner density
+#================================================
 
 ## Display points and save
 #pdf(file = "AD/OUT/densityLead_eucicopall.pdf", width = 8.3, height = 5.8)
@@ -372,15 +372,14 @@ plot_grid(grid = europegrided[[1]],
           adm = sfEU,
           frame = rec,
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018", 
-          bks = bks, 
-          col = cols, 
           titleLeg = "Nombre de participations des leaders\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
 
 
 
-#================================================
+
 # density of participations by nuts
+#================================================
 
 ## Prepare data
 ### Intersect nuts and participations
