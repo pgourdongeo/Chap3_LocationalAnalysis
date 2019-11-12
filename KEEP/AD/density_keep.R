@@ -78,7 +78,40 @@ pt_in_grid <- function(feat, adm, cellsize){
   return(ptgrid)
 }
 
-## Plot a map
+## plot a points map
+plot_points <- function(frame, adm, sf, txtLeg, source){
+  
+  # stock bbox
+  bb <- st_bbox(frame)
+  
+  # Define margins
+  par(mar = c(0,0,0,0))
+  
+  # Plot the map
+  plot(st_geometry(adm), col = "ivory4")
+  plot(st_geometry(sf), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)], add = TRUE)
+  
+  # Add a legend
+  legend(x = "left", 
+         legend = txtLeg, 
+         bty = "n",
+         cex = 0.8)
+  # Add a layout
+  layoutLayer(title = "",
+              sources = source,
+              author = "PG, AD, 2019",
+              horiz = TRUE,
+              col = NA,
+              frame = F,
+              scale = 500,
+              posscale = c(6500000, 1000000)
+  )
+}
+
+## Plot a gridded map
 plot_grid <- function(grid, adm, frame, sources, bks, col, titleLeg){
   
   bb <- st_bbox(frame)
@@ -196,7 +229,7 @@ plot_grids <- function(grid1, grid2, grid3,
 
 
 
-# Map participations/cell 2000-2018
+# Map participations/cell 2000-2018 - all partners
 
 ## 50 km cells
 europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
@@ -213,7 +246,7 @@ plot_grid(grid = europegrided[[1]],
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018 ", 
           bks = bks, 
           col = cols, 
-          titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2")
+          titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
 
 
@@ -264,7 +297,39 @@ plot_grids(grid1 = europegrided1[[1]],
            title1 = "2000-2006",
            title2 = "2007-2013",
            title3 = "2014-2020",
-           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2")
+           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
 
 
+
+
+# map lead partner density
+
+## Display points and save
+#pdf(file = "AD/OUT/densityLead_eucicopall.pdf", width = 8.3, height = 5.8)
+plot_points(frame = rec,
+            adm = sfEU,
+            sf = sfPartner %>% filter(Lead.Partner == "Yes"),
+            txtLeg = "Chaque point représente une participation\nd'un leader aux projets de l'UE",
+            source = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018")
+dev.off()
+
+
+## Display density cells for laed partners only
+### 50 km cells
+europegrided <- pt_in_grid(feat = sfPartner %>% filter(Lead.Partner == "Yes"), 
+                           adm = sfEU, cellsize = 50000)
+### defines a set of breaks and colors
+bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
+cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
+
+### Plot and save pdf
+#pdf(file = "AD/OUT/europeGrid_lead_eucicopall.pdf",width = 8.3, height = 5.8)
+plot_grid(grid = europegrided[[1]], 
+          adm = sfEU,
+          frame = rec,
+          sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018", 
+          bks = bks, 
+          col = cols, 
+          titleLeg = "Nombre de participations des leaders\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
+dev.off()
