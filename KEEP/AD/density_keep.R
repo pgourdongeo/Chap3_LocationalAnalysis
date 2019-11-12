@@ -1,9 +1,12 @@
 ###############################################################################
-#                         CARTOGRAPHIE DES DENSITES 
+#         CARTOGRAPHIE DES DENSITES de participations aux projets de l'UE
+#                          à partir de la BD KEEP
 #
 # DESCRIPTION : construction d'un carroyage sur l'europe élargie, comptage des 
 # participations aux projets de l'UE par carreau, cartographie des densités de 
-# participations à plusieurs dates
+# participations sur plusieurs périodes, cartographie des densités des participations 
+# des partenaires leader sur toute la période 2000-2018. Cartographie des densités par nuts
+# et graphique des participations par type de nuts (urbain/rural)
 #
 # PG, AD, Octobre 2019
 ##############################################################################
@@ -49,6 +52,9 @@ Projects <- read.table("DataSource/ProjectsID.csv",
                        #quote="",
                        header = TRUE,
                        encoding="UTF-8")
+
+nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
+  st_make_valid()
 
 # Functions
 
@@ -112,10 +118,9 @@ plot_points <- function(frame, adm, sf, txtLeg, source){
 }
 
 ## Plot a gridded map
-plot_grid <- function(grid, adm, frame, sources, bks, col, titleLeg){
+plot_grid <- function(grid, adm, frame, sources, titleLeg){
   
   bb <- st_bbox(frame)
-  #c(bottom, left, top, right)
   par(mar = c(0, 0, 0, 0)) # à ajuster
   
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
@@ -150,7 +155,7 @@ plot_grid <- function(grid, adm, frame, sources, bks, col, titleLeg){
 ## Plot 3 maps with a unique legend
 plot_grids <- function(grid1, grid2, grid3, 
                        title1, title2, title3,
-                       adm, frame, sources, bks, col, titleLeg){
+                       adm, frame, sources, titleLeg){
   
   bb <- st_bbox(frame)
   
@@ -227,8 +232,46 @@ plot_grids <- function(grid1, grid2, grid3,
   
 }
 
+## Plot a choro map
+dens_map <- function(frame, bgmap, sf, titleLeg, sources){
+  
+  # set the margins
+  bb <- st_bbox(frame)
+  par(mar = c(0, 0, 0, 0)) 
+  
+  # Plot
+  plot(st_geometry(frame), border = NA, lwd = 0.5, col = NA,
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  plot(st_geometry(bgmap), col = "#E3DEBF", border = "ivory3", lwd = 0.5, add = TRUE)
+  choroLayer(sf, var = "density", border = NA, breaks= bks, col= cols, 
+             legend.pos = "density", add = TRUE)
+  plot(st_geometry(sf), col = NA, border = "ivory4", lwd = 0.1, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
+  
+  # Add legend
+  legendChoro(pos = c(1000000, 3000000), 
+              title.cex = 0.8,
+              values.cex = 0.7,
+              title.txt = titleLeg, 
+              breaks = bks, 
+              nodata = F, 
+              values.rnd = 2, 
+              col = cols)
+  
+  # Add a layout
+  layoutLayer(title = "", 
+              sources = sources, 
+              author = "PG, AD, 2019", 
+              horiz = TRUE,
+              col = NA, 
+              frame = F, 
+              scale = 500, 
+              posscale = c(6500000, 1000000))
+  
+}
 
 
+#================================================
 # Map participations/cell 2000-2018 - all partners
 
 ## 50 km cells
@@ -302,7 +345,7 @@ dev.off()
 
 
 
-
+#================================================
 # map lead partner density
 
 ## Display points and save
@@ -333,3 +376,36 @@ plot_grid(grid = europegrided[[1]],
           col = cols, 
           titleLeg = "Nombre de participations des leaders\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
+
+
+
+#================================================
+# density of participations by nuts
+
+## Prepare data
+### Intersect nuts and participations
+inter <- st_intersects(nutsUR, sfPartner)
+### Count points in polygons
+nutsUR <- st_sf(nutsUR, 
+                n = sapply(X = inter, FUN = length), 
+                geometry = st_geometry(nutsUR))
+
+## Add density to df : nb of participations for 10 000 inhabitants
+nutsUR <- nutsUR %>% 
+  mutate(density = n / Pop_t_2001 * 10000)
+
+## Display map
+### defines a set of breaks and colors
+myvar <- nutsUR %>% filter(density != 0) %>% select(density) 
+bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
+cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
+
+### Plot and save
+pdf(file = "AD/OUT/density_nutsUR_eucicopall.pdf",width = 8.3, height = 5.8)
+dens_map(frame = rec, 
+        bgmap = sfEU, 
+        sf = nutsUR, 
+        titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants",
+        sources = "Sources :")
+dev.off()
+
