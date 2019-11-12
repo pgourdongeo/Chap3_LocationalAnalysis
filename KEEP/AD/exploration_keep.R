@@ -444,7 +444,14 @@ umz <- st_sf(umz,
 #   labs(x = "rang umz (pop 2011)", y = "Nombre de participations")
 # 
 # n
-
+# display barplot with log10
+regUmz <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = Pop2011, y = n)) +
+  geom_point () +
+  theme_light() +
+  labs(x = "Population 2011 des agglomérations UMZ ", 
+       y = "Nombre de participations aux projets Interreg \ndes entités localisées dans une UMZ ") 
+#+ geom_smooth(method = 'lm')
+regUmz
 # display barplot with log10
 regUmz <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = Pop2011, y = n)) +
   geom_point () +

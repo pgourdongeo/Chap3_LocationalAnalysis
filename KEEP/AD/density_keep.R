@@ -252,7 +252,7 @@ dplyr::filter(europegrided1[[1]], n == 0)
 skim(europegrided1[[1]])
 
 ## display maps and save pdf
-pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_grids(grid1 = europegrided1[[1]], 
            grid2 = europegrided2[[1]],
            grid3 = europegrided3[[1]],
