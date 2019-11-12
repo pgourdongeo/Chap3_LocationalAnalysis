@@ -87,39 +87,6 @@ pt_in_grid <- function(feat, adm, cellsize){
   return(ptgrid)
 }
 
-## plot a points map
-plot_points <- function(frame, adm, sf, txtLeg, source){
-  
-  # stock bbox
-  bb <- st_bbox(frame)
-  
-  # Define margins
-  par(mar = c(0,0,0,0))
-  
-  # Plot the map
-  plot(st_geometry(adm), col = "ivory4")
-  plot(st_geometry(sf), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
-  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)], add = TRUE)
-  
-  # Add a legend
-  legend(x = "left", 
-         legend = txtLeg, 
-         bty = "n",
-         cex = 0.8)
-  # Add a layout
-  layoutLayer(title = "",
-              sources = source,
-              author = "PG, AD, 2019",
-              horiz = TRUE,
-              col = NA,
-              frame = F,
-              scale = 500,
-              posscale = c(6500000, 1000000)
-  )
-}
-
 ## Plot a gridded map
 plot_grid <- function(grid, adm, frame, sources, titleLeg){
   
@@ -233,6 +200,39 @@ plot_grids <- function(grid1, grid2, grid3,
         adj = 0,
         cex =0.35)
   
+}
+
+## plot a points map
+plot_points <- function(frame, adm, sf, txtLeg, source){
+  
+  # stock bbox
+  bb <- st_bbox(frame)
+  
+  # Define margins
+  par(mar = c(0,0,0,0))
+  
+  # Plot the map
+  plot(st_geometry(adm), col = "ivory4")
+  plot(st_geometry(sf), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)], add = TRUE)
+  
+  # Add a legend
+  legend(x = "left", 
+         legend = txtLeg, 
+         bty = "n",
+         cex = 0.8)
+  # Add a layout
+  layoutLayer(title = "",
+              sources = source,
+              author = "PG, AD, 2019",
+              horiz = TRUE,
+              col = NA,
+              frame = F,
+              scale = 500,
+              posscale = c(6500000, 1000000)
+  )
 }
 
 ## Plot a choro map
@@ -349,30 +349,30 @@ dev.off()
 #================================================
 
 ## Display points and save
-#pdf(file = "AD/OUT/densityLead_eucicopall.pdf", width = 8.3, height = 5.8)
+pdf(file = "AD/OUT/densityLead_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_points(frame = rec,
             adm = sfEU,
             sf = sfPartner %>% filter(Lead.Partner == "Yes"),
-            txtLeg = "Chaque point représente une participation\nd'un leader aux projets de l'UE",
+            txtLeg = "Chaque point représente une participation\nd'un partenaire organisateur aux projets de l'UE",
             source = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018")
 dev.off()
 
 
 ## Display density cells for laed partners only
 ### 50 km cells
-europegrided <- pt_in_grid(feat = sfPartner %>% filter(Lead.Partner == "Yes"), 
+europegridedL <- pt_in_grid(feat = sfPartner %>% filter(Lead.Partner == "Yes"), 
                            adm = sfEU, cellsize = 50000)
 ### defines a set of breaks and colors
-bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
+bks <- c(0, getBreaks(v = europegridedL[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ### Plot and save pdf
-#pdf(file = "AD/OUT/europeGrid_lead_eucicopall.pdf",width = 8.3, height = 5.8)
-plot_grid(grid = europegrided[[1]], 
+pdf(file = "AD/OUT/europeGrid_lead_eucicopall.pdf",width = 8.3, height = 5.8)
+plot_grid(grid = europegridedL[[1]], 
           adm = sfEU,
           frame = rec,
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018", 
-          titleLeg = "Nombre de participations des leaders\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
+          titleLeg = "Nombre de participations des partenaires\norganisateurs aux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
 
 
@@ -384,9 +384,11 @@ dev.off()
 ## Prepare data
 ### Intersect nuts and participations
 inter <- st_intersects(nutsUR, sfPartner)
+inter2 <- st_intersects(nutsUR, sfPartner %>% filter(Lead.Partner == "Yes"))
 ### Count points in polygons
 nutsUR <- st_sf(nutsUR, 
                 n = sapply(X = inter, FUN = length), 
+                nL = sapply(X = inter2, FUN = length),
                 geometry = st_geometry(nutsUR))
 
 ## Add density to df : nb of participations for 10 000 inhabitants
@@ -407,4 +409,43 @@ dens_map(frame = rec,
         titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants et par NUTS\n(discrétisation en progression géométrique)",
         sources = "Sources :")
 dev.off()
+
+
+
+# Barplots participations/type of nuts
+#================================================
+
+# average numbers of participations by type of nuts
+nutsUR <- nutsUR %>% 
+  group_by(Typo7) %>% 
+  mutate(nbm = mean(n),
+         nbmL = mean(nL)) %>% 
+  ungroup()
+
+bibi <- data.frame(Typo7 = unique(nutsUR$Typo7), 
+                   nbm = unique(nutsUR$nbm),
+                   Lead = "Ensemble des partenaires")
+bibi2 <- data.frame(Typo7 = unique(nutsUR$Typo7), 
+                   nbm = unique(nutsUR$nbmL),
+                   Lead = "Partenaires organisateurs uniquement")
+bibi <- rbind(bibi, bibi2)
+
+# create barplots
+projNuts <- ggplot(data = bibi, aes(x = Typo7, y = nbm, fill = Lead)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(nbm)), position = position_dodge(0.9), vjust = 1.6, color = "white") +
+  labs(x = "Types de NUTS",
+       y = "Nombre moyen de participations sur la période 2000-2018") +
+  scale_fill_manual(values=c("#999999", "#E69F00")) +
+  theme_light() +
+  theme(legend.position = c(0.6, 0.8), legend.title = element_blank(),     
+        axis.text = element_text(size = 6)) 
+
+# display end save
+#pdf(file = "AD/OUT/particip_nutsUR_eucicopall.pdf", width = 8.3, height = 5.8)
+projNuts
+dev.off()
+
+
+
 
