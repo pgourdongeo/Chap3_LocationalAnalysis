@@ -405,7 +405,7 @@ pdf(file = "AD/OUT/density_nutsUR_eucicopall.pdf",width = 8.3, height = 5.8)
 dens_map(frame = rec, 
         bgmap = sfEU, 
         sf = nutsUR, 
-        titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants",
+        titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants et par NUTS\n(discrétisation en progression géométrique)",
         sources = "Sources :")
 dev.off()
 
