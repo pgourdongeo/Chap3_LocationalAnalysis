@@ -79,20 +79,18 @@ pt_in_grid <- function(feat, adm, cellsize){
 }
 
 ## Plot a map
-plot_grid <- function(grid, adm, rec, sources, bks, col, titleLeg){
+plot_grid <- function(grid, adm, frame, sources, bks, col, titleLeg){
   
-  bb <- st_bbox(rec)
+  bb <- st_bbox(frame)
   #c(bottom, left, top, right)
   par(mar = c(0, 0, 0, 0)) # à ajuster
   
-  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  #plot(st_geometry(adm), col = "ivory1")
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.5, add = T)
-  #plot(st_geometry(rec), border = "black", col = NA, add = T)
-  
+
   ## Add legend
   legendChoro(pos = c(1000000, 3000000), 
               title.cex = 0.8, 
@@ -104,8 +102,7 @@ plot_grid <- function(grid, adm, rec, sources, bks, col, titleLeg){
               col = cols)
   
   # Add a layout
-  layoutLayer(#extent = rec,
-    title = "",
+  layoutLayer(title = "",
     sources = sources,
     author = "PG,AD, 2019",
     horiz = F,
@@ -120,19 +117,19 @@ plot_grid <- function(grid, adm, rec, sources, bks, col, titleLeg){
 ## Plot 3 maps with a unique legend
 plot_grids <- function(grid1, grid2, grid3, 
                        title1, title2, title3,
-                       adm, rec, sources, bks, col, titleLeg){
+                       adm, frame, sources, bks, col, titleLeg){
   
-  bb <- st_bbox(rec)
+  bb <- st_bbox(frame)
   
   ## plot 3 maps on a single figure 
   par(mar = c(0, 0, 0, 0), mfrow = c(2, 2), ps=15)
   
   ## plot1
-  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.2, add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
   # Add title
   mtext(text = title1,
@@ -144,8 +141,8 @@ plot_grids <- function(grid1, grid2, grid3,
   
   ## Add legend
   legendChoro(pos = c(1000000, 3000000),
-              title.cex = 0.7,
-              values.cex = 0.5,
+              title.cex = 0.65,
+              values.cex = 0.55,
               title.txt = titleLeg,
               breaks = bks,
               nodata = FALSE,
@@ -154,11 +151,11 @@ plot_grids <- function(grid1, grid2, grid3,
   
   
   ## plot2
-  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  choroLayer(grid2, var = "n", border = NA, breaks= bks, col= cols, 
+  choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.2, add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
   # Add title
   mtext(text = title2,
@@ -170,11 +167,11 @@ plot_grids <- function(grid1, grid2, grid3,
   
   
   ## plot3
-  plot(st_geometry(rec), border = NA, col = "#A6CAE0",
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  choroLayer(grid3, var = "n", border = NA, breaks= bks, col= cols, 
+  choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.2, add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
   # Add title
   mtext(text = title3,
@@ -206,13 +203,13 @@ europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
 
 ## defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
-cols <- c("#e5dddb", carto.pal("brown.pal", length(bks) - 2))
+cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ## Plot and save pdf
 #pdf(file = "AD/OUT/europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
-          rec = rec,
+          frame = rec,
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018 ", 
           bks = bks, 
           col = cols, 
@@ -237,7 +234,7 @@ sfPartPeriod <- st_as_sf(partPeriod, coords = c("lon", "lat"), crs = 4326) %>%
 
 ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
-cols <- c("#e5dddb", carto.pal("brown.pal", length(bks) - 2))
+cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 
 ## prepare grids
@@ -255,12 +252,12 @@ dplyr::filter(europegrided1[[1]], n == 0)
 skim(europegrided1[[1]])
 
 ## display maps and save pdf
-#pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
+pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_grids(grid1 = europegrided1[[1]], 
            grid2 = europegrided2[[1]],
            grid3 = europegrided3[[1]],
            adm = sfEU,
-           rec = rec,
+           frame = rec,
            sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2018\nPG, AD, 2019", 
            bks = bks, 
            col = cols, 
