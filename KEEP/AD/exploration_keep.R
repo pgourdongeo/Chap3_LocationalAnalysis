@@ -629,6 +629,15 @@ dev.off()
 fua <- st_read("../OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp") %>% 
   st_transform(crs = 3035)
 
+plot(st_geometry(fua))
+
+idf <- fua %>% 
+  filter(URAU_NAME == "Paris")
+plot(st_geometry(idf))
+
+## filter 
+fua <- fua %>% filter(URAU_CATG == "L")
+
 # Intersect fua and participations
 inter <- st_intersects(fua, sfPartner)
 
@@ -661,17 +670,27 @@ n2 <- ggplot(fua %>% dplyr::filter(n>10), aes(x = URAU_POPL, y = n)) +
   geom_smooth(method = 'lm')
 n2
 
+n3 <- ggplot(fua %>% dplyr::filter(n>10), aes(x = URAU_POPL, y = n)) +
+  geom_point () +
+  theme_light() +
+  labs(x = "Population des aires urbaines fonctionnelles en 2006", 
+       y = "Nombre de participations") +
+  geom_smooth(method = 'lm')
+n3
+
 
 # Estimer la regression linéaire
 require(stats)
-reg<-lm(log10(URAU_POPL) ~ log10(n), data = fua %>% dplyr::filter(n>10))
+reg <- lm(log10(n) ~ log10(URAU_POPL) , data = fua %>% dplyr::filter(n > 10))
 reg
 summary(reg)
 coeff=coefficients(reg)
 # Equation de la droite de regression :
-eq = paste0("y = ", round(coeff[2],2), " * x + ", round(coeff[1],1))
+eqlin = paste0("y = ", round(coeff[2],2), " * x + ", round(coeff[1],1))
+eq = paste0("y = 10^ ", round(reg$coefficients[1],2), " * x ^", round(reg$coefficients[2],2))  # On fait l'inverse de lg(y), y = 10^b * x^a
+
 # Graphe
-n2 + geom_abline(intercept = 4.45, slope = 0.66, color="red",
+n2 + geom_abline(intercept = -0.54, slope = 0.38, color="red",
                  linetype="dashed", size=1.5) +
   #ggtitle(eq) + 
   annotate(geom="text", x=100000, y=250, label = paste0(eq, "\nR2 = 0.25"),
