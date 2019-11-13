@@ -12,7 +12,7 @@
 ##############################################################################
 
 ## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -293,6 +293,13 @@ plot_grid(grid = europegrided[[1]],
           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
 
+## PCT 0 participation
+
+summary(europegrided[[1]]$n)
+sum(europegrided[[1]]$n)
+skim(europegrided[[1]])
+nrow(europegrided[[1]])
+nrow(europegrided[[1]][europegrided[[1]]$n == 0,])/ nrow(europegrided[[1]]) *100
 
 
 # Maps participations/cell 2000-2006, 2007-2013 et 2014-2020
