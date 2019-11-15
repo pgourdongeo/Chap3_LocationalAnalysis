@@ -32,14 +32,18 @@ library(RColorBrewer)
 
 
 # Import data
+
 load("AD/Keep_ClosedProject_Partner_corrected.RDS")
+sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
+  st_sf(sf_column_name = "geometry") %>%
+  st_transform(crs = 3035)
+
+sfPartnerSpe <- st_read("AD/FDCARTE/sfPartner_3035_toGrid.geojson", crs = 3035)
 
 sfEU <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035) %>% 
   st_make_valid()
 
-sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
-  st_sf(sf_column_name = "geometry") %>% 
-  st_transform(crs = 3035)
+sfEU <- st_read("AD/FDCARTE/fondEurope.geojson")
 
 rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 
@@ -73,12 +77,16 @@ pt_in_grid <- function(feat, adm, cellsize){
   . <- st_intersects(grid, adm)
   grid <- grid[sapply(X = ., FUN = length)>0]
   
+  # # cut cells in the borders
+  # ptgrid[["grid"]] <- st_intersection(grid, adm)
+  grid <- st_intersection(grid, adm)
+
   # Count pts in grid
   . <- st_intersects(grid, feat)
   grid <- st_sf(n = sapply(X = ., FUN = length), grid)
   
   # cut cells in the borders
-  ptgrid[["grid"]] <- st_intersection(grid, adm)
+  ptgrid[["grid"]] <- grid 
   
   # remove null values
   ptgrid[["grid0"]] <- grid %>% 
@@ -278,7 +286,7 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources){
 #================================================
 
 ## 50 km cells
-europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
+europegrided <- pt_in_grid(feat = sfPartnerSpe, adm = sfEU, cellsize = 50000)
 
 ## defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
@@ -316,6 +324,16 @@ sfPartPeriod <- st_as_sf(partPeriod, coords = c("lon", "lat"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>% 
   st_transform(crs = 3035)
 
+### Replace points in water
+sfPointsCorr <- st_read("AD/FDCARTE/sfPartner_inwaterGNutsUR.geojson")
+idvec <- sfPointsCorr$ID_PARTICIPATION
+
+sfPointsWater <- sfPartPeriod %>% 
+  filter(ID_PARTICIPATION %in% idvec)
+
+sfPartPeriodSpe <- sfPartPeriod %>% 
+  filter(!ID_PARTICIPATION %in% idvec) %>% 
+  rbind(., sfPointsWater)
 
 ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
@@ -323,11 +341,11 @@ cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 
 ## prepare grids
-europegrided1 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2000-2006"), 
+europegrided1 <- pt_in_grid(feat = sfPartPeriodSpe %>% filter(Period == "2000-2006"), 
                             adm = sfEU, cellsize = 50000)
-europegrided2 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2007-2013"), 
+europegrided2 <- pt_in_grid(feat = sfPartPeriodSpe %>% filter(Period == "2007-2013"), 
                             adm = sfEU, cellsize = 50000)
-europegrided3 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2014-2020"), 
+europegrided3 <- pt_in_grid(feat = sfPartPeriodSpe %>% filter(Period == "2014-2020"), 
                             adm = sfEU, cellsize = 50000)
 
 ## to do : % empty cells
@@ -335,6 +353,9 @@ europegrided3 <- pt_in_grid(feat = sfPartPeriod %>% filter(Period == "2014-2020"
 hist(europegrided1[[1]]$n)
 dplyr::filter(europegrided1[[1]], n == 0)
 skim(europegrided1[[1]])
+skim(europegrided2[[1]])
+skim(europegrided3[[1]])
+sum(europegrided1[[1]]$n) + sum(europegrided2[[1]]$n) + sum(europegrided3[[1]]$n)
 
 ## display maps and save pdf
 pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
@@ -367,14 +388,16 @@ dev.off()
 
 ## Display density cells for laed partners only
 ### 50 km cells
-europegridedL <- pt_in_grid(feat = sfPartner %>% filter(Lead.Partner == "Yes"), 
+europegridedL <- pt_in_grid(feat = sfPartnerSpe %>% filter(Lead.Partner == "Yes"), 
                            adm = sfEU, cellsize = 50000)
+skim(europegridedL[[1]])
+sum(europegridedL[[1]]$n)
 ### defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegridedL[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ### Plot and save pdf
-pdf(file = "AD/OUT/europeGrid_lead_eucicopall.pdf",width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/europeGrid_lead_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegridedL[[1]], 
           adm = sfEU,
           frame = rec,

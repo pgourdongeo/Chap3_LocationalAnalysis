@@ -35,3 +35,26 @@ st_write(europe, "AD/FDCARTE/fdEurope_3035.geojson")
 
 
 europe <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035)
+
+
+
+
+# semis de point KEEP - save to qgis
+load("AD/Keep_ClosedProject_Partner_corrected.RDS")
+
+sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
+  st_sf(sf_column_name = "geometry") %>% 
+  st_transform(crs = 3035)
+
+st_write(sfPartner, "AD/FDCARTE/sfPartner_3035.geojson")
+
+# Création du shape sfPartnerSpe pour le comptage des points dans grille régulière
+# Rappatriement des points situés au large des côtes généralisées du shape Europe
+# effectué sous QGis (les points hors Europe non pas été corrigés)
+
+sfPointsCorr <- st_read("AD/FDCARTE/sfPartner_inwaterGNutsUR.geojson")
+idvec <- sfPointsCorr$ID_PARTICIPATION
+sfPartnerSpe <- sfPartner %>% 
+  filter(!ID_PARTICIPATION %in% idvec) %>% 
+  rbind(., sfPointsCorr)
+st_write(sfPartnerSpe, "AD/FDCARTE/sfPartner_3035_toGrid.geojson")
