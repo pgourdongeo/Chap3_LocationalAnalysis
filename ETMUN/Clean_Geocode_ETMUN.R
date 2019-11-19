@@ -207,14 +207,14 @@ skim(MemberCities)
 LocationMember <- unique(MemberCities$Adress)
 
 ################################"" Geocode 
-library(ggmap)
-
-register_google(key = "")
-
-ggcoord <- mutate_geocode(MemberCities, location = Adress )
-
-
-skim(ggcoord)
+# library(ggmap)
+# 
+# register_google(key = "")
+# 
+# ggcoord <- mutate_geocode(MemberCities, location = Adress )
+# 
+# 
+# skim(ggcoord)
 
 #guess_encoding(ggcoord)
 
@@ -249,35 +249,13 @@ library(mapview)
 
 
 
-EtmunPoints <- st_as_sf(MemberCities %>% filter(!is.na(lon)), coords = c("lon", "lat"), crs = 4326) %>%
-  st_sf(sf_column_name = "geometry")
-
-mapview(EtmunPoints%>% filter(Continent == "Europe"))
+# EtmunPoints <- st_as_sf(MemberCities %>% filter(!is.na(lon)), coords = c("lon", "lat"), crs = 4326) %>%
+#   st_sf(sf_column_name = "geometry")
+# 
+# mapview(EtmunPoints%>% filter(Continent == "Europe"))
 
 
 
 EtmunPoints <- read.csv2("DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F)
 
 
-### Test Geonames
-
-
-sampleEtmun <- EtmunPoints %>% sample_n(size = 50)
-
-
-library(geonames)  
-  
-options(geonamesUsername="pgourdon")
-
-GNTest <-GNsearch(name = sampleEtmun$Locality_Siege, style = "FULL", maxRows = "1", cities = "cities1000")
-GNcountryInfo("KE")
-source(system.file("tests","testing.R",package="geonames"),echo=TRUE)
-
-GNplacename <- list()
-for(i in length(sampleEtmun$Locality_Siege)){
-  
-  GNplacename[[i]] <- GNsearch(name = i, style = "FULL", maxRows = "1", cities = "cities1000")
-  
-}
-
-GNPlaceNamedTest <- GNfindNearbyPlaceName(lat = sampleEtmun$lat, lng = sampleEtmun$lon, radius = "5", maxRows = "1", style = "MEDIUM")
