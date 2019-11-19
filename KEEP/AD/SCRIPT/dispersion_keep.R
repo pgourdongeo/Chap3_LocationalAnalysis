@@ -8,7 +8,7 @@
 ################################################################################
 
 ## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -41,6 +41,7 @@ partPeriod <- left_join(x = select(Partner2, ID_PARTICIPATION, ID_PARTNER, ID_PR
                         y = select(Projects, Period, ID_PROJECT),
                         by = "ID_PROJECT")
 
+partPeriod
 ### tibble to sf
 sfPartPeriod <- st_as_sf(partPeriod, coords = c("lon", "lat"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>% 
@@ -62,8 +63,10 @@ CORRESP_CNTR_ISO2 <- read_delim("AD/CORRESP_CNTR_ISO2.csv",
                                 ";", escape_double = FALSE, trim_ws = TRUE)
 sfPartPeriodSpe <- left_join(sfPartPeriodSpe, select(CORRESP_CNTR_ISO2, Country = COUNTRY, ISO_A2), by = "Country")
 
+#### Participation duplicated because table projets could have several rows for one project (depending on the number of lead partners)
+sfPartPeriodSpe <- sfPartPeriodSpe %>% filter(!duplicated(ID_PARTICIPATION))
 
-
+sfPartPeriodSpe <- sfPartPeriodSpe %>% rename(ISO = ISO_A2)
 # PG
 bibi <- as(sfPartPeriodSpe, "Spatial")
 bibiM <- mean(bibi@coords)
@@ -75,6 +78,12 @@ sfEUR <- sfEU %>%
   filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Albania", "Bosnia and Herzegovina",
                                        "Kosovo", "Liechtenstein", "Montenegro", 
                                        "Republic of Macedonia", "Serbia", "Switzerland")) 
+
+sfTest <- sfEU %>% filter(NAME_EN == "France" | NAME_EN == "Germany" )
+
+sfTest <- sfTest %>% mutate(Area = st_area(.))
+sfTest <- left_join(sfTest, select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), by = "NAME_EN")
+
 mapView(sfEUR)
 sfEUR <- sfEUR %>% mutate(Area = st_area(.))
 sfEUR <- left_join(sfEUR, select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), by = "NAME_EN")
@@ -82,13 +91,14 @@ sfEUR <- left_join(sfEUR, select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO
 length(unique(sfEUR$ISO))
 
 # Faire un vecteur des pays d'intérêt
+vecISO <- sort(unique(sfTest$ISO))
 vecIso <- sort(unique(sfEUR$ISO))
 
 ## Filter le tableau de points avec les pays pour lesquels on veut calculer les indices de dispersion
-#partners <- sfPartnerSpe %>% filter(ISO_A2 %in% vecIso)
+partners <- sfPartPeriodSpe %>% filter(ISO %in% vecISO)
 partners <- sfPartPeriodSpe
-partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID, NAME_EN, ISO, Area))
-mapView(sfEUR) + mapView(partners)
+# partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID, NAME_EN, ISO, Area))
+# mapView(sfEUR) + mapView(partners)
 
 #### Calculer l'indice de dispersion sur l'ensemble des points
 # transfo en spded
@@ -131,37 +141,45 @@ ind3 <- MeanDistNN(sf = partners %>% filter(Period == "2014-2020"), k= 1)
 table(partners$Country)
 
 # Compute mean dist for each country and each period
+library(tidyverse)
+### Simple solution in dplyr
 NNdistCountry <- partners %>%
   group_by(ISO, Period) %>% 
-  summarise(MeanDistNN(sf=., k = 1))
+  do(as.data.frame(MeanDistNN(sf=., k = 1)))
 
 
-df <- list()
-for(i in unique(partners$ISO)){
-  
-  sf1 <- partners %>% filter(ISO == i)
-  
-  MeanDist <- MeanDistNN(sf1, k=1)
-  
-  df[[i]] <- MeanDist
-  
-}
+### loop that works
+# df <- list()
+# for(i in unique(partners$ISO_A2)){
+#   for(j in unique(partners$Period)){
+#   sf1 <- partners %>% filter(ISO_A2 == i) %>% filter(Period == j)
+#   
+#   MeanDist <- MeanDistNN(sf1, k=1)
+#   
+#   df[[paste(i,j, sep = "_")]] <- MeanDist
+#   } 
+# }
 
-NNdistCountry <- cbind(unlist(df))
+# NNdistCountry <- cbind(unlist(df))
 
 
-NPartners <- partners %>% group_by(ISO)%>% summarise(Ndecay = n())
+NPartners <- partners %>% group_by(ISO, Period)%>% summarise(Npoints = n())
 
-NNdistCountry <- NNdistCountry %>% 
-  as.data.frame() %>%
-  mutate(ISO = rownames(.)) %>% 
-  rename(MeanNNDist = V1)
+# NNdistCountry <- NNdistCountry %>% 
+#   as.data.frame() %>%
+#   mutate(ISO = rownames(.)) %>% 
+#   rename(MeanNNDist = V1)
 
-NNdistCountry <- NNdistCountry %>% left_join(NPartners)
-NNdistCountry <- NNdistCountry %>% left_join(select(sfEUR, ID, NAME_EN, ISO, Area), by = "ISO")
+NNdistCountry <- NNdistCountry %>% left_join(NPartners) 
+### Aggregate polygon of same country and sum area
+sfTest2 <- sfTest %>% group_by(ISO) %>% mutate(AreaTot = sum(Area))
+sfTest2 <- sfTest2 %>% select(ISO, AreaTot)%>% filter(!duplicated(ISO))
+
+NNdistCountry <- NNdistCountry %>% left_join(sfTest2, by = "ISO" )
 NNdistCountry <- NNdistCountry %>% as.data.frame()%>% select(-geometry.x,-geometry.y)
 
-NNdistCountry <- NNdistCountry %>%mutate(Area = as.numeric(Area))   %>%mutate(Re = 1/(2*sqrt(Ndecay/Area)))
+NNdistCountry <- NNdistCountry %>%mutate(AreaTot = as.numeric(AreaTot))   %>%mutate(Re = 1/(2*sqrt(Npoints/AreaTot)))
+NNdistCountry <- NNdistCountry %>% rename(MeanNNDist = `MeanDistNN(sf = ., k = 1)` )
 NNdistCountry <- NNdistCountry %>% mutate(R = MeanNNDist/Re)
 
 
