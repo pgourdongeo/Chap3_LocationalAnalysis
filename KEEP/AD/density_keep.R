@@ -12,7 +12,7 @@
 ##############################################################################
 
 ## Working directory huma-num
-setwd("~/BD_Keep_Interreg/KEEP")
+#setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -39,6 +39,8 @@ sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
   st_transform(crs = 3035)
 
+# Some participation points (~1000) have been replaced according to the generalization 
+# of the nutsUR polygons as the Europe shape made from nuts
 sfPartnerSpe <- st_read("AD/FDCARTE/sfPartner_3035_toGrid.geojson", crs = 3035)
 
 # sfEU <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035) %>% 
@@ -345,6 +347,8 @@ sfPartPeriodSpe <- sfPartPeriod %>%
 ### could have several rows for one project (depending on the number of lead partners)
 sfPartPeriodSpe <- sfPartPeriodSpe %>% filter(!duplicated(ID_PARTICIPATION))
 
+rm(sfPointsCorr, sfPointsWater, sfPartPeriod)
+
 ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
@@ -370,7 +374,7 @@ sum(europegrided1[[1]]$n) + sum(europegrided2[[1]]$n) + sum(europegrided3[[1]]$n
 
 
 ## display maps and save pdf
-pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_grids(grid1 = europegrided1[[1]], 
            grid2 = europegrided2[[1]],
            grid3 = europegrided3[[1]],
@@ -425,8 +429,8 @@ dev.off()
 
 ## Prepare data
 ### Intersect nuts and participations
-inter <- st_intersects(nutsUR, sfPartner)
-inter2 <- st_intersects(nutsUR, sfPartner %>% filter(Lead.Partner == "Yes"))
+inter <- st_intersects(nutsUR, sfPartnerSpe)
+inter2 <- st_intersects(nutsUR, sfPartnerSpe %>% filter(Lead.Partner == "Yes"))
 ### Count points in polygons
 nutsUR <- st_sf(nutsUR, 
                 n = sapply(X = inter, FUN = length), 
