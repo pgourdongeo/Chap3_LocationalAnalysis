@@ -51,12 +51,17 @@ idvec <- sfPointsCorr$ID_PARTICIPATION
 
 sfPointsWater <- sfPartPeriod %>% 
   filter(ID_PARTICIPATION %in% idvec)
+sfPointsWater$geometry <- NULL
+
+sfPointsCorr <- left_join(select(sfPointsCorr, ID_PARTICIPATION),
+                          sfPointsWater,
+                          by = "ID_PARTICIPATION")
 
 sfPartPeriodSpe <- sfPartPeriod %>% 
   filter(!ID_PARTICIPATION %in% idvec) %>% 
-  rbind(., sfPointsWater)
+  rbind(., sfPointsCorr)
 
-rm(sfPointsCorr, sfPointsWater, sfPartPeriod, Partner2, Projects, partPeriod, idvec)
+rm(sfPointsCorr, sfPointsWater, sfPartPeriod, partPeriod, idvec)
 
 ### Add ISO
 CORRESP_CNTR_ISO2 <- read_delim("AD/CORRESP_CNTR_ISO2.csv", 
@@ -68,6 +73,7 @@ sfPartPeriodSpe <- left_join(sfPartPeriodSpe,
 ### Participation duplicated because table projets 
 ### could have several rows for one project (depending on the number of lead partners)
 sfPartPeriodSpe <- sfPartPeriodSpe %>% filter(!duplicated(ID_PARTICIPATION))
+
 
 
 ## Prepare sf Europe
@@ -88,7 +94,8 @@ sfEUR <- left_join(select(sfEUR, ID, NAME_EN),
 sfEUR <- sfEUR %>% 
   mutate(Area = st_area(.)) %>% 
   group_by(ISO) %>% 
-  mutate(AreaT = sum(Area))
+  mutate(AreaT = sum(Area)) %>% 
+  ungroup()
 sfEUR2 <- sfEUR %>% 
   select(ISO, Area = AreaT) %>% 
   filter(!duplicated(ISO))
@@ -106,28 +113,15 @@ sfEUR2 <- sfEUR %>%
 ## Dispersion index
 
 ### Faire un vecteur des pays d'intérêt
-vecISO <- sort(unique(sfEUR$ISO))
-
+#vecISO <- sort(unique(sfEUR$ISO))
 ### Filter le tableau de points avec les pays 
 ### pour lesquels on veut calculer les indices de dispersion
-partners <- sfPartPeriodSpe %>% filter(ISO %in% vecISO)
-# partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID, NAME_EN, ISO, Area))
-# mapView(sfEUR) + mapView(partners)
+#partners <- sfPartPeriodSpe %>% filter(ISO %in% vecISO)
+partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID_POLY = ID))
+mapView(sfEUR) + mapView(partners)
 
-#### Calculer l'indice de dispersion sur l'ensemble des points
-# transfo en spded
-
-# DecaySP <- as(partners, "Spatial")
-# listNearNei <- knearneigh(DecaySP@coords, k= 1, longlat = F)
-# NearNeigh <- knn2nb(listNearNei)
-# distnei <- nbdists(NearNeigh, DecaySP@coords, longlat = F)
-# class(distnei)
-# 
-# distnei <- unlist(distnei)
-# 
-# summary(distnei)
-# mean(distnei)
-
+### Calculer l'indice de dispersion sur l'ensemble des points
+### transfo en spded
 
 #### Création d'une fonction dist moy au plus proche voisin
 MeanDistNN <- function(sf, k){
@@ -148,14 +142,14 @@ MeanDistNN <- function(sf, k){
   
 }
 
+
 ind1 <- MeanDistNN(sf = partners %>% filter(Period == "2000-2006"), k= 1)
 ind2 <- MeanDistNN(sf = partners %>% filter(Period == "2007-2013"), k= 1)
 ind3 <- MeanDistNN(sf = partners %>% filter(Period == "2014-2020"), k= 1)
 
 table(partners$Country)
 
-# Compute mean dist for each country and each period
-library(tidyverse)
+### Compute mean dist for each country and each period
 ### Simple solution in dplyr
 NNdistCountry <- partners %>%
   group_by(ISO, Period) %>% 
@@ -164,16 +158,15 @@ NNdistCountry <- partners %>%
 
 ### loop that works
 # df <- list()
-# for(i in unique(partners$ISO_A2)){
+# for(i in unique(partners$ISO)){
 #   for(j in unique(partners$Period)){
-#   sf1 <- partners %>% filter(ISO_A2 == i) %>% filter(Period == j)
-#   
+#   sf1 <- partners %>% filter(ISO == i) %>% filter(Period == j)
+# 
 #   MeanDist <- MeanDistNN(sf1, k=1)
-#   
+# 
 #   df[[paste(i,j, sep = "_")]] <- MeanDist
-#   } 
+#   }
 # }
-
 # NNdistCountry <- cbind(unlist(df))
 
 
