@@ -40,8 +40,8 @@ sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
 
 sfPartnerSpe <- st_read("AD/FDCARTE/sfPartner_3035_toGrid.geojson", crs = 3035)
 
-sfEU <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035) %>% 
-  st_make_valid()
+# sfEU <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035) %>% 
+#   st_make_valid()
 
 sfEU <- st_read("AD/FDCARTE/fondEurope.geojson")
 

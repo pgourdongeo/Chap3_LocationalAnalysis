@@ -15,57 +15,99 @@ options(scipen = 999)
 
 # library
 library(sf)
-
+library(dplyr)
+library(readr)
+library(mapview)
+library(spdep)
 
 # Import data
-load("AD/Keep_ClosedProject_Partner_corrected.RDS")
+sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+#sfPartnerSpe <- st_read("AD/FDCARTE/sfPartner_3035_toGrid.geojson", crs = 3035)
+rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 
-sfEU <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035) %>% 
-  st_make_valid()
+Partner2 <- read_delim("DataSource/PartnersIDProj.csv",
+                       ";", escape_double = FALSE, locale = locale(),
+                       trim_ws = TRUE)
 
-sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
+Projects <- read.table("DataSource/ProjectsID.csv", 
+                       sep=";", dec=".", 
+                       #quote="",
+                       header = TRUE,
+                       encoding="UTF-8")
+
+## Prepare data
+### add period to participations
+partPeriod <- left_join(x = select(Partner2, ID_PARTICIPATION, ID_PARTNER, ID_PROJECT, Country, lon, lat),
+                        y = select(Projects, Period, ID_PROJECT),
+                        by = "ID_PROJECT")
+
+### tibble to sf
+sfPartPeriod <- st_as_sf(partPeriod, coords = c("lon", "lat"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>% 
   st_transform(crs = 3035)
 
-rec <- st_read("AD/FDCARTE/rec_3035.geojson")
+### Replace points in water
+sfPointsCorr <- st_read("AD/FDCARTE/sfPartner_inwaterGNutsUR.geojson")
+idvec <- sfPointsCorr$ID_PARTICIPATION
+
+sfPointsWater <- sfPartPeriod %>% 
+  filter(ID_PARTICIPATION %in% idvec)
+
+sfPartPeriodSpe <- sfPartPeriod %>% 
+  filter(!ID_PARTICIPATION %in% idvec) %>% 
+  rbind(., sfPointsWater)
+
+
+CORRESP_CNTR_ISO2 <- read_delim("AD/CORRESP_CNTR_ISO2.csv", 
+                                ";", escape_double = FALSE, trim_ws = TRUE)
+sfPartPeriodSpe <- left_join(sfPartPeriodSpe, select(CORRESP_CNTR_ISO2, Country = COUNTRY, ISO_A2), by = "Country")
 
 
 
-# Un fichier point
-DecaySmallUMZ2011 <- SmallUMZPoints %>% filter(TrajPopclusters == 3)%>% ungroup()
+# PG
+bibi <- as(sfPartPeriodSpe, "Spatial")
+bibiM <- mean(bibi@coords)
 
-## Un fichier europe (si possible faire une sous selection de pays)
-EuropeArea <- Europe %>% mutate(Area = st_area(.))
 
-##### Faire un vecteur des pays d'intÃ©rÃªt (possiblement les mÃªmes que pour les liu)
 
-vectorCOuntry <- c("DE","IT","UK","FR","PL","ES","NL","RO","CZ","HU","PT","BG","SE","AT","DK","BE")
+# Europe Area (UE28 + Balkan, Suisse et Norway)
+sfEUR <- sfEU %>% 
+  filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Albania", "Bosnia and Herzegovina",
+                                       "Kosovo", "Liechtenstein", "Montenegro", 
+                                       "Republic of Macedonia", "Serbia", "Switzerland")) 
+mapView(sfEUR)
+sfEUR <- sfEUR %>% mutate(Area = st_area(.))
+sfEUR <- left_join(sfEUR, select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), by = "NAME_EN")
+
+length(unique(sfEUR$ISO))
+
+# Faire un vecteur des pays d'intérêt
+vecIso <- sort(unique(sfEUR$ISO))
+
 ## Filter le tableau de points avec les pays pour lesquels on veut calculer les indices de dispersion
-DecaySmallUMZ2011 <- DecaySmallUMZ2011 %>% filter(Country %in% vectorCOuntry)
+#partners <- sfPartnerSpe %>% filter(ISO_A2 %in% vecIso)
+partners <- sfPartPeriodSpe
+partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID, NAME_EN, ISO, Area))
+mapView(sfEUR) + mapView(partners)
 
 #### Calculer l'indice de dispersion sur l'ensemble des points
 # transfo en spded
-library(spdep)
-DecaySP <- as(DecaySmallUMZ2011, "Spatial")
+
+# DecaySP <- as(partners, "Spatial")
+# listNearNei <- knearneigh(DecaySP@coords, k= 1, longlat = F)
+# NearNeigh <- knn2nb(listNearNei)
+# distnei <- nbdists(NearNeigh, DecaySP@coords, longlat = F)
+# class(distnei)
+# 
+# distnei <- unlist(distnei)
+# 
+# summary(distnei)
+# mean(distnei)
 
 
-listNearNei <- knearneigh(DecaySP@coords, k= 1, longlat = F)
-
-NearNeigh <- knn2nb(listNearNei)
-
-distnei <- nbdists(NearNeigh, DecaySP@coords, longlat = F)
-class(distnei)
-
-distnei <- unlist(distnei)
-
-summary(distnei)
-mean(distnei)
-
-
-#### CrÃ©ation d'une fonction dist moy au plus proche voisin
-
-
+#### Création d'une fonction dist moy au plus proche voisin
 MeanDistNN <- function(sf, k){
+  
   sp <- as(sf, "Spatial")
   
   listNearNei <- knearneigh(sp@coords, k , longlat = F)
@@ -75,43 +117,51 @@ MeanDistNN <- function(sf, k){
   distnei <- nbdists(NearNeigh, sp@coords, longlat = F)
   
   distnei <- unlist(distnei)
+  
   meanDist <- mean(distnei)
+  
   return(meanDist)
+  
 }
 
-MeanDistNN(sf = DecaySmallUMZ2011, k= 1)
+ind1 <- MeanDistNN(sf = partners %>% filter(Period == "2000-2006"), k= 1)
+ind2 <- MeanDistNN(sf = partners %>% filter(Period == "2007-2013"), k= 1)
+ind3 <- MeanDistNN(sf = partners %>% filter(Period == "2014-2020"), k= 1)
 
-table(DecaySmallUMZ2011$Country)
-### Compute mean dist for each country
+table(partners$Country)
 
-
-NNdistCountry <- DecaySmallUMZ2011 %>% group_by(Country) %>% summarise(MeanDistNN(sf=., k = 1))
-
-
-
+# Compute mean dist for each country and each period
+NNdistCountry <- partners %>%
+  group_by(ISO, Period) %>% 
+  summarise(MeanDistNN(sf=., k = 1))
 
 
 df <- list()
-for(i in unique(DecaySmallUMZ2011$Country)){
+for(i in unique(partners$ISO)){
   
-  sf1 <- DecaySmallUMZ2011 %>% filter(Country == i)
+  sf1 <- partners %>% filter(ISO == i)
   
   MeanDist <- MeanDistNN(sf1, k=1)
   
   df[[i]] <- MeanDist
   
-  
 }
+
 NNdistCountry <- cbind(unlist(df))
 
 
-NSmallUMZCountry <- DecaySmallUMZ2011 %>% group_by(Country)%>% summarise(NdecaySmall = n())
+NPartners <- partners %>% group_by(ISO)%>% summarise(Ndecay = n())
 
-NNdistCountry <- NNdistCountry %>% as.data.frame() %>%mutate(Country = rownames(.))%>% rename(MeanNNDist = V1)
+NNdistCountry <- NNdistCountry %>% 
+  as.data.frame() %>%
+  mutate(ISO = rownames(.)) %>% 
+  rename(MeanNNDist = V1)
 
-NNdistCountry <- NNdistCountry %>% left_join(NSmallUMZCountry)
-NNdistCountry <- NNdistCountry %>% left_join(EuropeArea, by = c("Country"="ID"))
+NNdistCountry <- NNdistCountry %>% left_join(NPartners)
+NNdistCountry <- NNdistCountry %>% left_join(select(sfEUR, ID, NAME_EN, ISO, Area), by = "ISO")
 NNdistCountry <- NNdistCountry %>% as.data.frame()%>% select(-geometry.x,-geometry.y)
 
-NNdistCountry <- NNdistCountry %>%mutate(Area = as.numeric(Area))   %>%mutate(Re = 1/(2*sqrt(NdecaySmall/Area)))
+NNdistCountry <- NNdistCountry %>%mutate(Area = as.numeric(Area))   %>%mutate(Re = 1/(2*sqrt(Ndecay/Area)))
 NNdistCountry <- NNdistCountry %>% mutate(R = MeanNNDist/Re)
+
+
