@@ -27,6 +27,7 @@ library(lwgeom)
 library(ggplot2)
 library(readr)
 library(RColorBrewer)
+library(mapview)
 #library(ggpubr)
 #library(GGally)
 
@@ -169,7 +170,7 @@ plot_grids <- function(grid1, grid2, grid3,
   ## plot2
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
+  choroLayer(grid2, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
@@ -185,7 +186,7 @@ plot_grids <- function(grid1, grid2, grid3,
   ## plot3
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
+  choroLayer(grid3, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
@@ -330,10 +331,19 @@ idvec <- sfPointsCorr$ID_PARTICIPATION
 
 sfPointsWater <- sfPartPeriod %>% 
   filter(ID_PARTICIPATION %in% idvec)
+sfPointsWater$geometry <- NULL
+
+sfPointsCorr <- left_join(select(sfPointsCorr, ID_PARTICIPATION),
+                          sfPointsWater,
+                          by = "ID_PARTICIPATION")
 
 sfPartPeriodSpe <- sfPartPeriod %>% 
   filter(!ID_PARTICIPATION %in% idvec) %>% 
-  rbind(., sfPointsWater)
+  rbind(., sfPointsCorr)
+
+### Participation duplicated because table projets 
+### could have several rows for one project (depending on the number of lead partners)
+sfPartPeriodSpe <- sfPartPeriodSpe %>% filter(!duplicated(ID_PARTICIPATION))
 
 ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
@@ -356,6 +366,8 @@ skim(europegrided1[[1]])
 skim(europegrided2[[1]])
 skim(europegrided3[[1]])
 sum(europegrided1[[1]]$n) + sum(europegrided2[[1]]$n) + sum(europegrided3[[1]]$n)
+
+
 
 ## display maps and save pdf
 pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)

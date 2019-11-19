@@ -8,21 +8,20 @@
 ################################################################################
 
 ## Working directory huma-num
-setwd("~/BD_Keep_Interreg/KEEP")
+#setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
 
 # library
 library(sf)
-library(dplyr)
+library(tidyverse)
 library(readr)
 library(mapview)
 library(spdep)
 
 # Import data
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
-#sfPartnerSpe <- st_read("AD/FDCARTE/sfPartner_3035_toGrid.geojson", crs = 3035)
 rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 
 Partner2 <- read_delim("DataSource/PartnersIDProj.csv",
@@ -35,13 +34,12 @@ Projects <- read.table("DataSource/ProjectsID.csv",
                        header = TRUE,
                        encoding="UTF-8")
 
-## Prepare data
+## Prepare data Partners
 ### add period to participations
 partPeriod <- left_join(x = select(Partner2, ID_PARTICIPATION, ID_PARTNER, ID_PROJECT, Country, lon, lat),
                         y = select(Projects, Period, ID_PROJECT),
                         by = "ID_PROJECT")
 
-partPeriod
 ### tibble to sf
 sfPartPeriod <- st_as_sf(partPeriod, coords = c("lon", "lat"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>% 
@@ -58,45 +56,61 @@ sfPartPeriodSpe <- sfPartPeriod %>%
   filter(!ID_PARTICIPATION %in% idvec) %>% 
   rbind(., sfPointsWater)
 
+rm(sfPointsCorr, sfPointsWater, sfPartPeriod, Partner2, Projects, partPeriod, idvec)
 
+### Add ISO
 CORRESP_CNTR_ISO2 <- read_delim("AD/CORRESP_CNTR_ISO2.csv", 
                                 ";", escape_double = FALSE, trim_ws = TRUE)
-sfPartPeriodSpe <- left_join(sfPartPeriodSpe, select(CORRESP_CNTR_ISO2, Country = COUNTRY, ISO_A2), by = "Country")
+sfPartPeriodSpe <- left_join(sfPartPeriodSpe, 
+                             select(CORRESP_CNTR_ISO2, Country = COUNTRY, ISO = ISO_A2), 
+                             by = "Country")
 
-#### Participation duplicated because table projets could have several rows for one project (depending on the number of lead partners)
+### Participation duplicated because table projets 
+### could have several rows for one project (depending on the number of lead partners)
 sfPartPeriodSpe <- sfPartPeriodSpe %>% filter(!duplicated(ID_PARTICIPATION))
 
-sfPartPeriodSpe <- sfPartPeriodSpe %>% rename(ISO = ISO_A2)
-# PG
-bibi <- as(sfPartPeriodSpe, "Spatial")
-bibiM <- mean(bibi@coords)
 
-
-
-# Europe Area (UE28 + Balkan, Suisse et Norway)
+## Prepare sf Europe
+### Europe Area (UE28 + Balkan, Suisse et Norway)
 sfEUR <- sfEU %>% 
   filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Albania", "Bosnia and Herzegovina",
                                        "Kosovo", "Liechtenstein", "Montenegro", 
                                        "Republic of Macedonia", "Serbia", "Switzerland")) 
 
-sfTest <- sfEU %>% filter(NAME_EN == "France" | NAME_EN == "Germany" )
+#mapView(sfEUR)
 
-sfTest <- sfTest %>% mutate(Area = st_area(.))
-sfTest <- left_join(sfTest, select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), by = "NAME_EN")
+### Add ISO
+sfEUR <- left_join(select(sfEUR, ID, NAME_EN), 
+                   select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), 
+                   by = "NAME_EN")
 
-mapView(sfEUR)
-sfEUR <- sfEUR %>% mutate(Area = st_area(.))
-sfEUR <- left_join(sfEUR, select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), by = "NAME_EN")
+### Aggregate polygon of same country and sum area
+sfEUR <- sfEUR %>% 
+  mutate(Area = st_area(.)) %>% 
+  group_by(ISO) %>% 
+  mutate(AreaT = sum(Area))
+sfEUR2 <- sfEUR %>% 
+  select(ISO, Area = AreaT) %>% 
+  filter(!duplicated(ISO))
 
-length(unique(sfEUR$ISO))
 
-# Faire un vecteur des pays d'intérêt
-vecISO <- sort(unique(sfTest$ISO))
-vecIso <- sort(unique(sfEUR$ISO))
+# sfTest <- sfTest %>% mutate(Area = st_area(.))
+# sfTest <- left_join(sfTest, select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), by = "NAME_EN")
+# ### Aggregate polygon of same country and sum area
+# sfTest2 <- sfTest %>% group_by(ISO) %>% mutate(AreaTot = sum(Area))
+# sfTest2 <- sfTest2 %>% select(ISO, AreaTot)%>% filter(!duplicated(ISO))
+# 
+# mapView(sfEUR)
+# sfEUR <- sfEUR %>% mutate(Area = st_area(.))
 
-## Filter le tableau de points avec les pays pour lesquels on veut calculer les indices de dispersion
+## Dispersion index
+
+### Faire un vecteur des pays d'intérêt
+vecISO <- sort(unique(sfEUR$ISO))
+
+### Filter le tableau de points avec les pays 
+### pour lesquels on veut calculer les indices de dispersion
 partners <- sfPartPeriodSpe %>% filter(ISO %in% vecISO)
-partners <- sfPartPeriodSpe
 # partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID, NAME_EN, ISO, Area))
 # mapView(sfEUR) + mapView(partners)
 
