@@ -22,6 +22,7 @@ library(lwgeom)
 library(ggplot2)
 library(readr)
 library(RColorBrewer)
+library(mapview)
 #library(ggpubr)
 #library(GGally)
 
@@ -41,10 +42,11 @@ rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 # Visu data 
 par(mar = c(0,0,0,0))
 plot(st_geometry(sfEU))
-plot(st_geometry(sfPartner), pch = 0, cex = 0.5, col = "blue", add = T)
+plot(st_geometry(sfPartner), pch = 1, cex = 0.1, col = "blue", add = T)
+plot(st_geometry(sfEU), add = TRUE)
 plot(st_geometry(rec), add = T)
-
-
+mapview(sfPartner)
+mapview(sfEU)
 
 ###############################################################
 # Cartography particiation/tessel
@@ -198,10 +200,96 @@ plot_grids <- function(grid1, grid2, grid3,
 }
 
 
+# hors fonction
+# Create a regular grid (adm bbox)
+grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
+
+# Keep only cells that intersect adm
+. <- st_intersects(grid, sfEU)
+grid <- grid[sapply(X = ., FUN = length)>0]
+
+# Count pts in grid
+. <- st_intersects(grid, sfPartner)
+grid <- st_sf(n = sapply(X = ., FUN = length), grid)
+sum(grid$n) # = 29833
+
+# cut cells in the borders
+grid <- st_intersection(grid, sfEU)
+sum(grid$n)
+
+# ##tableaux de contingence et jointure :
+# TableComptageRepUMZ_TypoUrbRur <- as.data.frame(table(NUTS_UrbainRural$Typo7))
+# NUTS_UrbainRural
+# UMZCitiesPoints
+# JointUMZ_TypoUrbRural <- st_join(UMZCitiesPoints,NUTS_UrbainRural, join =st_intersects, left = T)
+# 
+# foo <- as.data.frame(table(JointUMZ_TypoUrbRural$Typo7))
+# 
+# JointSmallUMZ_TypoUrbRur <- JointUMZ_TypoUrbRural %>% filter(X2011<50000)
+# 
+# foo2 <- as.data.frame(table(JointSmallUMZ_TypoUrbRur$Typo7))
+# 
+# 3962 - sum(foo$Freq)
+# 
+# 2862-sum(foo2$Freq)
+# 
+# TableComptageRepUMZ_TypoUrbRur <- cbind(TableComptageRepUMZ_TypoUrbRur,foo,foo2)
+# 
+# ## Gestion des outsiders
+# 
+# Outsiders <- sfPartner %>% filter(is.na(Typo7))
+# mapview(NUTS_UrbainRural, zcol="Typo7") +mapview(Outsiders)
+# TableComptageRepUMZ_TypoUrbRur <- cbind(TableComptageRepUMZ_TypoUrbRur,foo,foo2)
+# 
+# Outsiders <- Outsiders %>% select(-c(37:72))
+# 
+# dist10km <- function(x,y){
+#   
+#   output <-  map(st_is_within_distance( x, y ,dist = 10000),1)
+#   
+#   return(output)
+#   
+# }
+# 
+# JoinOutsiders_Nuts <- st_join(Outsiders,NUTS_UrbainRural, join = dist10km)
+# mapview(NUTS_UrbainRural, zcol="Typo7") +mapview(JoinOutsiders_Nuts)
+
 # Map
+# Create a regular grid (adm bbox)
+grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
+
+# Keep only cells that intersect adm
+. <- st_intersects(grid, sfEU)
+grid <- grid[sapply(X = ., FUN = length)>0]
+
+# Count pts in grid
+. <- st_intersects(grid, sfPartner)
+grid <- st_sf(n = sapply(X = ., FUN = length), grid)
+sum(grid$n) # = 29833
+
+# cut cells in the borders
+grid <- st_intersection(grid, sfEU)
+sum(grid$n)
+#=============
+# Create a regular grid (adm bbox)
+grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
+
+# Keep only cells that intersect adm
+. <- st_intersects(grid, sfEU)
+grid <- grid[sapply(X = ., FUN = length)>0]
+
+# cut cells in the borders
+grid <- st_intersection(grid, sfEU)
+
+# Count pts in grid
+. <- st_intersects(grid, sfPartner)
+grid <- st_sf(n = sapply(X = ., FUN = length), grid)
+
+sum(grid$n) # = 28904
+
 
 ## 50 km cells
-europegrided <- pt_in_grid(feat = sfPartner, adm = sfEU, cellsize = 50000)
+europegrided <- pt_in_grid(feat = sfPartnerSpe, adm = sfEU, cellsize = 50000)
 #skim(europegrided[[1]])
 #skim(europegrided[[2]])
 
@@ -444,7 +532,14 @@ umz <- st_sf(umz,
 #   labs(x = "rang umz (pop 2011)", y = "Nombre de participations")
 # 
 # n
-
+# display barplot with log10
+regUmz <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = Pop2011, y = n)) +
+  geom_point () +
+  theme_light() +
+  labs(x = "Population 2011 des agglomérations UMZ ", 
+       y = "Nombre de participations aux projets Interreg \ndes entités localisées dans une UMZ ") 
+#+ geom_smooth(method = 'lm')
+regUmz
 # display barplot with log10
 regUmz <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = Pop2011, y = n)) +
   geom_point () +

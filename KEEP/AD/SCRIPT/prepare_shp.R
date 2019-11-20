@@ -10,9 +10,11 @@
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 
+library(tidyverse)
 library(tidylog)
 library(sf)
 library(lwgeom)
+library(mapview)
 
 
 # Le shape des pays du monde provient de Natural Earth :
@@ -35,3 +37,47 @@ st_write(europe, "AD/FDCARTE/fdEurope_3035.geojson")
 
 
 europe <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035)
+
+
+
+
+# semis de point KEEP - save to qgis
+load("AD/Keep_ClosedProject_Partner_corrected.RDS")
+
+sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
+  st_sf(sf_column_name = "geometry") %>% 
+  st_transform(crs = 3035)
+
+st_write(sfPartner, "AD/FDCARTE/sfPartner_3035.geojson")
+
+# Création du shape sfPartnerSpe pour le comptage des points dans grille régulière
+# Rappatriement des points situés au large des côtes généralisées du shape Europe
+# effectué sous QGis (les points hors Europe non pas été corrigés)
+
+sfPointsCorr <- st_read("AD/FDCARTE/sfPartner_inwaterGNutsUR.geojson")
+idvec <- sfPointsCorr$ID_PARTICIPATION
+sfPartnerSpe <- sfPartner %>% 
+  filter(!ID_PARTICIPATION %in% idvec) %>% 
+  rbind(., sfPointsCorr)
+st_write(sfPartnerSpe, "AD/FDCARTE/sfPartner_3035_toGrid.geojson")
+
+
+# Add UE members 
+sfEU <- st_read("AD/FDCARTE/fondEurope.geojson")
+
+members <- sort(c("Austria",	"Italy", "Belgium",	"Latvia", "Bulgaria",	"Lithuania",
+             "Croatia",	"Luxembourg", "Cyprus",	"Malta", "Czech Republic",	"Netherlands",
+             "Denmark",	"Poland", "Estonia",	"Portugal", "Finland",	"Romania",
+             "France",	"Slovakia", "Germany",	"Slovenia", "Greece",	"Spain",
+             "Hungary",	"Sweden", "Ireland",	"United Kingdom"))
+sfEU <- sfEU %>% 
+  mutate(UE28 = ifelse(NAME_EN %in% members, TRUE, FALSE)) %>% 
+  rownames_to_column(., "ID") 
+
+truc <- sfEU %>% filter(UE28 == TRUE) 
+sort(unique(truc$NAME_EN))
+length(unique(truc$NAME_EN))
+
+mapView(sfEU)
+
+st_write(sfEU, "AD/FDCARTE/fondEuropeLarge.geojson")
