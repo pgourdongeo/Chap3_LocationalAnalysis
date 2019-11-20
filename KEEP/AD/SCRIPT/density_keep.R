@@ -609,7 +609,7 @@ projNuts <- ggplot(data = bibi, aes(x = Typo7, y = nbm, fill = Lead)) +
         axis.text.x = element_text(size = 9, angle = 20, vjust = 0.8)) 
 
 # display end save
-pdf(file = "AD/OUT/particip_nutsUR_eucicopall.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/particip_nutsUR_eucicopall.pdf", width = 8.3, height = 5.8)
 projNuts
 dev.off()
 
