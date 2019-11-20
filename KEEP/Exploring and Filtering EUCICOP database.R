@@ -34,7 +34,11 @@ TypePartners <- TypePartners %>% left_join(select(Projects, ID_PROJECT, Co.Finan
 
 unique(TypePartners$Co.Financing.sources)
 
-
+npartners <- TypePartners %>% group_by(TotalPartners) %>% summarise(Nproject = n())
+npartnersperiod <- TypePartners %>% group_by(TotalPartners, Period) %>%summarise(Nproject = n())
+nperiod <- table(TypePartners$TotalPartners, TypePartners$Period)
+nperiod
+15672/17671
 # ad mean abline
 mu <- TypePartners %>% group_by(Co.Financing.sources) %>% summarise(grp.mean = mean(TotalPartners))
 p<-ggplot(TypePartners, aes(x=TotalPartners, color=Co.Financing.sources, fill = Co.Financing.sources )) +
