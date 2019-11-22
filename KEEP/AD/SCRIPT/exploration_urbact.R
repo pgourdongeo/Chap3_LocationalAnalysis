@@ -131,7 +131,7 @@ urbactCitiesAggr <- urbactCitiesAggr %>%
 
 
 ### Prepare sf Europe
-### Europe Area (UE28 + Suisse et Norway)
+### UE28 + Suisse et Norway
 sfEUR <- sfEU %>% 
   filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Switzerland"))
 
@@ -153,17 +153,9 @@ urbactCntry <- urbactCitiesAggr %>%
 
 ### join Mp_c to sfEUR
 sfEUR <-  left_join(sfEUR, select(urbactCntry, ISO, Mp_c), by = "ISO")
-#sfEUR <-  sfEUR %>% na.omit()
 
-### Aggregate polygon
-# test <- sfEUR %>% 
-#   group_by(ISO) %>% 
-#   st_cast()
 
-### Stock frame limits
-bbrec <- st_bbox(rec)
-
-# ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
+# ## defines a unique set of breaks 
 # skim(sfEUR$Mp_c)
 # bks <- getBreaks(v = sfEUR$Mp_c, method = "geom", nclass = 6)
 # cols <- carto.pal("turquoise.pal", length(bks) - 1)
@@ -186,62 +178,54 @@ bbrec <- st_bbox(rec)
 #                         "(2.7,3.5]" = "\n3,5",
 #                         "(3.5,4.5]" = "\n3,5"))
 
-sfEUR2 <- sfEUR %>% filter(Mp_c != max(Mp_c, na.rm = TRUE))
-sfEUR2 <- sfEUR
+
+### defines a set of breaks and colors
+maxrm <- max(sfEUR$Mp_c,na.rm = T)
+sfEUR2 <- sfEUR %>% filter(Mp_c != maxrm | is.na(Mp_c))
 skim(sfEUR2$Mp_c)
 bks2 <- getBreaks(v = sfEUR2$Mp_c, method = "quantile", nclass = 4)
 mybks <- c(1, 1.5, 1.8, 2.1, 2.5)
 cols <- carto.pal("turquoise.pal", length(mybks))
+
 # Create a "typo"" variable
 sfEUR2 <- sfEUR2 %>%
   mutate(typo = cut(Mp_c, breaks = mybks, dig.lab = 2, 
                     include.lowest = TRUE))
 extreme <- sfEUR %>% 
-  filter(Mp_c == max(Mp_c)) %>% 
-  mutate(typo = "NA")
+  filter(Mp_c == maxrm) %>% 
+  mutate(typo = recode(ISO, "EE" = "ext"))
 sfEUR2 <- rbind(sfEUR2, extreme)
 sfEUR2 <- sfEUR2 %>% 
   mutate(TYPO = recode(typo,
-                       "NA" = "4,5 (Lettonie)",
+                       "NA" = "NA",
+                       "ext" = "4,5 (Lettonie)",
                         "[1,1.5]" = "1 - 1,5",
                         "(1.5,1.8]" = "1,5 - 1,8",
                         "(1.8,2.1]" = "1,8 - 2,1",
                         "(2.1,2.5]" = "2,1 - 2,5"))
 
+### Stock frame limits
+bbrec <- st_bbox(rec)
 
-## plot
-ggplot() +
+### plot
+superbeCarte <- ggplot() +
   geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF", size = 0.1) +
   geom_sf(data = sfEUR2,
           aes(fill = TYPO), colour = "ivory3", size = 0.1) +
   scale_fill_manual(name = "Ratio\n(nb de participations /\nnb de villes participantes)",
-                    values = cols) +
-  # scale_fill_gradientn(name = "Ratio\n(nb de participations /\nnb de villes participantes)",
-  #                      colours = cols,
-  #                      values = bks/max(bks)
-  #                      ) +
+                    values = cols, na.value = "ivory4") +
   coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
   theme_void() +
   labs(caption = "source : \nPG, AD, 2019", size = 3) +
   theme(legend.position = c(0.1, 0.7),
         plot.caption = element_text(size = 6))
 
-# Example
-# ggplot() +
-#   geom_sf(data = dep, colour = "ivory3",fill = "ivory") +
-#   geom_sf(data = sm, aes(fill = pcad), colour = "grey80") +
-#   scale_fill_gradientn(name = "Share of managers (%)",
-#                        
-#                        colours = carto.pal("green.pal", 3,"wine.pal",3),
-#                        values=bks/max(bks))+
-#   coord_sf(crs = 2154, datum = NA,
-#            xlim = st_bbox(sm)[c(1,3)],
-#            ylim = st_bbox(sm)[c(2,4)]
-#   ) +
-#   theme_minimal() +
-#   theme(panel.background = element_rect(fill = "azure",color=NA)) +
-#   labs(title = "Managers",
-#        caption = "Insee, 2018\nKim & Tim, 2018")
+
+### display and save
+pdf(file = "AD/OUT/superbeCarteAUtiliserDeTouteUrgence_urbact.pdf", width = 8.3, height = 5.8)
+superbeCarte
+dev.off()
+
 
 # NUTS U/R ------------------------
 
