@@ -65,7 +65,10 @@ sfUrbactCitiesAggr <- st_as_sf(urbactCitiesAggr, coords = c("X", "Y"), crs = 432
 
 mapview(sfEU) + mapview(sfUrbactCitiesAggr)
 
-## Effectifs 
+
+
+
+## Effectifs -------------------------------------------
 freq <- as.data.frame(table(urbactCitiesAggr$NbPart))
 freq_nbpart <- ggplot(data = freq,
        aes(x = Var1, y = Freq)) +
@@ -79,7 +82,7 @@ freq_nbpart <- ggplot(data = freq,
   annotate("text", x = 4, y = 150, label = "404 villes\n765 participations", hjust = 0)
 
 # display end save
-pdf(file = "AD/OUT/freq_nbpart_urbact.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/freq_nbpart_urbact.pdf", width = 8.3, height = 5.8)
 freq_nbpart
 dev.off()
 
@@ -100,7 +103,7 @@ freq_pctPart <- ggplot(data = freq,
   annotate("text", x = 4, y = 30, label = "404 villes\n765 participations", hjust = 0)
 
 # display and save
-pdf(file = "AD/OUT/freq_pctpart_urbact.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/freq_pctpart_urbact.pdf", width = 8.3, height = 5.8)
 freq_pctPart
 dev.off()
 
@@ -117,13 +120,13 @@ freq_NbVille <- ggplot(data = freq2,
   annotate("text", x = 15, y = 40, label = "404 villes\n29 pays", hjust = 0)
 
 # display and save
-pdf(file = "AD/OUT/freq_NbVille_urbact.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/freq_NbVille_urbact.pdf", width = 8.3, height = 5.8)
 freq_NbVille
 dev.off()
 
 
 
-## average participations/city by country - map
+## MAP: average participations/city by country ----------------------------------
 urbactCitiesAggr <- urbactCitiesAggr %>% 
   group_by(Country) %>% 
   mutate(Mp_c = sum(NbPart)/length(Name)) %>% 
@@ -187,7 +190,7 @@ bks2 <- getBreaks(v = sfEUR2$Mp_c, method = "quantile", nclass = 4)
 mybks <- c(1, 1.5, 1.8, 2.1, 2.5)
 cols <- carto.pal("turquoise.pal", length(mybks))
 
-# Create a "typo"" variable
+### Create a "typo"" variable
 sfEUR2 <- sfEUR2 %>%
   mutate(typo = cut(Mp_c, breaks = mybks, dig.lab = 2, 
                     include.lowest = TRUE))
@@ -222,7 +225,7 @@ superbeCarte <- ggplot() +
 
 
 ### display and save
-pdf(file = "AD/OUT/superbeCarteAUtiliserDeTouteUrgence_urbact.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/superbeCarteAUtiliserDeTouteUrgence_urbact.pdf", width = 8.3, height = 5.8)
 superbeCarte
 dev.off()
 
@@ -235,7 +238,7 @@ dev.off()
 nutsUR <- nutsUR %>% 
   mutate(Typo8 = recode(Typo_8Clv1, 
                         "1" = "Régions sous dominance\nd'une métropole",
-                        "2" = "Régions avec densité\nurbain/rurale élevées",
+                        "2" = "Régions avec densité\nurbaine et rurale élevées",
                         "3" = "Régions avec densité\nurbaine élevée",
                         "4" = "Régions à majorité\nde villes moyennes",
                         "8" = "Régions rurales\nsous influence métropolitaine",
@@ -265,12 +268,28 @@ plotTabCroisUR <- TabCroisUR %>%
 plotTabCroisUR <- plotTabCroisUR %>% 
   mutate(Typo8 = replace_na(Typo8, "Hors typologie"))
 
+plotTabCroisUR$Typo <- factor(plotTabCroisUR$Typo8,
+                              levels = c("Régions sous dominance\nd'une métropole",
+                                         "Régions avec densité\nurbaine et rurale élevées",
+                                         "Régions avec densité\nurbaine élevée",
+                                         "Régions à majorité\nde villes moyennes",
+                                         "Régions rurales\nsous influence métropolitaine",
+                                         "Régions rurales\nsous influence de grandes villes",
+                                         "Régions rurales\navec villes petites et moyennes",
+                                         "Régions rurales isolées",
+                                         "Hors typologie"))
+
 #### Need 9 colors
 library(ggsci)
+scales::show_col(pal_rickandmorty()(18))
 myPal <- c("grey", pal_rickandmorty()(8))
+myPal <- c(carto.pal("blue.pal", 3), 
+           carto.pal("green.pal", 4), 
+           carto.pal("brown.pal", 1), "grey")
+carto.pal.info()
 
 ggplot(data = plotTabCroisUR, 
-       aes(x = reorder(Typo8, -Ratio), y = Ratio, fill = Typo8)) + 
+       aes(x = reorder(Typo, -Ratio), y = Ratio, fill = Typo8)) + 
   geom_bar(stat = "Identity") + 
   facet_wrap(~Type, scales = "free") +
   labs(title = "",
@@ -301,7 +320,7 @@ ggplot(data = plotTabCroisUR,
         #plot.subtitle = element_text(vjust = 1), 
         #plot.caption = element_text(vjust = 1), 
         #axis.text = element_text(vjust = 0.25), 
-        axis.text.x = element_text(size = 8, angle = 20, vjust = 0.8),
+        axis.text.x = element_blank(),
         #axis.title = element_text(size = 12), 
         #☻plot.title = element_text(size = 16), 
         legend.text = element_text(size = 8), 
