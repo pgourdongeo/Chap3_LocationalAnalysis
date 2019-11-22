@@ -40,46 +40,88 @@ GNPlaceNamedTest <- GNfindNearbyPlaceName(lat = sampleEtmun$lat, lng = sampleEtm
 ### LOAD Result for the first query
 
 GNPlaceName <- readRDS("GNplacename.rds")
+sum(is.na(names(GNPlaceName)))
 
-
+GNPlaceName[2706]
+names(GNPlaceName)[2706] <- "Antananarivo"
 GNPlaceNameDF <- bind_rows(GNPlaceName, .id = "Names") %>% complete(Names = names(GNPlaceName))
 
-GNPlaceName[1]$Seydikemer
-names(GNPlaceNameDF)
-GNPlaceNameDF2 <- setNames(data.frame(matrix(ncol = length(GNPlaceNameDF), nrow = 0)), names(GNPlaceNameDF))
+## Vérification names 
 
-GNPlaceName3 <-  lapply(GNPlaceName, function(x) if(is.null(x)) data.frame(C1 = NA) else x)
+all.equal.character(EtmunPoints[1:7445,]$Locality_Siege, GNPlaceNameDF$Names)
 
-for(i in GNPlaceName){
-  ifelse(length(i) == 0, GNPlaceNameDF2[i,] <- NA)
+EtmunPoints %>% slice(1:7445)%>% filter(is.na(Locality_Siege))
+## join between original file and GN query
+JoinEtmunGN1 <- EtmunPoints %>% left_join(GNPlaceNameDF, by= c("Locality_Siege"= "Names"), suffix = c("", ".GN"))
+
+sum(is.na(TestJoin$toponymName))
+
+
+## Get entities with no GN
+
+NoGN <- JoinEtmunGN1 %>% filter(is.na(toponymName))
+
+
+##2nd try
+library(geonames)  
+
+options(geonamesUsername="pgourdon")
+GNplacename2 <- list()
+NameLocality <- NoGN$Locality_Siege
+for(i in NameLocality){
   
-
+  GNplacename2[[i]] <- GNsearch(name = i, style = "FULL", maxRows = "1", cities = "cities1000")
+  
 }
+saveRDS(GNplacename2, file = "GNplacename2.rds")
 
-l <- list(Name1 = data.frame(), 
-                 Name2 = data.frame(V1 = "A", V2 = "B", stringsAsFactors = F), 
-                 Name3 = data.frame(V1="B", V2= NA, V3 ="C", stringsAsFactors = F))
-l
+names(GNplacename2)[4847]
+NameLocality2 <- NameLocality[4847:8397]
 
-library(dplyr)
-df <- bind_rows(l,.id = "NAME") %>% complete(NAME = names(l))
-df
-data.frame(rbind(Name1,Name2,Name3))
 
-bind_rows(l, .id = "Names") %>%
-  complete(Names = names(l))
-names(GNPlaceName)
- dput(head(GNPlaceName))
+GNplacename3 <- list()
+
+for(i in NameLocality2){
+  
+  GNplacename3[[i]] <- GNsearch(name = i, style = "FULL", maxRows = "1", cities = "cities1000")
+  
+}
+saveRDS(GNplacename3, file = "GNplacename3.rds")
+
+
+## Tranfo list result into df
+which(is.na(names(GNplacename2)))
+GNplacename2[387]
+names(GNplacename2)[387] <- "Antananarivo"
+
+
+GNPlaceNameDF2 <- bind_rows(GNplacename2, .id = "Names") %>% complete(Names = names(GNplacename2))
+8397-4847
+
+which(is.na(names(GNplacename3)))
+
+GNPlaceNameDF3 <- bind_rows(GNplacename3, .id = "Names") %>% complete(Names = names(GNplacename3))
+
+GNplacenameNoG <- bind_rows(GNPlaceNameDF2,GNPlaceNameDF3)
+## Join
+
+NoGN <- NoGN %>% select(1:20)
+library(tidylog)
+NoGNJoin <- NoGN %>% left_join(GNplacenameNoG, by= c("Locality_Siege"= "Names"), suffix = c("", ".GN"))
+sum(is.na(NoGNJoin$geonameId))
+
+## Intermediate File, result of the query on the names
+
+GNfirstQuery <- JoinEtmunGN1 %>% filter(!is.na(toponymName))
+
+GNnameETMUN <- bind_rows(GNfirstQuery, NoGNJoin)
  
- samplelist <- sample(GNPlaceName, 1000)
+length(unique(GNnameETMUN$MembershipCode))
+GNnameETMUN <- GNnameETMUN %>% filter(!duplicated(MembershipCode))
 
- 
- sample_n(GNPlaceName, 4000, replace = FALSE)
- 
- dput( sample_n(GNPlaceName, 30))
 
- names(GNPlaceName)[2706] <- "bug bug bug"
- samplelist <- sample(GNPlaceName, 100)
-   df <- bind_rows(GNPlaceName, .id = "Names") %>% complete(Names = names(GNPlaceName))
-   df %>% head() %>% pull(asciiName)
-length(unique(names(GNPlaceName)))
+### Control Geonames query, compute geographic and character distance
+
+## Then make a query by long lat for entities with no or wrong geonames join 
+
+saveRDS(GNnameETMUN, file = "GNEtmunBeforeCheck.rds")
