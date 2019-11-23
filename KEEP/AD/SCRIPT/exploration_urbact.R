@@ -20,6 +20,7 @@ library(mapview)
 library(tidyverse)
 library(cartography)
 library(skimr)
+library(ggsn) # scalebar on maps
 
 
 # Import data
@@ -63,7 +64,7 @@ sfUrbactCitiesAggr <- st_as_sf(urbactCitiesAggr, coords = c("X", "Y"), crs = 432
   st_sf(sf_column_name = "geometry") %>%
   st_transform(crs = 3035)
 
-mapview(sfEU) + mapview(sfUrbactCitiesAggr)
+#mapview(sfEU) + mapview(sfUrbactCitiesAggr)
 
 
 
@@ -182,47 +183,108 @@ sfEUR <-  left_join(sfEUR, select(urbactCntry, ISO, Mp_c), by = "ISO")
 #                         "(3.5,4.5]" = "\n3,5"))
 
 
-### defines a set of breaks and colors
-maxrm <- max(sfEUR$Mp_c,na.rm = T)
-sfEUR2 <- sfEUR %>% filter(Mp_c != maxrm | is.na(Mp_c))
-skim(sfEUR2$Mp_c)
-bks2 <- getBreaks(v = sfEUR2$Mp_c, method = "quantile", nclass = 4)
-mybks <- c(1, 1.5, 1.8, 2.1, 2.5)
-cols <- carto.pal("turquoise.pal", length(mybks))
+# ### defines a set of breaks and colors
+# maxrm <- max(sfEUR$Mp_c,na.rm = T)
+# sfEUR2 <- sfEUR %>% filter(Mp_c != maxrm | is.na(Mp_c))
+# skim(sfEUR2$Mp_c)
+# bks2 <- getBreaks(v = sfEUR2$Mp_c, method = "quantile", nclass = 4)
+# mybks <- c(1, 1.5, 1.8, 2.1, 2.5)
+# cols <- carto.pal("turquoise.pal", length(mybks))
+# ### Create a "typo"" variable
+# sfEUR2 <- sfEUR2 %>%
+#   mutate(typo = cut(Mp_c, breaks = mybks, dig.lab = 2, 
+#                     include.lowest = TRUE))
+# extreme <- sfEUR %>% 
+#   filter(Mp_c == maxrm) %>% 
+#   mutate(typo = recode(ISO, "EE" = "ext"))
+# sfEUR2 <- rbind(sfEUR2, extreme)
+# sfEUR2 <- sfEUR2 %>% 
+#   mutate(TYPO = recode(typo,
+#                        "NA" = "NA",
+#                        "ext" = "4,5 (Lettonie)",
+#                        "[1,1.5]" = "1 - 1,5",
+#                        "(1.5,1.8]" = "1,5 - 1,8",
+#                        "(1.8,2.1]" = "1,8 - 2,1",
+#                        "(2.1,2.5]" = "2,1 - 2,5"))
+
+### Explo distribution
+skim(sfEUR$Mp_c)
+
+#### distrib without extreme value (EE)
+distrib <- sfEUR %>% 
+  group_by(ISO) %>% 
+  slice(1) %>% 
+  filter(ISO != "EE")
+myVar <- sort(unique(distrib$Mp_c))
+skim(myVar)
+hist(myVar)
+
+#### distrib with extreme value (EE)
+distrib2 <- sfEUR %>% 
+  group_by(ISO) %>% 
+  slice(1) 
+myVar2 <- sort(unique(distrib2$Mp_c))
+skim(myVar2)
+hist(myVar2)
+
+#### defines a set of breaks and colors
+mybks <- c(min(myVar), 
+           mean(myVar) - 1.5 * sd(myVar), 
+           mean(myVar), 
+           mean(myVar) + 1.5 * sd(myVar), 
+           max(myVar))
+
+cols <- cols <- carto.pal("turquoise.pal", length(mybks))
 
 ### Create a "typo"" variable
-sfEUR2 <- sfEUR2 %>%
+sfEUR <- sfEUR %>%
   mutate(typo = cut(Mp_c, breaks = mybks, dig.lab = 2, 
                     include.lowest = TRUE))
+
+### Add extreme value to the typo
+maxrm <- max(sfEUR$Mp_c, na.rm = TRUE)
 extreme <- sfEUR %>% 
   filter(Mp_c == maxrm) %>% 
   mutate(typo = recode(ISO, "EE" = "ext"))
-sfEUR2 <- rbind(sfEUR2, extreme)
-sfEUR2 <- sfEUR2 %>% 
+sfEUR <- rbind(sfEUR %>% filter(Mp_c != maxrm | is.na(Mp_c)), extreme)
+sfEUR <- sfEUR %>% 
   mutate(TYPO = recode(typo,
                        "NA" = "NA",
                        "ext" = "4,5 (Lettonie)",
-                        "[1,1.5]" = "1 - 1,5",
-                        "(1.5,1.8]" = "1,5 - 1,8",
-                        "(1.8,2.1]" = "1,8 - 2,1",
-                        "(2.1,2.5]" = "2,1 - 2,5"))
+                        "[1,1.3]" = "1 - 1,3",
+                        "(1.3,1.9]" = "1,3 - 1,9",
+                        "(1.9,2.4]" = "1,9 - 2,4",
+                        "(2.4,2.5]" = "2,4 - 2,5"))
 
 ### Stock frame limits
 bbrec <- st_bbox(rec)
 
 ### plot
 superbeCarte <- ggplot() +
-  geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF", size = 0.1) +
-  geom_sf(data = sfEUR2,
-          aes(fill = TYPO), colour = "ivory3", size = 0.1) +
+  geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF", size = 0.4) +
+  geom_sf(data = sfEUR,
+          aes(fill = TYPO), colour = "ivory3", size = 0.4) +
   scale_fill_manual(name = "Ratio\n(nb de participations /\nnb de villes participantes)",
                     values = cols, na.value = "ivory4") +
+  ggsn::scalebar(location = "bottomright",
+                 dist = 300, #km
+                 x.min = bbrec[1],
+                 x.max = bbrec[3] - 300000,
+                 y.min = bbrec[2] + 200000,
+                 y.max = bbrec[4],
+                 #dd2km = F,
+                 dist_unit = "km",
+                 st.bottom = FALSE,
+                 #st.dist = .025,
+                 st.size = 2.5,
+                 height = .005,
+                 transform = FALSE) +
   coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
+  #ggsn::scalebar(sfEU, dist = 100, dist_unit = "km", transform = FALSE) +
   theme_void() +
-  labs(caption = "source : \nPG, AD, 2019", size = 3) +
+  labs(caption = "source : EUCICOP-URBACT, 2019\nPG, AD, 2019", size = 3) +
   theme(legend.position = c(0.1, 0.7),
-        plot.caption = element_text(size = 6))
-
+        plot.caption = element_text(size = 6)) 
 
 ### display and save
 #pdf(file = "AD/OUT/superbeCarteAUtiliserDeTouteUrgence_urbact.pdf", width = 8.3, height = 5.8)
@@ -230,103 +292,87 @@ superbeCarte
 dev.off()
 
 
+
 # NUTS U/R ------------------------
 
 ## Join cities points to nuts
 
-### first recode variable Urbain rural
+### first recode variable Typo7
 nutsUR <- nutsUR %>% 
-  mutate(Typo8 = recode(Typo_8Clv1, 
-                        "1" = "Régions sous dominance\nd'une métropole",
-                        "2" = "Régions avec densité\nurbaine et rurale élevées",
-                        "3" = "Régions avec densité\nurbaine élevée",
-                        "4" = "Régions à majorité\nde villes moyennes",
-                        "8" = "Régions rurales\nsous influence métropolitaine",
-                        "5" = "Régions rurales\nsous influence de grandes villes",
-                        "6" = "Régions rurales\navec villes petites et moyennes",
-                        "7" = "Régions rurales isolées"))
+  mutate(Typo7_v2 = recode(Typo_7Clv2,
+                           "4" = "Régions sous dominance\nd'une métropole",         
+                           "6" = "Régions avec densité\nurbaine élevée",            
+                           "5" = "Régions à majorité\nde villes moyennes",         
+                           "7" = "Régions avec densité\nurbaine et rurale élevées",   
+                           "1" = "Régions rurales\nsous influence métropolitaine",
+                           "2" = "Régions rurales\navec villes petites et moyennes",
+                           "3" = "Régions rurales isolées"))
 
-### !!! points in water (Oslo, Helsinki ...)
-urbact_typoUR <- st_join(sfUrbactCitiesAggr, select(nutsUR, Nuts_Id, Typo8), 
+### !!! points in water (Oslo, Helsinki ...) ---> NA/Hors typo in the plot
+urbact_typoUR <- st_join(sfUrbactCitiesAggr, select(nutsUR, Nuts_Id, Typo7_v2), 
                          join = st_intersects, left = TRUE)
-mapview(nutsUR) + mapview(urbact_typoUR)
+#mapview(nutsUR) + mapview(urbact_typoUR)
 
 
 ### Ratio of involvments in URBACT Networks by type of regions
 TabCroisUR <- urbact_typoUR %>% 
-  group_by(Typo8) %>%
+  group_by(Typo7_v2) %>%
   summarise(N = n(), "Ensemble des participations" = sum(NbPart), 
-            "Participations des leaders" = sum(NbLeader))
+            "Participations des lead partners" = sum(NbLeader))
 
 plotTabCroisUR <- TabCroisUR %>%
   gather(key = "Type", value = "NB", 
          "Ensemble des participations", 
-         "Participations des leaders") %>%
+         "Participations des lead partners") %>%
   group_by(Type) %>%
   mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N)
 
 plotTabCroisUR <- plotTabCroisUR %>% 
-  mutate(Typo8 = replace_na(Typo8, "Hors typologie"))
+  mutate(Typo7_v2 = replace_na(Typo7_v2, "Hors typologie"))
 
-plotTabCroisUR$Typo <- factor(plotTabCroisUR$Typo8,
+plotTabCroisUR$Typo <- factor(plotTabCroisUR$Typo7_v2,
                               levels = c("Régions sous dominance\nd'une métropole",
-                                         "Régions avec densité\nurbaine et rurale élevées",
                                          "Régions avec densité\nurbaine élevée",
                                          "Régions à majorité\nde villes moyennes",
+                                         "Régions avec densité\nurbaine et rurale élevées",
                                          "Régions rurales\nsous influence métropolitaine",
-                                         "Régions rurales\nsous influence de grandes villes",
                                          "Régions rurales\navec villes petites et moyennes",
                                          "Régions rurales isolées",
                                          "Hors typologie"))
 
-#### Need 9 colors
-library(ggsci)
-scales::show_col(pal_rickandmorty()(18))
-myPal <- c("grey", pal_rickandmorty()(8))
-myPal <- c(carto.pal("blue.pal", 3), 
-           carto.pal("green.pal", 4), 
-           carto.pal("brown.pal", 1), "grey")
-carto.pal.info()
 
-ggplot(data = plotTabCroisUR, 
-       aes(x = reorder(Typo, -Ratio), y = Ratio, fill = Typo8)) + 
+#### Need 8 colors
+library(ggsci)
+#scales::show_col(pal_rickandmorty()(18))
+#myPal <- c("grey", pal_rickandmorty()(8))
+#carto.pal.info()
+# myPal <- c(carto.pal("blue.pal", 3),
+#            carto.pal("brown.pal", 1),
+#            carto.pal("green.pal", 4), "grey")
+
+myPal <- c("#135D89", "#4D95BA", "#96D1EA", "#9F7C59",
+           "#186D2E", "#36842E", "#7CB271", "grey")
+
+typo7 <- ggplot(data = plotTabCroisUR, 
+                aes(x = Typo, y = Ratio, fill = Typo)) + 
   geom_bar(stat = "Identity") + 
   facet_wrap(~Type, scales = "free") +
   labs(title = "",
        x = "", 
-       y = "Ratio (nb de participations/nb de types de région)") +
+       y = "Ratio (nb de participations / nb de types de région)") +
   scale_fill_manual(name = "Typologie urbain/rural\n des NUTS (2 & 3)", values = myPal) +
-  # scale_fill_discrete(name = "Urban/Rural typology\n of NUTS (2 & 3)",
-  #                     breaks = c("Sous dominance\n d'une métropole",
-  #                                "Densité\n urbain/rural\n élevées",
-  #                                "Densité\n urbaine élevée",
-  #                                "Majorité\n de villes moyennes",
-  #                                "Rurales\n sous influence\nmétropolitaine",
-  #                                "Rurales\n sous influence\nde grandes villes",
-  #                                "Rurales\n avec villes \npetites et moyennes",
-  #                                "Régions rurales\nisolées",
-  #                                "Outside Typology"),
-  #                     labels= c("Sous dominance\n d'une métropole",
-  #                               "Densité\n urbain/rural\n élevées",
-  #                               "Densité\n urbaine élevée",
-  #                               "Majorité\n de villes moyennes",
-  #                               "Rurales\n sous influence\nmétropolitaine",
-  #                               "Rurales\n sous influence\nde grandes villes",
-  #                               "Rurales\n avec villes \npetites et moyennes",
-  #                               "Régions rurales\nisolées",
-  #                               "Outside Typology")) +
   theme_light() +
-  theme(legend.position = c(0.9, 0.7),
-        #plot.subtitle = element_text(vjust = 1), 
-        #plot.caption = element_text(vjust = 1), 
-        #axis.text = element_text(vjust = 0.25), 
+  labs(caption = "sources : EUCICOP, 2019 ; ESPON DB, 2013 \nPG, AD, 2019", size = 3) +
+  theme(legend.position = c(0.88, 0.7),
+        plot.caption = element_text(vjust= 1.5, size = 6), 
         axis.text.x = element_blank(),
-        #axis.title = element_text(size = 12), 
-        #☻plot.title = element_text(size = 16), 
-        legend.text = element_text(size = 8), 
-        legend.title = element_text(size = 12))
+        legend.text = element_text(size = 7), 
+        legend.title = element_text(size = 10))
 
-
+### display and save
+#pdf(file = "AD/OUT/barplot_typo7_nutsUR_urbact.pdf", width = 8.3, height = 5.8)
+typo7
+dev.off()
 
 
 # Nuts EF 2006-2013 -------------------------------
@@ -361,7 +407,7 @@ TabCroisEF <- urbact_typoEF %>%
   group_by(TYPE) %>%
   summarise(N= n(), 
             "Ensemble des participations" = sum(NbParticipation), 
-            "Participations des leaders" = sum(NbLeader)) %>%
+            "Participations des lead partners" = sum(NbLeader)) %>%
   mutate(TYPE = as.character(TYPE))
 
 TabCroisEF[3, 1] <- c("Hors typologie")
@@ -369,7 +415,7 @@ TabCroisEF[3, 1] <- c("Hors typologie")
 TabCroisEFPlot <- TabCroisEF %>%
   gather(key = "Type", value= "NB", 
          "Ensemble des participations", 
-         "Participations des leaders") %>%
+         "Participations des lead partners") %>%
   group_by(Type) %>%
   mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N) %>% 
   filter(!TYPE == "NA")
@@ -379,7 +425,7 @@ ggplot(data = TabCroisEFPlot,
        aes(x = reorder(TYPE,-Pct), y = Pct, fill = TYPE )) + 
   geom_bar(stat = "Identity", position = "dodge") +
   labs(title = "",
-       x= "Structural Funds Eligibility 2006-2013", 
+       x= "Eligibilité des régions aux Fonds structurels pour 2007-2013", 
        y = "Part dans l'ensemble des participations") +
   scale_fill_discrete(name="Type of Involvment",
                       breaks=c("nLeaderCity", "nParticipation"),
@@ -399,8 +445,8 @@ ggplot(data = TabCroisEFPlot,
   geom_bar(stat = "Identity") + 
   facet_wrap(~Type, scales = "free") +
   labs(title = "",
-       x= "Structural Funds Eligibility 2006-2013", 
-       y = "Ratio (nb de participations/nb de type of regions)") +
+       x= "Eligibilité des régions aux Fonds structurels pour 2007-2013", 
+       y = "Ratio (nb de participations / nb de type of regions)") +
   scale_fill_manual(values = myPal) +
   theme_light() +
   theme(legend.position = "none",
