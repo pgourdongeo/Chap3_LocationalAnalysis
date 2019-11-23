@@ -23,7 +23,10 @@ library(geonames)
 options(geonamesUsername="pgourdon")
 
 # GNTest <-GNsearch(name = sampleEtmun$Locality_Siege, style = "FULL", maxRows = "1", cities = "cities1000")
-GNcountryInfo("KE")
+FR<-GNcountryInfo("FR")
+gntest<-GNchildren(3017382, hierarchy = "tourism")
+GNhierarchy(3017382)
+GNsiblings(3017382)
 # source(system.file("tests","testing.R",package="geonames"),echo=TRUE)
 
 GNplacename <- list()
@@ -125,3 +128,95 @@ GNnameETMUN <- GNnameETMUN %>% filter(!duplicated(MembershipCode))
 ## Then make a query by long lat for entities with no or wrong geonames join 
 
 saveRDS(GNnameETMUN, file = "GNEtmunBeforeCheck.rds")
+list.files()
+load("GNEtmunBeforeCheck.rds" )
+
+
+##" Long lat dist 
+
+library(geosphere)
+
+GNEtmunGeocode <- GNEtmunBeforeCheck %>% filter_at(.vars = c(19,20,62,69), any_vars(!is.na(.)))  
+GNEtmunGeocode$lng <- as.numeric(GNEtmunGeocode$lng)
+GNEtmunGeocode$lat.GN <- as.numeric(GNEtmunGeocode$lat.GN)
+GNEtmunGeocode<- GNEtmunGeocode %>% 
+                      mutate(DistGeoGN =distHaversine(matrix(c(GNEtmunGeocode$lon, 
+                                                               GNEtmunGeocode$lat), ncol = 2),
+                                                              matrix(c(GNEtmunGeocode$lng, 
+                                                                       GNEtmunGeocode$lat.GN), ncol = 2)))
+
+
+  library(skimr)   
+skim(GNEtmunGeocode)
+GNEtmunGeocode %>% filter_at(.vars = c(19,20,62,69), any_vars(.< -360))                                                 
+
+GNEtmunGeocode <- GNEtmunGeocode %>% select(MembershipCode, DistGeoGN)
+
+GNEtmunCheckDistGeo <- GNEtmunBeforeCheck %>% left_join(GNEtmunGeocode)
+
+## Filter ETMUN entities with distance superior with 2km with geonames query or with no GN results
+GNEtmunPB <- GNEtmunCheckDistGeo %>% filter(DistGeoGN > 2000 | is.na(geonameId))
+GNEtmunPB <- GNEtmunPB %>% filter(!is.na(lon))
+
+######## New geonames query but by coord
+
+library(geonames)  
+
+options(geonamesUsername="pgourdon")
+
+#1rst query
+GNplacenameCoord <- list()
+x <- GNEtmunPB$lon
+y <- GNEtmunPB$lat
+skim(y)
+skim(x)
+GNEtmunPB[GNEtmunPB$MembershipCode== "A11",  ]$lon
+Id <- GNEtmunPB$MembershipCode
+for(i in Id){
+    x <- GNEtmunPB[GNEtmunPB$MembershipCode == i,]$lon
+    y<- GNEtmunPB[GNEtmunPB$MembershipCode == i,]$lat
+    GNplacenameCoord[[i]] <- GNfindNearbyPlaceName(y, x, radius = "3", maxRows = "1",
+                                                   style = "FULL")
+  }
+
+saveRDS(GNplacenameCoord, file = "GNplacenameNearbyforPbandNoGN.rds")
+
+# 2nd query
+tail(GNplacenameCoord)
+Id[1603]
+Id[1604]
+
+Id2 <- Id[1604:4260]
+GNplacenameCoord2 <- list()
+
+for(i in Id2){
+  x <- GNEtmunPB[GNEtmunPB$MembershipCode == i,]$lon
+  y<- GNEtmunPB[GNEtmunPB$MembershipCode == i,]$lat
+  GNplacenameCoord2[[i]] <- GNfindNearbyPlaceName(y, x, radius = "3", maxRows = "1",
+                                                 style = "FULL")
+}
+
+saveRDS(GNplacenameCoord2, file = "GNplacenameNearbyforPbandNoGN2.rds")
+
+#3rd query
+
+tail(GNplacenameCoord2)
+Id2[1629]
+Id2[1630]
+which(Id2 == "A11027")
+
+Id3 <- Id2[1630:2657]
+GNplacenameCoord3 <- list()
+
+for(i in Id3){
+  x <- GNEtmunPB[GNEtmunPB$MembershipCode == i,]$lon
+  y<- GNEtmunPB[GNEtmunPB$MembershipCode == i,]$lat
+  GNplacenameCoord3[[i]] <- GNfindNearbyPlaceName(y, x, radius = "3", maxRows = "1",
+                                                  style = "FULL")
+}
+
+saveRDS(GNplacenameCoord3, file = "GNplacenameNearbyforPbandNoGN3.rds")
+
+GNEtmunPB_AfterNearBy <- bind_rows(GNplacenameCoord, GNplacenameCoord2 ,.id = "MembershipCode")
+GNEtmunPB_df3 <- bind_rows(GNplacenameCoord3, .id = "MembershipCode")
+GNEtmunPB_AfterNearBy <- bind_rows(GNEtmunPB_AfterNearBy , GNEtmunPB_df3)
