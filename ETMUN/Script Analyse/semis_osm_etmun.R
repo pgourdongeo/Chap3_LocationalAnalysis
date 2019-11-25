@@ -15,6 +15,7 @@ setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 
 # Packages
 library(tidyverse)
+library(tidylog)
 library(sf)
 library(mapview)
 library(skimr)
@@ -22,7 +23,7 @@ library(ggplot2)
 library(ggspatial)
 library(cowplot)
 library(rosm)
-library(purrr)
+#library(purrr)
 
 
 # Import data
@@ -47,27 +48,28 @@ ETMUN_Point <- ETMUN_Point %>%
 
 skim(ETMUN_Point)
 
-# library("rnaturalearth")
-# library("rnaturalearthdata")
-# 
-# world <- ne_countries(scale = "medium", returnclass = "sf")
-# world <- world %>% 
-#   st_transform(crs = 3035)
+## select Networks according to their spatial extent (EUROPE/ALL WORLD)
+freq <- as.data.frame(table(ETMUN_Point$Network_Name, ETMUN_Point$EuropeYN))
+freq <- freq %>% filter(Freq == 0)
+eurVec <- as.character(sort(unique(freq$Var1)))
+
+netEur <- ETMUN_Point %>% filter(Network_Name %in% eurVec) #17
+netWld <- ETMUN_Point %>% filter(!Network_Name %in% eurVec) #42
 
 
+## Planche Carto avec adaptation du zoom en fonction de l'emprise  ------------------------------------
 
-## Planche Carto adaptative ------------------------------------
+#osm.types()
 
-osm.types()
-
-### FUNCTION ???
-FacetPointCarto <- function(sf, facetvar, size, colourColumn, 
-                            colourVector = NA, alpha = 0.7 ){
+# Functions
+## return all maps in a list (too long for netwld)
+PlotPoints <- function(sf, facetvar, size, colourColumn, 
+                       colourVector = NA, alpha = 0.7 ){
   g <- list()
   for(i in facetvar){ 
     
     data <- sf %>% filter(facetvar == i)
-  
+    
     g[[i]] <- ggplot() +
       ggspatial::annotation_map_tile(type = "cartolight", zoomin = TRUE) +
       guides(fill = TRUE) +
@@ -87,150 +89,76 @@ FacetPointCarto <- function(sf, facetvar, size, colourColumn,
     }
   }
   
-  plancheCarto <- cowplot::plot_grid(plotlist = g)
-  return(plancheCarto)
+  return(g)
+}
+## return all grids of n plots in a list 
+Gridplots <- function(myplots, n){
+  
+  splitted_plots <- split(myplots, ceiling(seq_along(myplots)/n))
+  
+  gridded_plots <- lapply(splitted_plots, function(x) plot_grid(plotlist = x))
+  
+  return(gridded_plots)
+  
+  # i <- unique(ceiling(seq_along(myplots)/n))
+  # ggsave(filename = paste("OUT/members_EUR_ETMUN_planche", i, ".pdf", sep = " "),
+  #        width = 8.3, height = 5.8)
 }
 
+## Apply function 1
+Points_List <- PlotPoints(sf = netEur,
+                          facetvar = netEur$Network_Name, 
+                          size = 1, 
+                          colourColumn = "EuropeYN")
+## Apply function 2
+Grid_list <- Gridplots(myplots = Points_List, n = 4)
 
-sort(unique(ETMUN_Point$Network_Name))
-
-samplenet <- ETMUN_Point %>%
-  filter(Network_Name == "ACRplus" |
-         Network_Name == "ACTE" |
-         Network_Name == "EFUS" | # Vallée de Montmorency CA
-         Network_Name == "OWHC")
-
-
-sampleCarto <- FacetPointCarto(sf = samplenet,
-                         facetvar = samplenet$Network_Name, 
-                         size = 1, 
-                         colourColumn = "EuropeYN")
-sampleCarto
+## Display
+Grid_list
 
 
-
-freq <- as.data.frame(table(ETMUN_Point$Network_Name, ETMUN_Point$EuropeYN))
-freq <- freq %>% filter(Freq == 0)
-eurVec <- as.character(sort(unique(freq$Var1)))
-
-resdf <- data.frame(Network_Name = unique(ETMUN_Point$Network_Name))
-resdf <- resdf %>% 
-  mutate(GRP = c(rep(1:14, each = 4),5, 5, 5))
-
-ETMUN_Point <- left_join(ETMUN_Point, resdf, "Network_Name")
-
-netEur <- ETMUN_Point %>% filter(Network_Name %in% eurVec) #17
-netWld <- ETMUN_Point %>% filter(!Network_Name %in% eurVec) #42
-
-test <- ETMUN_Point %>% 
-  group_by(GRP) %>% 
-  group_map(FacetPointCarto(sf = ETMUN_Point,
-                                  facetvar = samplenet$Network_Name, 
-                                  size = 1, 
-                                  colourColumn = "EuropeYN"))
+## Apply in 2 times for netwld
+netWld1 <- netWld %>% filter(Network_Name != "Covenant of Mayors")
+## Apply function 1
+Points_List <- PlotPoints(sf = netWld1,
+                          facetvar = netWld1$Network_Name, 
+                          size = 1, 
+                          colourColumn = "EuropeYN")
+## Apply function 2
+Grid_list <- Gridplots(myplots = Points_List, n = 4)
+## Display
+Grid_list[1:5]
+Grid_list[6:11]
 
 
 
+## Apply in 2 times for netwld
+netWld2 <- netWld %>% filter(Network_Name == "Covenant of Mayors")
 
-Codegroup <- rep(1:5, each = 4)
-
-eurVecdf <- data.frame(NAME = eurVec, GRP = character(17))
-eurVecdf <- eurVecdf %>% 
-  mutate(GRP = c(rep(1:4, each = 4),5))
-
-Codegroup <- rep(1:5, each = 4)
-
-
-netEur <- netEur %>% 
-  mutate(grpRes = )
-fournet <- seq(from = 1, to = length(eurVec), by = 4)
-
-eurVec1 <- eurVec[fournet[1]:(fournet[2]-1)]
-truc <- split(eurVec, fournet)
-
-
-FacetPointCarto(sf = netEur,
-                facetvar = samplenet$Network_Name, 
-                size = 1, 
-                colourColumn = "EuropeYN")
-
-# cartoBis <- FacetPointCarto(sf = ETMUN_Point,
-#                             facetvar = ETMUN_Point$Network_Name, 
-#                             size = 0.3, 
-#                             colourColumn = "EuropeYN")
-# cartoBis
-
-
-sf = ETMUN_Point %>% filter(Network_Name == "UBC")
-facetvar = ETMUN_Point$Network_Name
-size = 0.3
-colourColumn = "EuropeYN"
-g <- list()
-for(i in facetvar){ 
-  data <- sf %>% filter(facetvar == i)
+## Function for a simple map
+PlotPointsMayors <- function(sf, facetvar, size, colourColumn, title, 
+                             colourVector = NA, alpha = 0.7 ){
   
-  g[[i]] <- ggplot() +
-    #ggspatial::annotation_map_tile(zoomin = TRUE) +
+  g <- ggplot() +
+    ggspatial::annotation_map_tile(type = "cartolight", zoomin = TRUE) +
     guides(fill = TRUE) +
-    ggtitle(i) +
-    ylab('') +
-    xlab('') +
-    theme_light() +
-    theme(axis.text = element_blank())
-  
-  if ( !is.na(colourColumn)) {
-    g[[i]] <- g[[i]] +
-      geom_sf(data = data, size = size, show.legend = "point", 
-              aes_string(colour = colourColumn), alpha = alpha )
-  } 
-  else {
-    g[[i]] <- g[[i]] +
-      geom_sf(data = data, size = size, show.legend = FALSE, 
-              alpha = alpha, colour = colourVector)
-  }
+    labs(title = title) +
+    theme_void() +
+    theme(plot.title = element_text(size = 10)) +
+    geom_sf(data = sf, size = size, show.legend = FALSE, 
+            aes_string(colour = colourColumn), alpha = alpha)
 }
+## Apply function 1
+Points <- PlotPointsMayors(sf = netWld2,
+                          facetvar = netWld2$Network_Name, 
+                          size = 1, 
+                          colourColumn = "EuropeYN",
+                          title = "Covenant of Mayors")
 
-#plancheCarto <- cowplot::plot_grid(plotlist = g)
-plancheCarto <- theme_set(theme_cowplot(plot_grid(plotlist = g)))
-return(plancheCarto)
-
-
-
-
-
-
-
+## Display
+Points
 
 
+### TO DO ---------------
+# count nb of points for each network and display the n value on maps
 
-
-
-
-
-
-
-
-
-
-
-#ggsave(filename = "Semis des villes membres des associations en 2015.pdf",width = 295 ,height = 210, units = "mm",dpi = 300)
-unique(ETMUN_Point$Network.Name)
-
-tabeuropeYN <-table(samplenet$Network.Name, samplenet$EuropeYN)
-tabeuropeYN
-prop.table(tabeuropeYN,margin = 1)
-
-### Carto simple
-
-map1 <-ggplot() + 
-  geom_sf(data = samplenet,
-          size = samplenet$Pop_collect, 
-          show.legend = "point") + 
-  labs(caption = "Source : ETMUN database, 2015") + 
-  #coord_sf(xlim = bbox[c(1,3)], ylim = bbox[c(2,4)], datum = NA)+ 
-  ggtitle("Semis des entités membres d'associations transnationales de municipalité")+
-  # scalebar( x.min = bbox[1], x.max = bbox[3],y.min = bbox[2], y.max = bbox[4],location = "bottomright",   dist = 500,
-  #           height = 0.005,st.size = 3)+ 
-  theme_light() +
-  facet_wrap(~Network_Name)
-map1
