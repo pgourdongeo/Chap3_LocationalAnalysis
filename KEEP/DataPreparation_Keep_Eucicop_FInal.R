@@ -132,7 +132,7 @@ write.csv2(ProjectsNoDuplicated ,
 Partners <- Partners %>% select(-ref)
 
 write.csv2(Partners , 
-           "Data/ParntersEucicop_All.csv", 
+           "Data/PartnersEucicop_All.csv", 
            row.names = F,
            fileEncoding = "UTF-8")
 
