@@ -327,7 +327,7 @@ typo7 <- ggplot(data = plotTabCroisUR,
        y = "Ratio (nb de participations / nb de types de région)") +
   scale_fill_manual(name = "Typologie urbain/rural\n des NUTS (2 & 3)", values = myPal) +
   theme_light() +
-  labs(caption = "sources : EUCICOP, 2019 ; ESPON DB, 2013 \nPG, AD, 2019", size = 3) +
+  labs(caption = "sources : EUCICOP, 2019 ; ESPON DB, 2013\nPG, AD, 2019", size = 3) +
   theme(legend.position = c(0.88, 0.7),
         plot.caption = element_text(vjust= 1.5, size = 6), 
         axis.text.x = element_blank(),
@@ -415,7 +415,9 @@ typo0713urbact <- ggplot(data = TabCroisEFPlot,
        y = "Ratio (nb de participations / nb de type de régions)") +
   #scale_fill_manual(values = myPal) +
   theme_light() +
+  labs(caption = "sources : EUCICOP, 2019 ; FSE \nPG, AD, 2019", size = 3) +
   theme(legend.position = "none",
+        plot.caption = element_text(vjust= 1.5, size = 6),
         axis.text.x = element_text(size = 9, angle = 20, vjust = 0.8),
         legend.text = element_text(size = 8))
 
@@ -498,10 +500,12 @@ typo1420 <- ggplot(data = TabCroisCPPlot,
   #                   #labels = c("As Lead Partner", "All Participations"),
   #                   values = myPal) +
   theme_light() +
+  labs(caption = "sources : EUCICOP, 2019 ; CP \nPG, AD, 2019", size = 3) +
   theme(legend.position = "none",
+        plot.caption = element_text(vjust= 1.5, size = 6),
         axis.text.x = element_text(size = 9, angle = 20, vjust = 0.8),
         legend.text = element_text(size = 8))
-      
+
 
 ### display and save
 pdf(file = "AD/OUT/barplot_typo_nuts1420_urbact.pdf", width = 8.3, height = 5.8)
