@@ -513,11 +513,11 @@ bibi <- data.frame(Typo7 = unique(nutsUR$Typo7),
                    Lead = "Ensemble des partenaires")
 bibi2 <- data.frame(Typo7 = unique(nutsUR$Typo7), 
                    nbm = unique(nutsUR$nbmL),
-                   Lead = "Partenaires organisateurs uniquement")
+                   Lead = "Lead partners uniquement")
 bibi <- rbind(bibi, bibi2)
 
 # create barplots
-projNuts <- ggplot(data = bibi, aes(x = Typo7, y = nbm, fill = Lead)) +
+projNuts <- ggplot(data = bibi, aes(x = reorder(Typo7, -nbm), y = nbm, fill = Lead)) +
   geom_bar(stat = "identity", position = "dodge") +
   geom_text(aes(label = round(nbm)), position = position_dodge(0.9), vjust = 1.6, color = "white") +
   labs(x = "Types de NUTS",
