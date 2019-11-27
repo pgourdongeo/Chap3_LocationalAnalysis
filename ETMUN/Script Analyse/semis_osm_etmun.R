@@ -48,15 +48,6 @@ ETMUN_Point <- ETMUN_Point %>%
 
 skim(ETMUN_Point)
 
-# ## select Networks according to their spatial extent (EUROPE/ALL WORLD)
-# freq <- as.data.frame(table(ETMUN_Point$Network_Name, ETMUN_Point$EuropeYN))
-# freq <- freq %>% filter(Freq == 0)
-# eurVec <- as.character(sort(unique(freq$Var1)))
-# 
-# netEur <- ETMUN_Point %>% filter(Network_Name %in% eurVec) #17
-# netWld <- ETMUN_Point %>% filter(!Network_Name %in% eurVec) #42
-
-
 
 #osm.types()
 
@@ -197,7 +188,7 @@ ggsave(plot = Points_List[[1]], "OUT/planche_chap3/members_EFUS_ETMUN_planche_6.
 dir.create("OUT/planche_chap2")
 
 ## Prepare data Europe
-vecNet <- c( "ICP", "UBC", "OWHC")
+vecNet <- c( "ICP", "UBC", "OWHC", "EAHTR")
 myNet <- ETMUN_Point %>% filter(Network_Name %in% vecNet)
 
 
@@ -221,6 +212,14 @@ for (i in 1:length(Grid_list)) {
 
 # Planches Carto pour annexe  ------------------------------------
 dir.create("OUT/planche_annexe")
+
+## select Networks according to their spatial extent (EUROPE/ALL WORLD)
+freq <- as.data.frame(table(ETMUN_Point$Network_Name, ETMUN_Point$EuropeYN))
+freq <- freq %>% filter(Freq == 0)
+eurVec <- as.character(sort(unique(freq$Var1)))
+
+netEur <- ETMUN_Point %>% filter(Network_Name %in% eurVec) #17
+netWld <- ETMUN_Point %>% filter(!Network_Name %in% eurVec) #42
 
 ## Apply function 1
 Points_List <- PlotPoints(sf = netEur,
