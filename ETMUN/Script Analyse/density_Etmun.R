@@ -84,7 +84,7 @@ pt_in_grid <- function(feat, adm, cellsize){
 }
 
 ## Plot a gridded map
-plot_grid <- function(grid, adm, frame, sources, titleLeg){
+plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
   
   bb <- st_bbox(frame)
   par(mar = c(0, 0, 0, 0)) # à ajuster
@@ -104,6 +104,9 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg){
               nodata = FALSE, 
               values.rnd = 0, 
               col = cols)
+  
+  # Add an explanation text
+  text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
   # Add a layout
   layoutLayer(title = "",
@@ -153,7 +156,7 @@ plot_points <- function(frame, adm, sf, txtLeg, source){
 }
 
 ## Plot a choro map
-dens_map <- function(frame, bgmap, sf, titleLeg, sources){
+dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
   
   # set the margins
   bb <- st_bbox(frame)
@@ -174,15 +177,18 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources){
               values.cex = 0.7,
               title.txt = titleLeg, 
               breaks = bks, 
-              nodata = F, 
-              values.rnd = 2, 
+              nodata = FALSE, 
+              values.rnd = 0, 
               col = cols)
+  
+  # Add an explanation text
+  text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
   # Add a layout
   layoutLayer(title = "", 
               sources = sources, 
               author = "PG, AD, 2019", 
-              horiz = TRUE,
+              horiz = FALSE,
               col = NA, 
               frame = F, 
               scale = 500, 
@@ -210,7 +216,9 @@ plot_grid(grid = europegrided[[1]],
           adm = sfEU,
           frame = rec,
           sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA", 
-          titleLeg = "Nombre d'adhésions aux associations\nde municipalités par carreau de 2 500 km2\n(discrétisation en progression géométrique)")
+          titleLeg = "Nombre d'adhésions aux associations\nde municipalités par carreau de 2 500 km2*",
+          labels = "*Discrétisation en progression\ngéométrique")
+
 dev.off()
 
 ## PCT 0 participation : 72% de carreaux vides
@@ -249,18 +257,19 @@ hist(nutsUR$density)
 distrib <- nutsUR %>% filter(density >= 1) 
 distrib <- sort(distrib$density)
 hist(distrib)
-bks <- getBreaks(v =  nutsUR$density, method = "fisher-jenks", nclass = 6)
+bks <- c(0, getBreaks(v =  distrib, method = "fisher-jenks", nclass = 6))
 ### defines a set of breaks and colors
 myvar <- nutsUR %>% filter(density > 0) 
 bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ### Plot and save
-pdf(file = "ETMUN/OUT/density_nutsUR_etmunpall.pdf",width = 8.3, height = 5.8)
+pdf(file = "OUT/density_nutsUR_etmunpall.pdf",width = 8.3, height = 5.8)
 dens_map(frame = rec, 
          bgmap = sfEU, 
          sf = nutsUR, 
-         titleLeg = "Nombre d'adhésions aux associations de municipalités\n par NUTs pour 100 000 habitants\n(discrétisation en progression géométrique)",
+         titleLeg = "Nombre d'adhésions aux associations de municipalités\n par NUTs pour 100 000 habitants*",
+         labels = "*Discrétisation selon les seuils naturels\n(fisher-jenks)",
          sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA")
 dev.off()
 
