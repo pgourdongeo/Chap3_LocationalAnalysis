@@ -9,9 +9,9 @@
 
 
 ## Working directory huma-num
-setwd("~/BD_Keep_Interreg")
+#setwd("~/BD_Keep_Interreg")
 
-setwd("~/git/Chap3_LocationalAnalysis/KEEP")
+setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
 
 # Library
@@ -30,21 +30,22 @@ library(mapview)
 
 
 # Import data
+# EtmunPoints <- read.csv2("DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
+# 
+# ## rm na before transform to sf : removed 75 out of 17333 rows (<1%)
+# EtmunPoints <- EtmunPoints %>% filter_at(.vars = c("lon", "lat"), any_vars(!is.na(.)))
+# 
+# sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
+#   st_sf(sf_column_name = "geometry") %>%
+#   st_transform(crs = 3035)
 
-EtmunPoints <- read.csv2("ETMUN/DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
-EtmunPoints <- EtmunPoints %>% filter(!is.na(lon))
+sfETMUN_snap <- readRDS("Data/sfETMUN_snap.RDS")
 
-sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
-  st_sf(sf_column_name = "geometry") %>%
-  st_transform(crs = 3035)
+sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
+rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
 
-
-sfEU <- st_read("KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
-
-rec <- st_read("KEEP/AD/FDCARTE/rec_3035.geojson")
-
-nutsUR <- st_read("OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
+nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
   st_make_valid()
 
 
@@ -117,85 +118,6 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg){
   
 }
 
-## Plot 3 maps with a unique legend
-plot_grids <- function(grid1, grid2, grid3, 
-                       title1, title2, title3,
-                       adm, frame, sources, titleLeg){
-  
-  bb <- st_bbox(frame)
-  
-  ## plot 3 maps on a single figure 
-  par(mar = c(0, 0, 0, 0), mfrow = c(2, 2), ps=15)
-  
-  ## plot1
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
-  
-  # Add title
-  mtext(text = title1,
-        font = 2,
-        side = 3, 
-        line = -1, 
-        adj = 0,
-        cex =0.6)
-  
-  ## Add legend
-  legendChoro(pos = c(1000000, 3000000),
-              title.cex = 0.65,
-              values.cex = 0.55,
-              title.txt = titleLeg,
-              breaks = bks,
-              nodata = FALSE,
-              values.rnd = 0,
-              col = cols)
-  
-  
-  ## plot2
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  choroLayer(grid2, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
-  
-  # Add title
-  mtext(text = title2,
-        font = 2,
-        side = 3,
-        line = -1,
-        adj = 0,
-        cex =0.6)
-  
-  
-  ## plot3
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  choroLayer(grid3, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
-  
-  # Add title
-  mtext(text = title3,
-        font = 2,
-        side = 3,
-        line = -1,
-        adj = 0,
-        cex =0.6)
-  
-  
-  # Add scalebar
-  barscale(500, pos = c(6500000, 1000000))
-  
-  # Add sources
-  mtext(text = sources,
-        side = 1, 
-        line = -1, 
-        adj = 0,
-        cex =0.35)
-  
-}
 
 ## plot a points map
 plot_points <- function(frame, adm, sf, txtLeg, source){
@@ -269,26 +191,29 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources){
 }
 
 
-# Map participations/cell 2000-2018 - all partners
+# Map adhesions/cell 2019 
 #================================================
 
 ## 50 km cells
-europegrided <- pt_in_grid(feat = sfAdhesion, adm = sfEU, cellsize = 50000)
+europegrided <- pt_in_grid(feat = sfETMUN_snap, adm = sfEU, cellsize = 50000)
 
+## visualize distribution
+skim(europegrided[[1]])
+hist(europegrided[[1]]$n)
 ## defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ## Plot and save pdf
-pdf(file = "ETMUN/OUT/europeGrid_etmunall.pdf",width = 8.3, height = 5.8)
+pdf(file = "OUT/europeGrid_etmunall.pdf", width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
           frame = rec,
-          sources = "Sources : ETMUN 2019", 
+          sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA", 
           titleLeg = "Nombre d'adhésions aux associations\nde municipalités par carreau de 2 500 km2\n(discrétisation en progression géométrique)")
 dev.off()
 
-## PCT 0 participation
+## PCT 0 participation : 72% de carreaux vides
 
 summary(europegrided[[1]]$n)
 sum(europegrided[[1]]$n)
@@ -297,19 +222,14 @@ nrow(europegrided[[1]])
 nrow(europegrided[[1]][europegrided[[1]]$n == 0,])/ nrow(europegrided[[1]]) *100
 
 
-# Maps participations/cell 2000-2006, 2007-2013 et 2014-2020
-#================================================
 
 
-
-
-
-# density of participations by nuts
+# density of adhesions by nuts
 #================================================
 
 ## Prepare data
 ### Intersect nuts and participations
-inter <- st_intersects(nutsUR, sfAdhesion)
+inter <- st_intersects(nutsUR, sfETMUN_snap)
 
 ### Count points in polygons
 nutsUR <- st_sf(nutsUR, 
@@ -321,8 +241,17 @@ nutsUR <- nutsUR %>%
   mutate(density = n / Pop_t_2001 * 100000)
 
 ## Display map
+
+### distribution
+skim(nutsUR$density)
+hist(nutsUR$density)
+
+distrib <- nutsUR %>% filter(density >= 1) 
+distrib <- sort(distrib$density)
+hist(distrib)
+bks <- getBreaks(v =  nutsUR$density, method = "fisher-jenks", nclass = 6)
 ### defines a set of breaks and colors
-myvar <- nutsUR %>% filter(density != 0) %>% select(density) 
+myvar <- nutsUR %>% filter(density > 0) 
 bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
@@ -332,7 +261,7 @@ dens_map(frame = rec,
          bgmap = sfEU, 
          sf = nutsUR, 
          titleLeg = "Nombre d'adhésions aux associations de municipalités\n par NUTs pour 100 000 habitants\n(discrétisation en progression géométrique)",
-         sources = "Sources : ETMUN 2019")
+         sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA")
 dev.off()
 
 
