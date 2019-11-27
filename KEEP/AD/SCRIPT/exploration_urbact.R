@@ -203,7 +203,7 @@ sfEUR <- rbind(sfEUR %>% filter(RATIO != maxrm | is.na(RATIO)), extreme)
 sfEUR <- sfEUR %>% 
   mutate(TYPO = recode(typo,
                        "NA" = "NA",
-                       "ext" = "4,5 (Lettonie)",
+                       "ext" = "4,5 (Estonie)",
                         "[1,1.3]" = "1 - 1,3",
                         "(1.3,1.9]" = "1,3 - 1,9",
                         "(1.9,2.4]" = "1,9 - 2,4",
@@ -308,7 +308,7 @@ plotTabCroisUR$Typo <- factor(plotTabCroisUR$Typo7_v2,
 
 #### Need 8 colors
 library(ggsci)
-#scales::show_col(pal_rickandmorty()(18))
+scales::show_col(pal_rickandmorty()(18))
 #myPal <- c("grey", pal_rickandmorty()(8))
 #carto.pal.info()
 # myPal <- c(carto.pal("blue.pal", 3),
