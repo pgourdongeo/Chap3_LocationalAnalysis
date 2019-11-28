@@ -135,27 +135,7 @@ plot_grids <- function(grid1, grid2, grid3,
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
   # Add title
-  # mtext(text = title1,
-  #       font = 2,
-  #       side = 3, 
-  #       line = -1, 
-  #       adj = 0,
-  #       cex =0.6)
-  # Add an explanation text
   text(x = 1000000, y = 5300000, labels = title1, cex = 0.7, adj = 0, font = 2)
-  
-  ## Add legend
-  legendChoro(pos = c(1000000, 2800000),
-              title.cex = 0.65,
-              values.cex = 0.55,
-              title.txt = titleLeg,
-              breaks = bks,
-              nodata = FALSE,
-              values.rnd = 0,
-              col = cols)
-  # Add an explanation text
-  text(x = 1000000, y = 2400000, labels = labels, cex = 0.55, adj = 0)
-  
   
   ## plot2
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
@@ -191,9 +171,24 @@ plot_grids <- function(grid1, grid2, grid3,
   
   # ## plot4
   plot(st_geometry(frame), border = NA, col = NA)
-  # Add title
-  text(x = 1000000, y = 5300000, labels = "Part de carreaux vides :", cex = 0.7, adj = 0, font = 2)
-  text(x = 1000000, y = 4500000, labels = summary, cex = 0.65, adj = 0, font = 1)
+  
+  ## Add legend
+  legendChoro(pos = c(1000000, 2800000),
+              title.cex = 0.7,
+              values.cex = 0.6,
+              title.txt = titleLeg,
+              breaks = bks,
+              nodata = FALSE,
+              values.rnd = 0,
+              cex = 1.3,
+              col = cols,
+              border = "ivory4")
+  # Add an explanation text
+  text(x = 1000000, y = 2400000, labels = labels, cex = 0.6, adj = 0)
+  
+  # Add summary
+  text(x = 4200000, y = 3800000, labels = "Part de carreaux vides :", cex = 0.6, adj = 0, font = 2)
+  text(x = 4200000, y = 3300000, labels = summary, cex = 0.6, adj = 0, font = 1)
   
   plot(myPlot, add = TRUE)
 
