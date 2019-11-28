@@ -19,7 +19,8 @@ options(scipen = 999)
 
 # Library
 library(cartography)
-library(dplyr)
+library(tidyverse)
+library(tidyr)
 library(sf)
 library(tidylog)
 library(skimr)
@@ -28,14 +29,14 @@ library(ggplot2)
 library(readr)
 library(RColorBrewer)
 library(mapview)
-#library(ggpubr)
+library(ggpubr)
 #library(GGally)
 
 
 # Import data
-participations <- readRDS("Data/Participations_All_Eucicop.RDS")
-partners <- readRDS("Data/UniquePartners_GNid_Eucicop.RDS")
-projects <- readRDS("Data/ProjectsEucicop_all_noduplicated.RDS")
+# participations <- readRDS("Data/Participations_All_Eucicop.RDS")
+# partners <- readRDS("Data/UniquePartners_GNid_Eucicop.RDS")
+# projects <- readRDS("Data/ProjectsEucicop_all_noduplicated.RDS")
 
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 rec <- st_read("AD/FDCARTE/rec_3035.geojson")
@@ -80,7 +81,7 @@ pt_in_grid <- function(feat, adm, cellsize){
 }
 
 ## Plot a gridded map
-plot_grid <- function(grid, adm, frame, sources, titleLeg){
+plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
   
   bb <- st_bbox(frame)
   par(mar = c(0, 0, 0, 0)) # à ajuster
@@ -100,6 +101,8 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg){
               nodata = FALSE, 
               values.rnd = 0, 
               col = cols)
+  # Add an explanation text
+  text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
   # Add a layout
   layoutLayer(title = "",
@@ -117,7 +120,7 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg){
 ## Plot 3 maps with a unique legend
 plot_grids <- function(grid1, grid2, grid3, 
                        title1, title2, title3,
-                       adm, frame, sources, titleLeg){
+                       adm, frame, sources, titleLeg, labels, summary){
   
   bb <- st_bbox(frame)
   
@@ -132,15 +135,17 @@ plot_grids <- function(grid1, grid2, grid3,
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
   # Add title
-  mtext(text = title1,
-        font = 2,
-        side = 3, 
-        line = -1, 
-        adj = 0,
-        cex =0.6)
+  # mtext(text = title1,
+  #       font = 2,
+  #       side = 3, 
+  #       line = -1, 
+  #       adj = 0,
+  #       cex =0.6)
+  # Add an explanation text
+  text(x = 1000000, y = 5300000, labels = title1, cex = 0.7, adj = 0, font = 2)
   
   ## Add legend
-  legendChoro(pos = c(1000000, 2500000),
+  legendChoro(pos = c(1000000, 2800000),
               title.cex = 0.65,
               values.cex = 0.55,
               title.txt = titleLeg,
@@ -148,6 +153,8 @@ plot_grids <- function(grid1, grid2, grid3,
               nodata = FALSE,
               values.rnd = 0,
               col = cols)
+  # Add an explanation text
+  text(x = 1000000, y = 2400000, labels = labels, cex = 0.55, adj = 0)
   
   
   ## plot2
@@ -158,12 +165,7 @@ plot_grids <- function(grid1, grid2, grid3,
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
   # Add title
-  mtext(text = title2,
-        font = 2,
-        side = 3,
-        line = -1,
-        adj = 0,
-        cex =0.6)
+  text(x = 1000000, y = 5300000, labels = title2, cex = 0.7, adj = 0, font = 2)
   
   
   ## plot3
@@ -174,12 +176,7 @@ plot_grids <- function(grid1, grid2, grid3,
   plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
   
   # Add title
-  mtext(text = title3,
-        font = 2,
-        side = 3,
-        line = -1,
-        adj = 0,
-        cex =0.6)
+  text(x = 1000000, y = 5300000, labels = title3, cex = 0.7, adj = 0, font = 2)
   
   
   # Add scalebar
@@ -187,11 +184,19 @@ plot_grids <- function(grid1, grid2, grid3,
   
   # Add sources
   mtext(text = sources,
-        side = 1, 
-        line = -1, 
-        adj = 0,
+        side = 4, 
+        line = -1.3, 
+        adj = 0.2,
         cex =0.35)
   
+  # ## plot4
+  plot(st_geometry(frame), border = NA, col = NA)
+  # Add title
+  text(x = 1000000, y = 5300000, labels = "Part de carreaux vides :", cex = 0.7, adj = 0, font = 2)
+  text(x = 1000000, y = 4500000, labels = summary, cex = 0.65, adj = 0, font = 1)
+  
+  plot(myPlot, add = TRUE)
+
 }
 
 ## plot a points map
@@ -230,7 +235,7 @@ plot_points <- function(frame, adm, sf, txtLeg, source){
 }
 
 ## Plot a choro map
-dens_map <- function(frame, bgmap, sf, titleLeg, sources){
+dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
   
   # set the margins
   bb <- st_bbox(frame)
@@ -254,6 +259,9 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources){
               nodata = F, 
               values.rnd = 2, 
               col = cols)
+  
+  # Add an explanation text
+  text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
   # Add a layout
   layoutLayer(title = "", 
@@ -279,12 +287,13 @@ bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ## Plot and save pdf
-pdf(file = "AD/OUT/europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
           frame = rec,
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ", 
-          titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
+          titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
+          labels = "*Discrétisation en\nprogression géométrique")
 dev.off()
 
 ## PCT 0 participation
@@ -300,7 +309,8 @@ nrow(europegrided[[1]][europegrided[[1]]$n == 0,])/ nrow(europegrided[[1]]) *100
 # Maps participations/cell 2000-2006, 2007-2013 et 2014-2020
 #================================================
 
-
+## 50 km cells
+europegrided <- pt_in_grid(feat = sfParticipations_snap, adm = sfEU, cellsize = 50000)
 ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
@@ -314,18 +324,77 @@ europegrided2 <- pt_in_grid(feat = sfParticipations_snap %>% filter(Period == "2
 europegrided3 <- pt_in_grid(feat = sfParticipations_snap %>% filter(Period == "2014-2020"), 
                             adm = sfEU, cellsize = 50000)
 
-## to do : % empty cells
-# 7266 carreaux
-hist(europegrided1[[1]]$n)
-dplyr::filter(europegrided1[[1]], n == 0)
+
+## 7280 carreaux
 skim(europegrided1[[1]])
 skim(europegrided2[[1]])
 skim(europegrided3[[1]])
 sum(europegrided1[[1]]$n) + sum(europegrided2[[1]]$n) + sum(europegrided3[[1]]$n)
 
-nrow(europegrided1[[1]][europegrided1[[1]]$n == 0,])/ nrow(europegrided1[[1]]) *100
-nrow(europegrided2[[1]][europegrided2[[1]]$n == 0,])/ nrow(europegrided2[[1]]) *100
-nrow(europegrided3[[1]][europegrided3[[1]]$n == 0,])/ nrow(europegrided3[[1]]) *100
+# nrow(europegrided1[[1]][europegrided1[[1]]$n == 0,])/ nrow(europegrided1[[1]]) *100
+# nrow(europegrided2[[1]][europegrided2[[1]]$n == 0,])/ nrow(europegrided2[[1]]) *100
+# nrow(europegrided3[[1]][europegrided3[[1]]$n == 0,])/ nrow(europegrided3[[1]]) *100
+
+## % empty cells
+allGrid <- cbind(europegrided1[[1]], europegrided2[[1]], europegrided3[[1]])
+dfSummary <- allGrid %>% 
+  as.data.frame() %>% 
+  select(-grid, -grid.1, -grid.2) %>%
+  summarise("2000-2006" = round(sum(n == 0)/nrow(.)*100),
+            "2007-2013" = round(sum(n.1 == 0)/nrow(.)*100),
+            "2014-2020" = round(sum(n.2 == 0)/nrow(.)*100))
+
+dfSummary <- dfSummary %>% 
+  gather(key = "Period", value = "P0")
+
+
+myPlot <- ggplot(data = dfSummary, aes(x = Period, y = P0)) +
+  geom_bar(stat = "identity", width = 0.35) +
+  geom_text(aes(label = paste(P0, " %", sep = "")), position = position_dodge(0.9), vjust = 1.6, color = "white") +
+  labs(x = "",
+       y = "Part de carreaux vides") +
+  theme_light() +
+  labs(caption = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019") +
+  theme(plot.caption = element_text(size = 6))
+
+
+## DO NOT RUN ------------------------------------------------------
+# plot1 <- plot_grid(grid = europegrided[[1]], 
+#           adm = sfEU,
+#           frame = rec,
+#           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ", 
+#           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
+#           labels = "*Discrétisation en\nprogression géométrique")
+# gridExtra::grid.arrange(plot1 ,myPlot , nrow = 1)  
+# 
+# library(cowplot)
+# library(gridGraphics)
+# cowplot::plot_grid(plot_grids(grid1 = europegrided1[[1]], 
+#                               grid2 = europegrided2[[1]],
+#                               grid3 = europegrided3[[1]],
+#                               title1 = "2000-2006",
+#                               title2 = "2007-2013",
+#                               title3 = "2014-2020",
+#                               adm = sfEU,
+#                               frame = rec,
+#                               titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
+#                               sources = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019",
+#                               labels = "*Discrétisation en\nprogression géométrique"),
+#                    myPlot, nrow = 2, ncol = 2)
+# 
+# cowplot::plot_grid(plot_grid(grid = europegrided[[1]], 
+#                              adm = sfEU,
+#                              frame = rec,
+#                              sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ", 
+#                              titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
+#                              labels = "*Discrétisation en\nprogression géométrique"),
+#                    myPlot, nrow = 1, ncol = 2)
+# ### display and save
+# pdf(file = "AD/OUT/test.pdf", width = 8.3, height = 5.8)
+# gridExtra::grid.arrange(superbeCarte,superbeCarte, superbeCarte, myPlot, nrow = 2, ncol = 2)  
+# dev.off()
+## END ------------------------------------------------------
+
 
 ## display maps and save pdf
 pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
@@ -337,8 +406,10 @@ plot_grids(grid1 = europegrided1[[1]],
            title3 = "2014-2020",
            adm = sfEU,
            frame = rec,
-           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2\n(progression géométrique)",
-           sources = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019")
+           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
+           sources = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019 / PG, AD, 2019",
+           labels = "*Discrétisation en\nprogression géométrique",
+           summary = "2000-2006 = 75%\n2007-2013 = 72%\n2014-2020 = 84%")
 dev.off()
 
 
@@ -458,7 +529,8 @@ plot_grid(grid = europegridedL[[1]],
           adm = sfEU,
           frame = rec,
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019", 
-          titleLeg = "Nombre de participations des lead partners\naux projets de l'UE\npar carreau de 2 500 km2\n(discrétisation en progression géométrique)")
+          titleLeg = "Nombre de participations des lead partners\naux projets de l'UE\npar carreau de 2 500 km2*",
+          labels = "*Discrétisation en\nprogression géométrique")
 dev.off()
 
 
@@ -492,8 +564,9 @@ pdf(file = "AD/OUT/density_nutsUR_eucicopall.pdf",width = 8.3, height = 5.8)
 dens_map(frame = rec, 
         bgmap = sfEU, 
         sf = nutsUR, 
-        titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants et par NUTS\n(discrétisation en progression géométrique)",
-        sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013")
+        titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants et par NUTs*",
+        sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013",
+        labels = "*Discrétisation en\nprogression géométrique")
 dev.off()
 
 
