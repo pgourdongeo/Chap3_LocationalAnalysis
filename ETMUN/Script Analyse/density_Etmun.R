@@ -25,8 +25,7 @@ library(ggplot2)
 library(readr)
 library(RColorBrewer)
 library(mapview)
-#library(ggpubr)
-#library(GGally)
+
 
 
 # Import data
@@ -259,8 +258,8 @@ distrib <- sort(distrib$density)
 hist(distrib)
 bks <- c(0, getBreaks(v =  distrib, method = "fisher-jenks", nclass = 6))
 ### defines a set of breaks and colors
-myvar <- nutsUR %>% filter(density > 0) 
-bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
+# myvar <- nutsUR %>% filter(density > 0) 
+# bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ### Plot and save
@@ -290,18 +289,20 @@ bibi <- data.frame(Typo7 = unique(nutsUR$Typo7),
 
 
 # create barplots
-projNuts <- ggplot(data = bibi, aes(x = Typo7, y = nbm, fill = Lead)) +
+projNuts <- ggplot(data = bibi, aes(x = reorder(Typo7, -nbm), y = nbm, fill = Lead)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = round(nbm)), position = position_dodge(0.9), vjust = 1.6, color = "white") +
   labs(x = "Types de NUTS",
        y = "Nombre moyen d'adhésions à des associations de municipalité") +
-  scale_fill_manual(values= "#E69F00") +
+  scale_fill_manual(values= "#999999") +
   theme_light() +
+  labs(caption = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA ; ESPON DB 2013\nPG, AD, 2019") +
   theme(legend.position = "none", legend.title = element_blank(),     
-        axis.text = element_text(size = 9), axis.text.x = element_text(angle =20)) 
+        axis.text.x = element_text(size = 9, angle = 20, vjust = 0.8),
+        plot.caption = element_text(size = 6)) 
 
 # display end save
-pdf(file = "ETMUN/OUT/adh_nutsUR_etmunall.pdf", width = 8.3, height = 5.8)
+pdf(file = "OUT/adh_nutsUR_etmunall.pdf", width = 8.3, height = 5.8)
 projNuts
 dev.off()
 
