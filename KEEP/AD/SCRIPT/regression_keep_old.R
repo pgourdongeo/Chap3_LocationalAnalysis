@@ -26,8 +26,14 @@ library(ggrepel)
 
 
 # Import data
+load("AD/Keep_ClosedProject_Partner_corrected.RDS")
 
-sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+sfEU <- st_read("AD/FDCARTE/fdEurope_3035.geojson", crs = 3035) %>% 
+  st_make_valid()
+
+sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
+  st_sf(sf_column_name = "geometry") %>% 
+  st_transform(crs = 3035)
 
 rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 
@@ -35,13 +41,6 @@ umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 303
 
 fua <- st_read("../OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp") %>% 
   st_transform(crs = 3035)
-
-nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
-  st_make_valid()
-
-## data with snaped points 
-sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
-
 
 
 
@@ -94,15 +93,15 @@ is_outlier <- function(x) {
 
 ## Count participations in umz
 ### Intersect umz and participations
-inter <- st_intersects(umz, sfParticipations_snap)
+inter <- st_intersects(umz, sfPartner)
 ### Count points in polygons
 umz <- st_sf(umz, 
              n = sapply(X = inter, FUN = length), 
              geometry = st_geometry(umz))
 
-# 1744 / 3962 umz with no project :
+# 2284 / 3962 umz with no project :
 # sum(umz$n == 0)
-# 3144 umz with less than 11 projects
+# 3507 umz with less than 11 projects
 # sum(umz$n < 11)
 
 ## display graph
@@ -119,15 +118,16 @@ regUmz
 ### Estimer la regression linéaire
 require(stats)
 reg <- lm(log10(n) ~ log10(Pop2011) , data = umz %>% dplyr::filter(n > 10))
-summary(reg)
+
 ### Equation de la droite de regression :
 eq = paste0("y = 10^ ", round(reg$coefficients[1],2), " * x ^", round(reg$coefficients[2],2))  # On fait l'inverse de lg(y), y = 10^b * x^a
 
 ### Add line et equation
 regUmz + 
-  geom_abline(intercept = -0.78, slope = 0.48, color="#E69F00",
+  geom_abline(intercept = -0.3, slope = 0.34, color="red",
               linetype = "dashed", size = 1.5) +
-  annotate(geom = "text", x = 25000, y = 1000, label = paste0(eq, "\nR2 = 0.37")) 
+  annotate(geom="text", x= 25000, y= 250, label= paste0(eq, "\nR2 = 0.33"),
+           color="black") 
 
 
 ## Residuals
@@ -147,14 +147,15 @@ umz <- umz %>%
                                    as.numeric(NA)))
 
 ## Plot with outliers and save pdf
-pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
+#pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
 regUmz + 
   geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
                    aes(label = paste(Name, Country, sep = ", ")),
                    na.rm = TRUE, nudge_y = 0.05, color = "black") + 
-  geom_abline(intercept = -0.78, slope = 0.48, color= "#E69F00",
+  geom_abline(intercept = -0.3, slope = 0.34, color="red",
               linetype = "dashed", size = 1.5) +
-  annotate(geom = "text", x = 10000, y = 900, label= paste0(eq, "\nR2 = 0.37"), hjust = 0) 
+  annotate(geom="text", x= 25000, y= 250, label= paste0(eq, "\nR2 = 0.33"),
+           color="black") 
 dev.off()
 
 
@@ -165,7 +166,7 @@ bks <- c(min(umz$rezStand), -2 * sdRez, -1 * sdRez, 1 * sdRez, 2 * sdRez, max(um
 cols <- c("#1A7832", "#AFD4A0", "#f6f5c5", carto.pal("wine.pal",2))
 
 ### Plot and save
-pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+#pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 rezMap(frame = rec, 
        bgmap = sfEU, 
        units = umz %>% filter(n > 10), 
@@ -184,7 +185,7 @@ fua <- fua %>% filter(URAU_CATG == "L")
 
 ## Count participations in FUA
 ### Intersect fua and participations
-inter <- st_intersects(fua, sfParticipations_snap)
+inter <- st_intersects(fua, sfPartner)
 ### Count points in polygons
 fua <- st_sf(fua, 
              n = sapply(X = inter, FUN = length), 
@@ -205,15 +206,16 @@ regFua
 ### Estimer la regression linéaire
 require(stats)
 reg <- lm(log10(n) ~ log10(URAU_POPL) , data = fua %>% dplyr::filter(n > 10))
-summary(reg)
+
 ### Equation de la droite de regression :
 eq = paste0("y = 10^ ", round(reg$coefficients[1],2), " * x ^", round(reg$coefficients[2],2))  # On fait l'inverse de lg(y), y = 10^b * x^a
 
 ### Add line et equation
 regFua + 
-  geom_abline(intercept = -1.17, slope = 0.54, color = "#E69F00",
+  geom_abline(intercept = -0.54, slope = 0.38, color="red",
               linetype = "dashed", size = 1.5) +
-  annotate(geom = "text", x = 80000, y = 1000, label= paste0(eq, "\nR2 = 0.25")) 
+  annotate(geom="text", x= 80000, y= 250, label= paste0(eq, "\nR2 = 0.25"),
+           color="black") 
 
 ## Residuals
 ### add residuals and standart residuals to df
@@ -237,9 +239,10 @@ regFua +
   geom_label_repel(data = fua %>% filter(!is.na(outlier_rezStand)), 
                    aes(label = paste(URAU_NAME, CNTR_CODE, sep = ", ")),
                    na.rm = TRUE, nudge_y = 0.05, color = "black") + 
-  geom_abline(intercept = - 1.17, slope = 0.54, color = "#E69F00",
+  geom_abline(intercept = -0.54, slope = 0.38, color="red",
               linetype = "dashed", size = 1.5) +
-  annotate(geom = "text", x = 50000, y = 1000, label = paste0(eq, "\nR2 = 0.25"), hjust = 0) 
+  annotate(geom="text", x= 100000, y= 300, label= paste0(eq, "\nR2 = 0.25"),
+           color="black") 
 dev.off()
 
 
@@ -250,7 +253,7 @@ bks <- c(min(fua$rezStand), -2 * sdRez, -1 * sdRez, 1 * sdRez, 2 * sdRez, max(fu
 cols <- c("#1A7832", "#AFD4A0", "#f6f5c5", carto.pal("wine.pal",2))
 
 ### Plot and save
-pdf(file = "AD/OUT/rez_fua.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+#pdf(file = "AD/OUT/rez_fua.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 rezMap(frame = rec, 
        bgmap = sfEU, 
        units = fua %>% filter(n > 10), 
