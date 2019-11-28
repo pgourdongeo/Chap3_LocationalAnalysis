@@ -45,7 +45,7 @@ nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>%
   st_make_valid()
 
 ## data with snaped points 
-sfParticipations_snap <- readRDS("sfParticipations_snap.RDS")
+sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
 
 # Functions
 #================================================
@@ -412,7 +412,7 @@ dev.off()
 #================================================
 
 ## data with snaped points 
-sfParticipations_snap <- readRDS("sfParticipations_snap.RDS")
+sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
 
 ## Add ISO to europe shape
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
