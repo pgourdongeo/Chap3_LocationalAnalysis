@@ -22,71 +22,66 @@ library(spdep)
 library(ggplot2)
 library(ggrepel)
 library(ggsci)
+library(tidylog)
+library(ICSNP)
+
 
 # Import data
+
+# participations <- readRDS("Data/Participations_All_Eucicop.RDS")
+# partners <- readRDS("Data/UniquePartners_GNid_Eucicop.RDS")
+# projects <- readRDS("Data/ProjectsEucicop_all_noduplicated.RDS")
+
+## data with snaped points 
+sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
+
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 
-Partner2 <- read_delim("DataSource/PartnersIDProj.csv",
-                       ";", escape_double = FALSE, locale = locale(),
-                       trim_ws = TRUE)
 
-Projects <- read.table("DataSource/ProjectsID.csv", 
-                       sep=";", dec=".", 
-                       #quote="",
-                       header = TRUE,
-                       encoding="UTF-8")
 
 ## Prepare data Partners
-### add period to participations
-partPeriod <- left_join(x = select(Partner2, ID_PARTICIPATION, ID_PARTNER, ID_PROJECT, Country, lon, lat),
-                        y = select(Projects, Period, ID_PROJECT),
-                        by = "ID_PROJECT")
 
-### tibble to sf
-sfPartPeriod <- st_as_sf(partPeriod, coords = c("lon", "lat"), crs = 4326) %>%
-  st_sf(sf_column_name = "geometry") %>% 
-  st_transform(crs = 3035)
+### Count nb particip/partner
+sfParticipations_snap <- sfParticipations_snap %>% 
+  group_by(ID_PARTNER) %>% 
+  mutate(nbPart = n())
 
-### Replace points in water
-sfPointsCorr <- st_read("AD/FDCARTE/sfPartner_inwaterGNutsUR.geojson")
-idvec <- sfPointsCorr$ID_PARTICIPATION
+partners <- sfParticipations_snap %>% 
+  filter(!duplicated(ID_PARTNER))
 
-sfPointsWater <- sfPartPeriod %>% 
-  filter(ID_PARTICIPATION %in% idvec)
-sfPointsWater$geometry <- NULL
 
-sfPointsCorr <- left_join(select(sfPointsCorr, ID_PARTICIPATION),
-                          sfPointsWater,
-                          by = "ID_PARTICIPATION")
-
-sfPartPeriodSpe <- sfPartPeriod %>% 
-  filter(!ID_PARTICIPATION %in% idvec) %>% 
-  rbind(., sfPointsCorr)
-
-rm(sfPointsCorr, sfPointsWater, sfPartPeriod, partPeriod, idvec)
-
-### Add ISO
+### Add ISO 
 CORRESP_CNTR_ISO2 <- read_delim("AD/CORRESP_CNTR_ISO2.csv", 
                                 ";", escape_double = FALSE, trim_ws = TRUE)
-sfPartPeriodSpe <- left_join(sfPartPeriodSpe, 
-                             select(CORRESP_CNTR_ISO2, Country = COUNTRY, ISO = ISO_A2), 
-                             by = "Country")
+partners <- left_join(select(partners, ID_PARTNER, ID_PROJECT, Country = Country.y,
+                             CityAddress, CountryISO, geonameId, asciiName, Period, nbPart), 
+                      select(CORRESP_CNTR_ISO2, Country = COUNTRY, ISO = ISO_A2), 
+                             by = "Country") 
 
-### Participation duplicated because table projets 
-### could have several rows for one project (depending on the number of lead partners)
-sfPartPeriodSpe <- sfPartPeriodSpe %>% filter(!duplicated(ID_PARTICIPATION))
+#### Check
+# left_join: added 147 rows and added one column (ISO) ---> TN ???
+length(unique(partners$ID_PARTNER))
+bibi <- partners %>% filter(duplicated(ID_PARTNER))
+bibi2 <- partners %>% filter(is.na(ISO))
+rm(bibi, bibi2)
+
+#### rm duplicated rows
+partners <- partners %>% 
+  filter(!duplicated(ID_PARTNER))
+
 
 
 
 ## Prepare sf Europe
-### Europe Area (UE28 + Balkan, Suisse et Norway)
+
+### Europe Area (UE28 + Balkan, Suisse et Norway) = 37 countries
 sfEUR <- sfEU %>% 
   filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Albania", "Bosnia and Herzegovina",
                                        "Kosovo", "Liechtenstein", "Montenegro", 
                                        "Republic of Macedonia", "Serbia", "Switzerland")) 
 
-#mapView(sfEUR)
+mapView(sfEUR)
 
 ### Add ISO
 sfEUR <- left_join(select(sfEUR, ID, NAME_EN), 
@@ -111,13 +106,8 @@ sfEUR2 <- sfEUR %>%
 
 ### Filter le tableau de points avec les pays 
 ### pour lesquels on veut calculer les indices de dispersion
-partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
-mapView(sfEUR) + mapView(partners)
-
-#### Geocoding problem on partner table, example :
-truc <- partners %>% filter(ID_PARTICIPATION == "p3325")
-mapView(sfEUR) + mapView(truc)
-rm(truc)
+partners_inEU <- st_intersection(partners, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
+mapView(sfEUR) + mapView(partners_inEU)
 
 
 ### Analyse de voisinage et processus de Poisson (cf. PUMAIN, ST-JULIEN)
@@ -141,29 +131,34 @@ MeanDistNN <- function(sf, k){
   
 }
 
-ind1 <- MeanDistNN(sf = partners %>% filter(Period == "2000-2006"), k= 1)
-ind2 <- MeanDistNN(sf = partners %>% filter(Period == "2007-2013"), k= 1)
-ind3 <- MeanDistNN(sf = partners %>% filter(Period == "2014-2020"), k= 1)
+MeanDistNN(sf = partners_inEU %>% filter(Period == "2000-2006"), k= 1) # = 1855 m
+MeanDistNN(sf = partners_inEU %>% filter(Period == "2007-2013"), k= 1) # = 1406 m
+MeanDistNN(sf = partners_inEU %>% filter(Period == "2014-2020"), k= 1) # = 5058 m
 
-table(partners$Country)
+table(partners_inEU$Country)
 
 #### Compute mean dist for each period and for all countries
+
 ##### Simple solution in dplyr
-partnersE <- partners %>% group_by(Period) %>% mutate(N= n()) %>% filter(N>1)
-partnersE$N <- NULL
-NNdistEur <- partnersE %>%
+# partnersE <- partners_inEU %>% 
+#   group_by(Period) %>% 
+#   mutate(N= n()) %>% 
+#   filter(N > 1)      # no need anymore
+# partnersE$N <- NULL
+
+NNdistEur <- partners_inEU %>%
   group_by(Period) %>% 
   do(as.data.frame(MeanDistNN(sf=., k = 1))) %>% 
   rename(Ra = `MeanDistNN(sf = ., k = 1)` )
 
-#### remove 6 points from sfPointsCorr not recording in bd Partner
-NNdistEur <- na.omit(NNdistEur)
 
 #### Prepare df 
-NPartnersE <- partnersE %>% group_by(Period) %>% summarise(Npoints = n())
-NPartnersE$geometry <- NULL
+NPartnersEUR <- partners_inEU %>% 
+  group_by(Period) %>% 
+  summarise(Npoints = n())
+NPartnersEUR$geometry <- NULL
 NNdistEur <- NNdistEur %>% 
-  left_join(NPartnersE) %>%
+  left_join(NPartnersEUR) %>%
   mutate(Area = sum(sfEUR2$Area))
 
 #### Calculate Re (estimated mean distance) and R index (gap between observed and estimated : Ra/Re)
@@ -173,19 +168,24 @@ NNdistEur <- NNdistEur %>%
          Re = 1/(2*sqrt(Npoints/Area)),
          R = Ra/Re)
 
-rm(NPartnersE, partnersE)
+rm(NPartnersEUR)
+
 
 #### Compute mean dist for each period and each country
+
 ##### Simple solution in dplyr
-partners <- partners %>% group_by(ISO_POLY, Period) %>% mutate(N= n()) %>% filter(N>1)
+partnersCNTR <- partners_inEU %>% 
+  group_by(ISO_POLY, Period) %>% 
+  mutate(N= n()) %>% 
+  filter(N>1)
 partners$N <- NULL
-NNdistCountry <- partners %>%
-  group_by(ISO_POLY, Period) %>% # use ISO of EU shape 
+NNdistCountry <- partnersCNTR %>%
+  group_by(ISO_POLY, Period) %>%     # use ISO of EU shape 
   do(as.data.frame(MeanDistNN(sf=., k = 1))) %>% 
   rename(Ra = `MeanDistNN(sf = ., k = 1)` )
 
 
-##### loop that works
+##### loop that works -----------------
 # df <- list()
 # for(i in unique(partners$ISO)){
 #   for(j in unique(partners$Period)){
@@ -201,16 +201,19 @@ NNdistCountry <- partners %>%
 #   as.data.frame() %>%
 #   mutate(ISO = rownames(.)) %>% 
 #   rename(MeanNNDist = V1)
+##### end -----------------
 
 
 #### Prepare df 
-NPartners <- partners %>% group_by(ISO_POLY, Period) %>% summarise(Npoints = n())
+NPartners <- partners_inEU %>% 
+  group_by(ISO_POLY, Period) %>% 
+  summarise(Npoints = n())
 NNdistCountry <- NNdistCountry %>% 
   left_join(NPartners) %>% 
   left_join(sfEUR2, by = "ISO_POLY") %>% 
   as.data.frame() %>% 
-  select(-geometry.x, -geometry.y) %>% 
-  na.omit() # lost 5 points in Greece with no period
+  select(-geometry.x, -geometry.y)
+
 
 #### Calculate Re (estimated mean distance) and R index (gap between observed and estimated : Ra/Re)
 #### R = 0 -> concentration ; R = 1 -> Poisson random ; r > 1 -> dispersion 
@@ -218,6 +221,8 @@ NNdistCountry <- NNdistCountry %>%
   mutate(Area = as.numeric(Area),
          Re = 1/(2*sqrt(Npoints/Area)),
          R = Ra/Re)
+
+rm(NPartners, partnersCNTR)
 
 
 
@@ -246,7 +251,7 @@ scales::show_col(ipsum_pal()(18))
 #### Need 18 colors
 library(ggsci)
 scales::show_col(pal_rickandmorty()(18))
-myPal <- c(ipsum_pal()(5), pal_rickandmorty()(12), "black")
+myPal <- c(pal_rickandmorty()(12), ipsum_pal()(5), "black")
 
 #### Plot
 Rindex <- ggplot(data = dfR15, 
@@ -258,11 +263,10 @@ Rindex <- ggplot(data = dfR15,
        y = "Indice R") +
   geom_label_repel(data = dfR15 %>% filter(Period == "2014-2020"),
                   aes(label = UE_15), hjust = -0.2, size = 2) +
-  geom_label_repel(data = dfR15 %>% filter(Period == "2007-2013" & UE_15 == "LU" |
-                                           Period == "2007-2013" & UE_15 == "PT"),
-                   aes(label = UE_15), hjust = -0.2, size = 2) +
   theme_light() +
-  theme(legend.position='none')
+  labs(caption = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013\nPG, AD, 2019") +
+  theme(legend.position='none',
+        plot.caption = element_text(size = 6))
 
 #### display and save
 pdf(file = "AD/OUT/indiceR.pdf", width = 8.3, height = 5.8)
@@ -275,23 +279,44 @@ dev.off()
 ## Centre de gravité
 
 ### data
-partners <- st_intersection(sfPartPeriodSpe, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
+partners_inEU <- st_intersection(partners, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
 
 ### xy
-coord <- as.data.frame(st_coordinates(partners))
-dfPartners <- partners %>% 
+coord <- as.data.frame(st_coordinates(partners_inEU))
+dfPartners <- partners_inEU %>% 
   mutate(x = coord$X, y = coord$Y) %>% 
   as.data.frame() %>% 
   select(-geometry) 
 
-### Point moyen
+### Point moyen pondéré par le stock de participation
 PG <- dfPartners %>% 
   group_by(Period) %>% 
-  summarise(., Mx = mean(x), My = mean(y)) %>% 
-  na.omit()
+  summarise(., x = mean(x), y = mean(y),
+               Mx_p = weighted.mean(x = x, y = nbPart),
+               My_p = weighted.mean(x = y, y = nbPart)) %>% # pas de différence
+  mutate(CG = "point moyen")
 
+CG <- ggplot(PG)+
+  geom_point(aes(x = x, y = y, color = CG, shape = CG), size = 2) +
+  geom_line(aes(x = x, y = y, color = CG, shape = CG)) + 
+  geom_label_repel(aes(x = x, y = y, label = Period), hjust = -0.2, vjust = -0.2, size = 2) +
+  scale_color_manual(name = "Centre de gravité :", values = c("#E89242FF", "#526E2DFF")) +
+  scale_shape_manual(values=c(17, 15)) +
+  guides(shape = FALSE) +
+  labs(x = "Coordonnée de X (en m)",
+       y = "Coordonnée de Y (en m)") +
+  annotate("text", label = "EST", size = 3, x = 4650000, y = 2750000) +
+  #annotate("text", label = "OUEST", size = 3, x = 4400000, y = 2750000) +
+  annotate("text", label = "NORD", size = 3, x = 4400000, y = 3000000) +
+  theme_light() +
+  theme(legend.position =  c(0.6, 0.8))
 
-# ### Point médian : work but too long
+#### display and save
+pdf(file = "AD/OUT/gravity_plot.pdf", width = 8.3, height = 5.8)
+CG
+dev.off() 
+
+### Point médian : work but too long ---------------------------------------
 # (cf. https://r.developpez.com/tutoriels/programmation-graphe/livre-R-et-espace/?page=chapitre-11-initiation-aux-statistiques-spatiales)
 # bboxEur <- st_bbox(sfEUR)
 # seqCoordX <- seq(bboxEur[1],
@@ -340,98 +365,43 @@ PG <- dfPartners %>%
 #   geom_sf(data = rec, color = "ivory4", fill = NA) +
 #   theme_void()
 # 
-
+### end ---------------------------------------
 
 
 ### Point médian
-library(ICSNP)
+require(ICSNP)
 
-# Not elegant but works
-df <- data.frame(Medx = numeric(3), Medy = numeric(3))
-for(i in unique(PG$Period)){
+df <- data.frame(x = numeric(3), y = numeric(3))
+for(i in unique(dfPartners$Period)){
   bibi <- dfPartners %>% filter(Period == i) %>% select(x, y)
   df[i, 1] <-spatial.median(bibi)[1]
   df[i, 2] <-spatial.median(bibi)[2]
 }
 df <- df[4:6, ]
-PG <- cbind(PG, df)
-PG$order <- c("1", "2", "3")
+df$Period <-  c("2000-2006", "2007-2013", "2014-2020")
+df$CG <- "point médian"
+
+## prepare data for vizu
+PG <- rbind(select(PG, -Mx_p, -My_p), df)
 
 # Clean envirmnt
 rm(bibi, coord, df)
 
 #### Stock frame limits
 bbrec <- st_bbox(rec)
+bbeu <- st_bbox(sfEUR)
 
 #### Mapping centers of gravity
-
-# Proposition 1
-gravity1 <- ggplot() +
+gravity <- ggplot() +
   geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
-  geom_sf(data = sfEUR, color = "ivory3", fill = "ivory4") +
-  coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
+  geom_sf(data = sfEUR, color = NA, fill = "ivory4") +
   geom_point(data = dfPartners, 
              aes(x = x, y = y),
              colour = "#ff6208", size = 0.4) +
-  geom_point(data = PG,
-             aes(x = Medx, y = Medy, shape = Period),
-             color = "#78ba22", size = 2) +
-  geom_line(data = PG,
-            aes(x = Medx, y = Medy),
-            color = "#78ba22", size = 0.4) +
-  geom_point(data = PG,
-             aes(x = Mx, y = My, shape = Period),
-             color = "#69C8ECFF", size = 2) +
-  geom_line(data = PG,
-            aes(x = Mx, y = My),
-            color = "#69C8ECFF", size = 0.4) +
-  scale_shape_manual(values=c(16, 15, 17)) +
-  geom_sf(data = rec, color = "ivory4", fill = NA) +
-  labs(shape = "Proposition 1") +
-  theme_void() +
-  theme(legend.position = c(0.15, 0.6))
-
-gravity1
-
-# proposition 2
-gravity2 <- ggplot() +
-  geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
-  geom_sf(data = sfEUR, color = "ivory3", fill = "ivory4") +
-  coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
-  geom_point(data = dfPartners, 
-             aes(x = x, y = y),
-             colour = "#ff6208", size = 0.4) +
-  geom_point(data = PG,
-             aes(x = Medx, y = Medy, color = Period),
-             shape = 17, size = 2) +
-  geom_point(data = PG, 
-             aes(x = Mx, y = My, color = Period),
-            shape = 15, size = 2) +
-  scale_color_manual(values=c("#0E0B62", "#0F419F", "#187EDC")) +
-  geom_sf(data = rec, color = "ivory4", fill = NA)+
-  labs(color = "Proposition 2") +
-  theme_void() +
-  theme(legend.position = c(0.15, 0.6))
-par(mar = c(0,0,0,0))
-gravity2
-
-#### Stock frame limits
-bbeu <- st_bbox(sfEUR)
-PG$shape <- c("Point médian")
-PG2 <- PG %>% select(-Medx, -Medy) 
-# proposition 2b
-gravity2b <- ggplot() +
-  geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
-  geom_sf(data = sfEUR, color = "ivory3", fill = "ivory4") +
+  geom_sf(data = sfEUR, color = "ivory3", size = 0.2, fill = NA) +
   coord_sf(xlim = bbeu[c(1,3)], ylim =  bbeu[c(2,4)], expand = FALSE) +
-  geom_point(data = dfPartners, 
-             aes(x = x, y = y),
-             colour = "#ff6208", size = 0.4) +
   geom_point(data = PG,
-             aes(x = Medx, y = Medy, color = Period, shape = shape),
-             size = 2) +
-  geom_point(data = PG2, 
-             aes(x = Mx, y = My, color = Period, shape = shape),
+             aes(x = x, y = y, color = Period, shape = CG),
              size = 2) +
   scale_shape_manual(values=c(17, 15)) +
   scale_color_manual(values=c("#0E0B62", "#0F419F", "#187EDC")) +
@@ -439,86 +409,42 @@ gravity2b <- ggplot() +
   labs(color = "Localisation des centres de gravité en :",
        shape = "Centre de gravité") +
   theme_void() +
-  theme(legend.position = c(0.25, 0.8), 
+  labs(caption = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019") +
+  theme(legend.position = c(0.22, 0.8), 
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 9, hjust = 0),
+        plot.caption = element_text(size = 6),
         panel.border = element_rect(color = "ivory4", fill = NA, size = 0.4))
 
-gravity2b
-
-
-# Proposition 3
-gravity3 <- ggplot() +
-  geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
-  geom_sf(data = sfEUR, color = "ivory3", fill = "ivory4") +
-  coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
-  geom_point(data = dfPartners, 
-             aes(x = x, y = y),
-             colour = "#ff6208", size = 0.4) +
-  geom_point(data = PG,
-             aes(x = Medx, y = Medy),
-             shape = 17, color = "black", size = 2) +
-  geom_point(data = PG,
-             aes(x = Mx, y = My),
-             shape = 15, color = "black", size = 2) +
-  geom_text(data = PG,
-            aes(x = Medx, y = Medy, label = order), vjust = -0.5, hjust = -0.5, size = 2) +
-  geom_text(data = PG,
-            aes(x = Mx, y = My, label = order), vjust = -0.5, size = 2) +
-  # geom_label_repel(data = PG,
-  #                  aes(x = Mx, y = My, label = order), hjust = -0.2, size = 2) +
-  geom_text(aes(x = 1500000, y = 3000000, label = "Proposition 3")) +
-  geom_sf(data = rec, color = "ivory4", fill = NA)+
-  theme_void() +
-  theme(panel.background = element_rect(fill, colour, size, 
-                                  linetype, color))
-
-gravity3
-
-c(1000000, 3000000)
-
-# Brouillon
-gravity <- ggplot() +
-    theme_void() +
-    geom_point(data = PG, aes(x = Mx, y = My, shape = Period), 
-             color = "black", size = 2) +
-    theme(legend.position = c(0.15, 0.6)) +
-    geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
-    geom_sf(data = sfEUR, color = "ivory3", fill = "ivory4") +
-    coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
-    geom_point(data = dfPartners, 
-             aes(x = x, y = y),
-             colour = "#ff6208", size = 0.4) +
-  # geom_point(data = PG,
-  #            aes(x = Medx, y = Medy, color = Period),
-  #            shape = 17, size = 2) +
-  # scale_color_manual(values=c("#999999", "#E69F00", "#526E2DFF")) +
-    geom_point(data = PG,
-             aes(x = Medx, y = Medy, shape = Period),
-             color = "#78ba22", size = 2) +
-    geom_line(data = PG,
-            aes(x = Medx, y = Medy),
-            color = "#78ba22", size = 0.4) +
-    geom_point(data = PG,
-             aes(x = Mx, y = My, shape = Period),
-             color = "#69C8ECFF", size = 2) +
-    geom_line(data = PG,
-            aes(x = Mx, y = My),
-            color = "#69C8ECFF", size = 0.4) +
-    # geom_point(data = PG, aes(x = Mx, y = My, shape = Period), 
-    #           color = "black", size = 2) +
-    scale_shape_manual(values=c(16, 15, 17)) +
-    # geom_label_repel(data = PG,
-    #                  aes(x = Mx, y = My, label = order), hjust = -0.2) +
-    geom_sf(data = rec, color = "ivory4", fill = NA)
-
-
-+
-  #labs(shape = "Période") +
-  theme_void() 
-
-+
-  theme(legend.position = c(0.15, 0.6))
-   
+#### display and save
+pdf(file = "AD/OUT/gravity_map.pdf", width = 8.3, height = 5.8)
 gravity
+dev.off() 
 
 
-  
+
+
+### TRY TO COMBINE THE TWO PLOTS IN THE SAME PAGE
+
+#### display and save
+pdf(file = "AD/OUT/gravity_map_plot.pdf", width = 8.3, height = 5.8)
+cowplot::plot_grid(gravity, CG_small,  
+                   rel_widths = c(1, 1))
+dev.off()
+
+
+CG_small <- CG + 
+  theme(axis.text = element_text(size = 6),
+        legend.position = "none",
+        axis.title = element_text(size = 7),
+        legend.text = element_text(size = 6),
+        legend.title = element_text(size = 7),
+        panel.border = element_rect(color = "ivory4", fill = NA, size = 0.4))
+#CG_small
+
+#### display and save
+pdf(file = "AD/OUT/gravity_map_plot_test.pdf", width = 8.3, height = 5.8)
+ggdraw() +
+  draw_plot(gravity, x = 0, y = 0, width = 1, height = 1) +
+  draw_plot(CG_small, x = 0.5, y = 0.6, width = 0.45, height = 0.4)
+dev.off()
