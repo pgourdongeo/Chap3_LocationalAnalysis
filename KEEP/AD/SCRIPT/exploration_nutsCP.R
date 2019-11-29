@@ -18,14 +18,13 @@ library(sf)
 library(skimr)
 library(lwgeom)
 library(mapview)
+library(tidylog)
+library(RColorBrewer)
 
 
 # Import data
-load("AD/Keep_ClosedProject_Partner_corrected.RDS")
-
-sfPartner <- st_as_sf(Partner, coords = c("lon", "lat"), crs = 4326) %>%
-  st_sf(sf_column_name = "geometry") %>% 
-  st_transform(crs = 3035)
+## data with snaped points 
+sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
 
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
@@ -127,11 +126,11 @@ countP <- function(df1, df2){
 # ANOVA Nuts CP
 
 ## Visu control
-mapview(sfEU) + mapview(NUTS_CP_1420) + mapview(sfPartner)
+mapview(sfEU) + mapview(NUTS_CP_1420) + mapview(sfParticipations_snap)
 unique(NUTS_CP_1420$TYPE)
 
 ## Count participations in each nuts
-nutsCP <- countP(NUTS_CP_1420, sfPartner)
+nutsCP <- countP(NUTS_CP_1420, sfParticipations_snap)
 nutsCP <- nutsCP %>% as.data.frame() %>% select(-geometry) 
 sum(nutsCP$n)
 
@@ -140,9 +139,9 @@ write.csv2(nutsCP, "nutsCP.csv", row.names = F, fileEncoding = "UTF-8")
 
 ### Check points not joined
 #### join nuts type to participation points
-sfPart <- st_intersection(sfPartner, select(NUTS_CP_1420, NUTS_ID, TYPE))
+sfPart <- st_intersection(sfParticipations_snap, select(NUTS_CP_1420, NUTS_ID, TYPE))
 part <- sfPart %>% as.data.frame() %>% select(-geometry)
-partOut <- anti_join(sfPartner, part)
+partOut <- anti_join(sfParticipations_snap, part)
 mapview(NUTS_CP_1420) + mapview(partOut) # some are in water (generalization)
 
 ## nuts without type
@@ -150,8 +149,13 @@ nutsCP$TYPE <- ifelse(is.null(nutsCP$TYPE), nutsCP$TYPE == "Hors typologie", nut
 nutsCP <- nutsCP %>% 
   mutate(HTYPO = is.null(TYPE),
          TYPO = ifelse(HTYPO == TRUE, TYPO == "Hors typologie", TYPE))
+
 ## Stat summary
 anovaTab <- AnovaTab(df = nutsCP, varx = 5, vary = 6) # variables position in the df, not name
+library(gridExtra)
+library(grid)
+tt <- ttheme_minimal(colhead=list(fg_params = list(parse=FALSE)))
+grid.table(anovaTab[,2:4], theme = tt)
 
 ## Anova plot
 anovaPlot <- AnovaPlot(df = nutsCP, varx = 5, vary = 6, 
