@@ -88,6 +88,9 @@ sfEUR <- sfEU %>%
 sfEUR <- left_join(select(sfEUR, ID, NAME_EN), 
                    select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), 
                    by = "NAME_EN")
+sfEU <- left_join(select(sfEU, ID, NAME_EN),
+                  select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2),
+                  by = "NAME_EN")
 
 rm(CORRESP_CNTR_ISO2)
 
@@ -101,7 +104,11 @@ sfEUR2 <- sfEUR %>%
   select(ISO_POLY = ISO, Area = AreaT) %>% 
   filter(!duplicated(ISO_POLY))
 
-
+sfEU <- sfEU %>% 
+  mutate(Area = st_area(.)) %>% 
+  group_by(ISO) %>% 
+  mutate(AreaT = sum(Area)) %>% 
+  ungroup()
 
 ## Dispersion index (R) ------------------------------
 
@@ -261,7 +268,7 @@ dev.off()
 ## Centre de gravité ---------------------------------
 
 ### data
-partners_inEU <- st_intersection(partners, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
+partners_inEU <- st_intersection(partners, select(sfEU, ID_POLY = ID, ISO_POLY = ISO))
 
 ### xy
 coord <- as.data.frame(st_coordinates(partners_inEU))
@@ -338,7 +345,6 @@ cities <- partners %>% filter(Country == "Germany" |
                               Country == "Austria" | 
                               Country == "Czech Republic") %>% ungroup()
 
-mapview(sfEUR) + mapview(cities)
 
 coords <- as.data.frame(st_coordinates(cities))
 dfcities <- cities %>% 
@@ -351,9 +357,10 @@ dfcities <- dfcities %>%
   filter(!duplicated(asciiName)) %>% 
   filter(asciiName %in% c("Munich", "Passau", "Pizek", "Linz") | geonameId == "3068293")
 
-
 sfcities <- st_as_sf(dfcities, coords = c("X", "Y"), crs = 3035) %>%
   st_sf(sf_column_name = "geometry") 
+
+
 
 CG2 <- ggplot()+ 
   geom_sf(data = sfEUR, color = "ivory3", size = 0.5, fill = "ivory1") +
@@ -372,11 +379,73 @@ CG2 <- ggplot()+
   annotate("text", label = "S/E", size = 3, x = 4650000, y = 2750000, color = "grey") +
   annotate("text", label = "N/O", size = 3, x = 4400000, y = 3000000, color = "grey") +
   theme_light() +
-  theme(legend.position =  c(0.8, 0.9))
+  labs(caption = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 / PG, AD, 2019") +
+  theme(legend.position =  c(0.8, 0.9),
+        plot.caption = element_text(size = 6))
 
 #### display and save
 pdf(file = "AD/OUT/gravity_diagram.pdf", width = 8.3, height = 5.8)
 CG2
+dev.off() 
+
+
+#### Europe large
+
+##### polygon centroids
+# sfEUR_points <- sf::st_point_on_surface(sfEUR)
+# sfEUR_coords <- as.data.frame(sf::st_coordinates(sfEUR_points))
+# sfEUR_coords$NAME <- sfEUR$NAME_EN
+
+#### labels of country coords
+label_coord <- data.frame(X =c(4550000, 4605000, 4605000),
+                          Y = c(2850000, 2905000, 2800000),
+                          NAME = c("ALLEMAGNE", "REP. TCHEQUE", "AUTRICHE"))
+#### Main cities coords
+cities <- partners %>% filter(Country == "Germany" | 
+                                Country == "Austria" | 
+                                Country == "Czech Republic") %>% ungroup()
+
+
+coords <- as.data.frame(st_coordinates(cities))
+dfcities <- cities %>% 
+  mutate(X = coords$X, Y = coords$Y) %>% 
+  as.data.frame() %>% 
+  select(-geometry) 
+dfcities <- dfcities %>% 
+  filter(X > 4400000 & X < 4650000,
+         Y > 2750000 & Y < 3000000) %>% 
+  filter(!duplicated(asciiName)) %>% 
+  filter(asciiName %in% c("Munich", "Passau", "Pizek", "Linz") | geonameId == "3068293")
+
+sfcities <- st_as_sf(dfcities, coords = c("X", "Y"), crs = 3035) %>%
+  st_sf(sf_column_name = "geometry") 
+
+
+
+CG3 <- ggplot()+ 
+  geom_sf(data = sfEU, color = "ivory3", size = 0.5, fill = "ivory1") +
+  geom_text(data = label_coord, aes(X, Y, label = NAME), size = 2) +
+  geom_sf(data = sfcities, size = 1.5, fill = "black") +
+  geom_sf_text(data = sfcities, aes(label = asciiName), size = 2, hjust = -0.2, vjust = -0.2) +
+  coord_sf(xlim = c(4387500,4662500), ylim =  c(2737500,3012500), datum = sf::st_crs(3035), expand = FALSE) +
+  geom_label_repel(data = PG, aes(x = x, y = y, label = Period), hjust = -0.2, vjust = -0.2, size = 2) +
+  geom_point(data = PG, aes(x = x, y = y, color = CG, shape = CG), size = 2.5) +
+  geom_line(data = PG, aes(x = x, y = y, color = CG, shape = CG), size = 0.8) + 
+  scale_color_manual(name = "Centre de gravité :", values = c("#E89242FF", "#526E2DFF")) +
+  scale_shape_manual(values=c(17, 15)) +
+  guides(shape = FALSE) +
+  labs(x = "Coordonnée de X (en m)",
+       y = "Coordonnée de Y (en m)") +
+  annotate("text", label = "S/E", size = 3, x = 4650000, y = 2750000, color = "grey") +
+  annotate("text", label = "N/O", size = 3, x = 4400000, y = 3000000, color = "grey") +
+  theme_light() +
+  labs(caption = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 / PG, AD, 2019") +
+  theme(legend.position =  c(0.8, 0.9),
+        plot.caption = element_text(size = 6))
+
+#### display and save
+pdf(file = "AD/OUT/gravity_diagram_eurL.pdf", width = 8.3, height = 5.8)
+CG3
 dev.off() 
 
 
