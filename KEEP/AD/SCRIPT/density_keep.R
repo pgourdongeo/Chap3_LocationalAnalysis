@@ -252,7 +252,7 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
               title.txt = titleLeg, 
               breaks = bks, 
               nodata = F, 
-              values.rnd = 2, 
+              values.rnd = 0, 
               col = cols)
   
   # Add an explanation text
@@ -544,14 +544,25 @@ nutsUR <- st_sf(nutsUR,
                 nL = sapply(X = inter2, FUN = length),
                 geometry = st_geometry(nutsUR))
 
-## Add density to df : nb of participations for 10 000 inhabitants
+## Add density to df : nb of participations for 100 000 inhabitants
 nutsUR <- nutsUR %>% 
-  mutate(density = n / Pop_t_2001 * 10000)
+  mutate(density = n / Pop_t_2001 * 10000,
+         density2 = n /Pop_t_2001 * 100000)
 
 ## Display map
+
+### distribution
+skim(nutsUR$density)
+hist(nutsUR$density)
+
+distrib <- nutsUR %>% filter(density >= 1) 
+distrib <- sort(distrib$density)
+hist(distrib)
+
 ### defines a set of breaks and colors
-myvar <- nutsUR %>% filter(density != 0) %>% select(density) 
-bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
+# myvar <- nutsUR %>% filter(density != 0) %>% select(density) 
+# bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
+bks <- c(0, getBreaks(v =  distrib, method = "fisher-jenks", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ### Plot and save
