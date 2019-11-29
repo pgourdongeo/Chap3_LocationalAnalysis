@@ -2,7 +2,8 @@
 #                                   INDICES DE DISPERSION
 #                         analyse du semis de points de la BD KEEP
 #
-# DESCRIPTION :  
+# DESCRIPTION :  Calcul de l'indice de dispersion et des centres de gravités
+# (point moyen et point médian) aux trois périodes
 #
 # PG, AD, Novembre 2019
 ################################################################################
@@ -60,11 +61,11 @@ partners <- left_join(select(partners, ID_PARTNER, ID_PROJECT, Country = Country
                              by = "Country") 
 
 #### Check
-# left_join: added 147 rows and added one column (ISO) ---> TN ???
-length(unique(partners$ID_PARTNER))
-bibi <- partners %>% filter(duplicated(ID_PARTNER))
-bibi2 <- partners %>% filter(is.na(ISO))
-rm(bibi, bibi2)
+## left_join: added 147 rows and added one column (ISO) ---> TN ???
+# length(unique(partners$ID_PARTNER))
+# bibi <- partners %>% filter(duplicated(ID_PARTNER))
+# bibi2 <- partners %>% filter(is.na(ISO))
+# rm(bibi, bibi2)
 
 #### rm duplicated rows
 partners <- partners %>% 
@@ -81,7 +82,7 @@ sfEUR <- sfEU %>%
                                        "Kosovo", "Liechtenstein", "Montenegro", 
                                        "Republic of Macedonia", "Serbia", "Switzerland")) 
 
-mapView(sfEUR)
+#mapView(sfEUR)
 
 ### Add ISO
 sfEUR <- left_join(select(sfEUR, ID, NAME_EN), 
@@ -102,12 +103,12 @@ sfEUR2 <- sfEUR %>%
 
 
 
-## Dispersion index (R)
+## Dispersion index (R) ------------------------------
 
 ### Filter le tableau de points avec les pays 
 ### pour lesquels on veut calculer les indices de dispersion
 partners_inEU <- st_intersection(partners, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
-mapView(sfEUR) + mapView(partners_inEU)
+#mapView(sfEUR) + mapView(partners_inEU)
 
 
 ### Analyse de voisinage et processus de Poisson (cf. PUMAIN, ST-JULIEN)
@@ -185,25 +186,6 @@ NNdistCountry <- partnersCNTR %>%
   rename(Ra = `MeanDistNN(sf = ., k = 1)` )
 
 
-##### loop that works -----------------
-# df <- list()
-# for(i in unique(partners$ISO)){
-#   for(j in unique(partners$Period)){
-#   sf1 <- partners %>% filter(ISO == i) %>% filter(Period == j)
-# 
-#   MeanDist <- MeanDistNN(sf1, k=1)
-# 
-#   df[[paste(i,j, sep = "_")]] <- MeanDist
-#   }
-# }
-# NNdistCountry <- cbind(unlist(df))
-# NNdistCountry <- NNdistCountry %>% 
-#   as.data.frame() %>%
-#   mutate(ISO = rownames(.)) %>% 
-#   rename(MeanNNDist = V1)
-##### end -----------------
-
-
 #### Prepare df 
 NPartners <- partners_inEU %>% 
   group_by(ISO_POLY, Period) %>% 
@@ -273,10 +255,10 @@ pdf(file = "AD/OUT/indiceR.pdf", width = 8.3, height = 5.8)
 Rindex
 dev.off()  
 
+## end---------------------
 
 
-
-## Centre de gravité
+## Centre de gravité ---------------------------------
 
 ### data
 partners_inEU <- st_intersection(partners, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
@@ -296,6 +278,30 @@ PG <- dfPartners %>%
                My_p = weighted.mean(x = y, y = nbPart)) %>% # pas de différence
   mutate(CG = "point moyen")
 
+
+### Point médian
+require(ICSNP)
+
+df <- data.frame(x = numeric(3), y = numeric(3))
+for(i in unique(dfPartners$Period)){
+  bibi <- dfPartners %>% filter(Period == i) %>% select(x, y)
+  df[i, 1] <-spatial.median(bibi)[1]
+  df[i, 2] <-spatial.median(bibi)[2]
+}
+df <- df[4:6, ]
+df$Period <-  c("2000-2006", "2007-2013", "2014-2020")
+df$CG <- "point médian"
+
+## mean + median
+PG <- rbind(select(PG, -Mx_p, -My_p), df)
+
+# Clean envirmnt
+rm(bibi, coord, df, i)
+
+
+### Visualization
+
+### geom point
 CG <- ggplot(PG)+
   geom_point(aes(x = x, y = y, color = CG, shape = CG), size = 2) +
   geom_line(aes(x = x, y = y, color = CG, shape = CG)) + 
@@ -312,85 +318,71 @@ CG <- ggplot(PG)+
   theme(legend.position =  c(0.6, 0.8))
 
 #### display and save
-pdf(file = "AD/OUT/gravity_plot.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/gravity_plot.pdf", width = 8.3, height = 5.8)
 CG
 dev.off() 
 
-### Point médian : work but too long ---------------------------------------
-# (cf. https://r.developpez.com/tutoriels/programmation-graphe/livre-R-et-espace/?page=chapitre-11-initiation-aux-statistiques-spatiales)
-# bboxEur <- st_bbox(sfEUR)
-# seqCoordX <- seq(bboxEur[1],
-#                  bboxEur[3],
-#                  by = 50000)
-# 
-# seqCoordY <- seq(bboxEur[2],
-#                  bboxEur[4],
-#                  by = 50000)
-# 
-# longGrid <- expand.grid(COORDX = seqCoordX,
-#                         COORDY = seqCoordY)
-# 
-# #library(fields)
-# medDist <- function(coord){
-#   matDist <- rdist(coord, longGrid)
-#   sumDist <- apply(matDist, 2, sum)
-#   longGrid$ABSDIST <- sumDist
-#   return(longGrid)
-# }
-# 
-# 
-# 
-# longGrid1 <- medDist(coord = dfPartners %>% filter(Period == "2000-2006") %>% select(x, y))
-# longGrid2 <- medDist(coord = dfPartners %>% filter(Period == "2007-2013") %>% select(x, y))
-# longGrid3 <- medDist(coord = dfPartners %>% filter(Period == "2014-2020") %>% select(x, y))
-# 
-# bbrec <- st_bbox(rec)
-# 
-# ggplot() +
-#   geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
-#   geom_sf(data = sfEUR, color = "ivory3", fill = "ivory4") +
-#   coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
-#   geom_point(data = dfPartners, 
-#              aes(x = x, y = y),
-#              colour = "#ff6208", size = 0.5) +
-#   geom_point(data = longGrid1[ which.min(longGrid1$ABSDIST),],
-#              aes(x = COORDX, y = COORDY),
-#              fill = "#526E2DFF", shape = 17, size = 2) +
-#   geom_point(data = longGrid2[ which.min(longGrid2$ABSDIST),],
-#              aes(x = COORDX, y = COORDY),
-#              fill = "#526E2DFF", shape = 17, size = 2) +
-#   geom_point(data = longGrid3[ which.min(longGrid3$ABSDIST),],
-#              aes(x = COORDX, y = COORDY),
-#              fill = "#526E2DFF", shape = 17, size = 2) +
-#   geom_sf(data = rec, color = "ivory4", fill = NA) +
-#   theme_void()
-# 
-### end ---------------------------------------
+#### with background map
+
+##### polygon centroids
+# sfEUR_points <- sf::st_point_on_surface(sfEUR)
+# sfEUR_coords <- as.data.frame(sf::st_coordinates(sfEUR_points))
+# sfEUR_coords$NAME <- sfEUR$NAME_EN
+
+#### labels of country coords
+label_coord <- data.frame(X =c(4550000, 4605000, 4605000),
+                            Y = c(2850000, 2905000, 2800000),
+                            NAME = c("ALLEMAGNE", "REP. TCHEQUE", "AUTRICHE"))
+#### Main cities coords
+cities <- partners %>% filter(Country == "Germany" | 
+                              Country == "Austria" | 
+                              Country == "Czech Republic") %>% ungroup()
+
+mapview(sfEUR) + mapview(cities)
+
+coords <- as.data.frame(st_coordinates(cities))
+dfcities <- cities %>% 
+  mutate(X = coords$X, Y = coords$Y) %>% 
+  as.data.frame() %>% 
+  select(-geometry) 
+dfcities <- dfcities %>% 
+  filter(X > 4400000 & X < 4650000,
+         Y > 2750000 & Y < 3000000) %>% 
+  filter(!duplicated(asciiName)) %>% 
+  filter(asciiName %in% c("Munich", "Passau", "Pizek", "Linz") | geonameId == "3068293")
 
 
-### Point médian
-require(ICSNP)
+sfcities <- st_as_sf(dfcities, coords = c("X", "Y"), crs = 3035) %>%
+  st_sf(sf_column_name = "geometry") 
 
-df <- data.frame(x = numeric(3), y = numeric(3))
-for(i in unique(dfPartners$Period)){
-  bibi <- dfPartners %>% filter(Period == i) %>% select(x, y)
-  df[i, 1] <-spatial.median(bibi)[1]
-  df[i, 2] <-spatial.median(bibi)[2]
-}
-df <- df[4:6, ]
-df$Period <-  c("2000-2006", "2007-2013", "2014-2020")
-df$CG <- "point médian"
+CG2 <- ggplot()+ 
+  geom_sf(data = sfEUR, color = "ivory3", size = 0.5, fill = "ivory1") +
+  geom_text(data = label_coord, aes(X, Y, label = NAME), size = 2) +
+  geom_sf(data = sfcities, size = 1.5, fill = "black") +
+  geom_sf_text(data = sfcities, aes(label = asciiName), size = 2, hjust = -0.2, vjust = -0.2) +
+  coord_sf(xlim = c(4387500,4662500), ylim =  c(2737500,3012500), datum = sf::st_crs(3035), expand = FALSE) +
+  geom_label_repel(data = PG, aes(x = x, y = y, label = Period), hjust = -0.2, vjust = -0.2, size = 2) +
+  geom_point(data = PG, aes(x = x, y = y, color = CG, shape = CG), size = 2.5) +
+  geom_line(data = PG, aes(x = x, y = y, color = CG, shape = CG), size = 0.8) + 
+  scale_color_manual(name = "Centre de gravité :", values = c("#E89242FF", "#526E2DFF")) +
+  scale_shape_manual(values=c(17, 15)) +
+  guides(shape = FALSE) +
+  labs(x = "Coordonnée de X (en m)",
+       y = "Coordonnée de Y (en m)") +
+  annotate("text", label = "S/E", size = 3, x = 4650000, y = 2750000, color = "grey") +
+  annotate("text", label = "N/O", size = 3, x = 4400000, y = 3000000, color = "grey") +
+  theme_light() +
+  theme(legend.position =  c(0.8, 0.9))
 
-## prepare data for vizu
-PG <- rbind(select(PG, -Mx_p, -My_p), df)
+#### display and save
+pdf(file = "AD/OUT/gravity_diagram.pdf", width = 8.3, height = 5.8)
+CG2
+dev.off() 
 
-# Clean envirmnt
-rm(bibi, coord, df)
 
 #### Stock frame limits
 bbrec <- st_bbox(rec)
 bbeu <- st_bbox(sfEUR)
-
 #### Mapping centers of gravity
 gravity <- ggplot() +
   geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
