@@ -427,17 +427,17 @@ CG3 <- ggplot()+
   geom_text(data = label_coord, aes(X, Y, label = NAME), size = 2) +
   geom_sf(data = sfcities, size = 1.5, fill = "black") +
   geom_sf_text(data = sfcities, aes(label = asciiName), size = 2, hjust = -0.2, vjust = -0.2) +
-  coord_sf(xlim = c(4387500,4662500), ylim =  c(2737500,3012500), datum = sf::st_crs(3035), expand = FALSE) +
+  coord_sf(xlim = c(4375000,4675000), ylim =  c(2737500,3012500), datum = sf::st_crs(3035), expand = FALSE) +
+  geom_line(data = PG, aes(x = x, y = y, color = CG, shape = CG), size = 0.8) + 
   geom_label_repel(data = PG, aes(x = x, y = y, label = Period), hjust = -0.2, vjust = -0.2, size = 2) +
   geom_point(data = PG, aes(x = x, y = y, color = CG, shape = CG), size = 2.5) +
-  geom_line(data = PG, aes(x = x, y = y, color = CG, shape = CG), size = 0.8) + 
   scale_color_manual(name = "Centre de gravité :", values = c("#E89242FF", "#526E2DFF")) +
   scale_shape_manual(values=c(17, 15)) +
   guides(shape = FALSE) +
   labs(x = "Coordonnée de X (en m)",
        y = "Coordonnée de Y (en m)") +
-  annotate("text", label = "S/E", size = 3, x = 4650000, y = 2750000, color = "grey") +
-  annotate("text", label = "N/O", size = 3, x = 4400000, y = 3000000, color = "grey") +
+  annotate("text", label = "S/E", size = 3, x = 4662500, y = 2750000, color = "grey") +
+  annotate("text", label = "N/O", size = 3, x = 4387500, y = 3000000, color = "grey") +
   theme_light() +
   labs(caption = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 / PG, AD, 2019") +
   theme(legend.position =  c(0.8, 0.9),
