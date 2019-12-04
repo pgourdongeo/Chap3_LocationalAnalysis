@@ -80,6 +80,48 @@ rezMap <- function(frame, bgmap, units, var, source, titleLeg){
   
 }
 
+
+rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2, 
+                             title1, title2, labels, source) {
+  
+  par(mar = c(0, 0, 0, 0)) 
+  
+  # Plot
+  plot(st_geometry(bgmap), col = "#E3DEBF", border = "ivory3", lwd = 0.5)
+  propSymbolsChoroLayer(units, 
+                        var = var, inches = 0.3, border = "grey60", lwd = 0.5, symbols = "square",
+                        var2 = var2, breaks = bks, col = cols,
+                        legend.var.pos = NA, legend.var2.pos = NA)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, add = TRUE)
+  
+  # Add legend
+  legendSquaresSymbols(pos = c(1000000, 4200000),
+                       cex = 1,
+                       var = myVal,
+                       inches = 0.3, border = "grey60", lwd = 0.5, col = NA,
+                       title.txt = title1, title.cex = 0.8, values.cex = 0.6)
+  
+  legendChoro(pos = c(1000000, 3000000), 
+              cex = 0.9,
+              title.txt = title2, title.cex = 0.8, values.cex = 0.7,
+              breaks = bks, col = cols, values.rnd = 2, nodata = F)
+  
+  
+  # Add an explanation text
+  text(x = 1000000, y = 2600000, labels = labels, cex = 0.7, adj = 0)
+  
+  # Add a layout
+  layoutLayer(title = "", 
+              sources = source, 
+              author = "PG, AD, 2019", 
+              horiz = FALSE,
+              col = NA, 
+              frame = F, 
+              scale = 500, 
+              posscale = c(6500000, 1000000))
+  
+}
+
 # Fonction pour identifier des outliers dans une distribution :
 is_outlier <- function(x) {
   
@@ -147,7 +189,7 @@ umz <- umz %>%
                                    as.numeric(NA)))
 
 ## Plot with outliers and save pdf
-pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
+#pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
 regUmz + 
   geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
                    aes(label = paste(Name, Country, sep = ", ")),
@@ -164,15 +206,30 @@ dev.off()
 bks <- c(min(umz$rezStand), -2 * sdRez, -1 * sdRez, 1 * sdRez, 2 * sdRez, max(umz$rezStand))
 cols <- c("#1A7832", "#AFD4A0", "#f6f5c5", carto.pal("wine.pal",2))
 
+skim(umz$Pop2011)
+
 ### Plot and save
 pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
-rezMap(frame = rec, 
-       bgmap = sfEU, 
-       units = umz %>% filter(n > 10), 
-       var = "rezStand",
-       source = "Sources :",
-       titleLeg = "résidus standardisés\n")
+rezMap_propChoro(units = umz %>% filter(n > 10),
+                 var = "Pop2011", 
+                 myVal = c(8000, 1000000, 5000000, 10000000),
+                 var2 = "rezStand",
+                 title1 = "Population des UMZ en 2011", 
+                 title2 = "Résidus Standardisés*",
+                 labels = paste("*Résidus de la régression :\n", eq,",\ndiscrétisés selon la moyenne\ndes résidus (=0) et 1 écart-type", sep = ""),
+                 source = "Sources :")
 dev.off()
+
+
+### Plot and save ---OLD
+#pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+# rezMap(frame = rec, 
+#        bgmap = sfEU, 
+#        units = umz %>% filter(n > 10), 
+#        var = "rezStand",
+#        source = "Sources :",
+#        titleLeg = "résidus standardisés\n")
+# dev.off()
 
 
 
