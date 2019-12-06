@@ -27,6 +27,8 @@ library(tidylog)
 library(ICSNP)
 
 
+
+
 # Import data
 
 # participations <- readRDS("Data/Participations_All_Eucicop.RDS")
@@ -111,6 +113,59 @@ sfEU <- sfEU %>%
   group_by(ISO) %>% 
   mutate(AreaT = sum(Area)) %>% 
   ungroup()
+
+
+
+# MAP - dotplot partners in large Europe------------------
+
+## FUNCTION : plot a points map
+plot_points <- function(frame, adm, sf, title, source){
+  
+  # stock bbox
+  bb <- st_bbox(frame)
+  
+  # Define margins
+  par(mar = c(0,0,0,0))
+  
+  # Plot the map
+  plot(st_geometry(adm), col = "ivory4")
+  plot(st_geometry(sf), col = "#FF0921", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)], add = TRUE)
+  
+  
+  # Add title
+  text(x = 1000000, y = 5300000, labels = title, cex = 0.7, adj = 0, font = 2)
+  
+  # Add a layout
+  layoutLayer(title = "",
+              sources = source,
+              author = "PG, AD, 2019",
+              horiz = FALSE,
+              col = NA,
+              frame = F,
+              scale = 500,
+              posscale = c(6500000, 1000000)
+  )
+}
+
+## data : points compris dans l'Europe large   
+partners_inEU <- st_intersection(partners, select(sfEU, ID_POLY = ID, ISO_POLY = ISO))
+
+## Display and save
+pdf(file = "AD/OUT/dotplot_partners_1420.pdf", width = 8.3, height = 5.8)
+plot_points(frame = rec, 
+                        adm = sfEU, 
+                        sf = partners_inEU %>% filter(Period == "2014-2020"),
+                        title = "Entre 2014 et 2020",
+                        source = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019")
+dev.off() 
+
+# end ------------------
+
+
+
 
 ## Dispersion index (R) ------------------------------
 
@@ -314,6 +369,8 @@ PG <- rbind(select(PG, -Mx_p, -My_p), df)
 # Clean envirmnt
 rm(bibi, coord, coords, df, i)
 
+## end---------------------
+
 
 
 ## Visualization  --------------------
@@ -377,68 +434,9 @@ diagram <- ggplot()+
         plot.caption = element_text(size = 6))
 
 #### display and save
-pdf(file = "AD/OUT/gravity_partners_diagram.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/gravity_partners_diagram.pdf", width = 8.3, height = 5.8)
 diagram
 dev.off() 
 
-# 
-# #### Stock frame limits
-# bbrec <- st_bbox(rec)
-# bbeu <- st_bbox(sfEUR)
-# #### Mapping centers of gravity
-# gravity <- ggplot() +
-#   geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF") +
-#   geom_sf(data = sfEUR, color = NA, fill = "ivory4") +
-#   geom_point(data = dfPartners, 
-#              aes(x = x, y = y),
-#              colour = "#ff6208", size = 0.4) +
-#   geom_sf(data = sfEUR, color = "ivory3", size = 0.2, fill = NA) +
-#   coord_sf(xlim = bbeu[c(1,3)], ylim =  bbeu[c(2,4)], expand = FALSE) +
-#   geom_point(data = PG,
-#              aes(x = x, y = y, color = Period, shape = CG),
-#              size = 2) +
-#   scale_shape_manual(values=c(17, 15)) +
-#   scale_color_manual(values=c("#0E0B62", "#0F419F", "#187EDC")) +
-#   #geom_sf(data = rec, color = "ivory4", fill = NA)+
-#   labs(color = "Localisation des centres de gravité en :",
-#        shape = "Centre de gravité") +
-#   theme_void() +
-#   labs(caption = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019") +
-#   theme(legend.position = c(0.22, 0.8), 
-#         legend.text = element_text(size = 8),
-#         legend.title = element_text(size = 9, hjust = 0),
-#         plot.caption = element_text(size = 6),
-#         panel.border = element_rect(color = "ivory4", fill = NA, size = 0.4))
-# 
-# #### display and save
-# pdf(file = "AD/OUT/gravity_map.pdf", width = 8.3, height = 5.8)
-# gravity
-# dev.off() 
-# 
-# 
-# 
-# 
-# ### TRY TO COMBINE THE TWO PLOTS IN THE SAME PAGE
-# 
-# #### display and save
-# pdf(file = "AD/OUT/gravity_map_plot.pdf", width = 8.3, height = 5.8)
-# cowplot::plot_grid(gravity, CG_small,  
-#                    rel_widths = c(1, 1))
-# dev.off()
-# 
-# 
-# CG_small <- CG + 
-#   theme(axis.text = element_text(size = 6),
-#         legend.position = "none",
-#         axis.title = element_text(size = 7),
-#         legend.text = element_text(size = 6),
-#         legend.title = element_text(size = 7),
-#         panel.border = element_rect(color = "ivory4", fill = NA, size = 0.4))
-# #CG_small
-# 
-# #### display and save
-# pdf(file = "AD/OUT/gravity_map_plot_test.pdf", width = 8.3, height = 5.8)
-# ggdraw() +
-#   draw_plot(gravity, x = 0, y = 0, width = 1, height = 1) +
-#   draw_plot(CG_small, x = 0.5, y = 0.6, width = 0.45, height = 0.4)
-# dev.off()
+
+

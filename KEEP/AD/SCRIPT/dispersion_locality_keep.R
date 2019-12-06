@@ -114,6 +114,55 @@ sfEU <- sfEU %>%
 
 
 
+# MAP - dotplot partners in large Europe------------------
+
+## FUNCTION : plot a points map
+plot_points <- function(frame, adm, sf, title, source){
+  
+  # stock bbox
+  bb <- st_bbox(frame)
+  
+  # Define margins
+  par(mar = c(0,0,0,0))
+  
+  # Plot the map
+  plot(st_geometry(adm), col = "ivory4")
+  plot(st_geometry(sf), col = "#9E0E40", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
+       xlim = bb[c(1,3)], ylim =  bb[c(2,4)], add = TRUE)
+  
+  # Add title
+  text(x = 1000000, y = 5300000, labels = title, cex = 0.7, adj = 0, font = 2)
+  
+  # Add a layout
+  layoutLayer(title = "",
+              sources = source,
+              author = "PG, AD, 2019",
+              horiz = FALSE,
+              col = NA,
+              frame = F,
+              scale = 500,
+              posscale = c(6500000, 1000000)
+  )
+}
+
+## data : points compris dans l'Europe large   
+locality_inEU <- st_intersection(locality, select(sfEU, ID_POLY = ID, ISO_POLY = ISO))
+
+## Display and save
+pdf(file = "AD/OUT/dotplot_locality_0006.pdf", width = 8.3, height = 5.8)
+plot_points(frame = rec, 
+            adm = sfEU, 
+            sf = locality_inEU %>% filter(Period == "2000-2006"),
+            title = "Entre 2000 et 2006",
+            source = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019")
+dev.off() 
+
+# end ------------------
+
+
+
 ## Dispersion index (R) ------------------------------
 
 ### Filter le tableau de points avec les pays 
@@ -229,13 +278,13 @@ dfR15 <- rbind(dfR15, NNdistEur)
 
 #### Fun with colors
 #library(ggthemes)
-#scales::show_col(few_pal()(18))
+scales::show_col(few_pal()(18))
 library(hrbrthemes)
-#scales::show_col(ipsum_pal()(18))
+scales::show_col(ipsum_pal()(18))
 
 #### Need 18 colors
 library(ggsci)
-#scales::show_col(pal_rickandmorty()(18))
+scales::show_col(pal_rickandmorty()(18))
 myPal <- c(pal_rickandmorty()(12), ipsum_pal()(5), "black")
 
 
