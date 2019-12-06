@@ -263,42 +263,53 @@ rm(Nlocality, localityCNTR)
 ### Visualization 
 dfR <- NNdistCountry
 
-#### Members of EU since 2004 or after
-uePost <- c("CY", "EE", "HU", "LV", "LT", "MT", "PL", "SK", "SI", "CZ", "BG", "RO", "HR")
+# #### Members of EU since 2004 or after
+# uePost <- c("CY", "EE", "HU", "LV", "LT", "MT", "PL", "SK", "SI", "CZ", "BG", "RO", "HR")
+# #### UE-15 + suissse, Norvège
+# ue15 <- c("DE", "BE", "FR", "IT", "LU", "NL", "DK", "IE", "GB", "GR", "ES", "PT", "AT", "FI", "SE", "CH", "NO")
 
-#### UE-15 + suissse, Norvège
-ue15 <- c("DE", "BE", "FR", "IT", "LU", "NL", "DK", "IE", "GB", "GR", "ES", "PT", "AT", "FI", "SE", "CH", "NO")
-dfR15 <- dfR %>% filter(ISO_POLY %in% ue15) %>% rename(UE_15 = ISO_POLY)
+#### PG selection of countries 
+selec <- c("FR", "IT", "ES", "FI", "SE", "LT", "LV", "BG", "RO", "CZ", "DE", "HU")
+
+dfRselec <- dfR %>% filter(ISO_POLY %in% selec) %>% rename(UE_15 = ISO_POLY)
 
 #### Add european R index
 NNdistEur<- NNdistEur %>% 
   mutate(UE_15 = "Europe") %>% 
   as.data.frame()
-dfR15 <- rbind(dfR15, NNdistEur)
+dfRselec <- rbind(dfRselec, NNdistEur)
 
 #### Fun with colors
 #library(ggthemes)
-scales::show_col(few_pal()(18))
-library(hrbrthemes)
-scales::show_col(ipsum_pal()(18))
+#scales::show_col(few_pal()(18))
+#library(hrbrthemes)
+#scales::show_col(ipsum_pal()(18))
 
-#### Need 18 colors
-library(ggsci)
-scales::show_col(pal_rickandmorty()(18))
-myPal <- c(pal_rickandmorty()(12), ipsum_pal()(5), "black")
+#### Need 13 colors
+# library(ggsci)
+# scales::show_col(pal_rickandmorty()(12))
+# myPal <- c(pal_rickandmorty()(12), "black")
+
+myPal <- c("#82491EFF", "#24325FFF", "#FB6467FF", 
+           "#526E2DFF", "#E762D7FF", "#E89242FF",
+           "#917C5DFF", "#69C8ECFF", "#d18975", 
+           "#8fd175",  "#3f2d54", "#2d543d", "black")
+
+dfRselec$UE_15 <- factor(dfRselec$UE_15, levels = c("FR", "IT", "ES", "FI", "SE", "LT", "LV", "BG", "RO", "CZ", "DE", "HU", "Europe"))
 
 
-dfR15$UE_15 <- as.factor(dfR15$UE_15)
 #### Plot
-Rindex <- ggplot(data = dfR15, 
+Rindex <- ggplot(data = dfRselec, 
                  mapping = aes(x = Period, y = R, color= UE_15, group = UE_15)) +
   scale_color_manual("UE_15", values = myPal) +
   geom_point() +
   geom_line() + 
   labs(x = "",
        y = "Indice R") +
-  geom_label_repel(data = dfR15 %>% filter(Period == "2014-2020"),
+  geom_label_repel(data = dfRselec %>% filter(Period == "2014-2020"),
                    aes(label = UE_15), hjust = -0.2, size = 2) +
+  scale_x_discrete(expand = expand_scale(add = .2)) +
+  scale_y_continuous(breaks = seq(0.6, 1.8, 0.2)) +
   theme_light() +
   labs(caption = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013\nPG, AD, 2019") +
   theme(legend.position='none',
