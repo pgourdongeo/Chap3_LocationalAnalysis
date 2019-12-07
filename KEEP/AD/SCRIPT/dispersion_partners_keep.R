@@ -328,9 +328,36 @@ Rindex <- ggplot(data = dfRselec,
         plot.caption = element_text(size = 6))
 
 #### display and save
-pdf(file = "AD/OUT/indiceR_partners_test.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/indiceR_partners_test.pdf", width = 8.3, height = 5.8)
 Rindex
 dev.off()  
+
+### table abstract
+dfRselecN <- dfRselec %>% 
+  select(UE_15, Period, Npoints) %>% 
+  spread(key = Period, value = Npoints, sep = "_N_", fill = 0)
+
+colnames(dfRselecN) <- c("COUNTRY", "Npoints_0006", "Npoints_0713", "Npoints_1420")
+
+dfRselecR <- dfRselec %>% 
+  select(UE_15, Period, R) %>% 
+  spread(key = Period, value = R)
+
+colnames(dfRselecR) <- c("COUNTRY", "indiceR_0006", "indiceR_0713", "indiceR_1420")
+
+myTble <- left_join(dfRselecN, dfRselecR)
+
+myTble <- myTble %>% 
+  mutate_at(.vars = c(5:7), all_vars(round(., 2)))
+
+
+
+#### display and save
+require(gridExtra)
+
+pdf(file = "AD/OUT/indiceR_partners_tab.pdf", width = 8.3, height = 5.8)
+grid.table(myTble, rows = NULL)
+dev.off() 
 
 ## end---------------------
 
