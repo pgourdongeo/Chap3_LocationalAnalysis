@@ -48,6 +48,8 @@ nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>%
   st_make_valid()
 
 
+etmun_orga <- readRDS("DataSource/BD_ETMUN_ORGANISATION.rds")
+
 
 # Functions
 #================================================
@@ -305,4 +307,52 @@ projNuts <- ggplot(data = bibi, aes(x = reorder(Typo7, -nbm), y = nbm, fill = Le
 pdf(file = "OUT/adh_nutsUR_etmunall.pdf", width = 8.3, height = 5.8)
 projNuts
 dev.off()
+
+
+# Barplots nb adhésion/pays
+#================================================
+
+freq <- as.data.frame(table(sfETMUN_snap$CountryCode))
+freq <- freq %>% top_n(n = 20)
+
+top20 <- ggplot(data = freq,
+       aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "Identity") +
+  geom_text(data = freq %>% top_n(n = 16),
+            aes(label = Freq), 
+            position = position_dodge(0.9), 
+            vjust = 1.4, color = "white", size = 4) +
+  labs(x = "", 
+       y = "Nombre d'adhésions") +
+  theme_light() +
+  annotate("text", x = 10, y = 4000, hjust = 0,
+           label = paste("Les 20 premiers pays totalisent ", sum(freq$Freq) ," adhésions", sep = ""))
+
+
+# display end save
+pdf(file = "OUT/adh_pays_top20.pdf", width = 8.3, height = 5.8)
+top20
+dev.off()
+
+
+# Barplots nb siège/pays
+#================================================
+
+freq <- as.data.frame(table(etmun_orga$'Country (secretariat)'))
+freq <- freq %>% top_n(n = 6)
+
+top <- ggplot(data = freq,
+                aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "Identity") +
+  geom_text(aes(label = Freq), 
+            position = position_dodge(0.9), 
+            vjust = 1.4, color = "white", size = 4) +
+  labs(x = "", 
+       y = "Nombre de sièges d'association") +
+  theme_light() +
+  annotate("text", x = 2, y = 2, hjust = 0,
+           label = "")
+
+
+
 
