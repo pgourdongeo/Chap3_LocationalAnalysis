@@ -21,8 +21,7 @@ library(skimr)
 library(lwgeom)
 library(ggplot2)
 library(ggrepel)
-#library(ggpubr)
-#library(GGally)
+
 
 
 # Import data
@@ -122,6 +121,8 @@ rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2,
   
 }
 
+
+
 # Fonction pour identifier des outliers dans une distribution :
 is_outlier <- function(x) {
   
@@ -147,9 +148,23 @@ umz <- st_sf(umz,
 # 3144 umz with less than 11 projects
 # sum(umz$n < 11)
 
+
+# Filter value
+thrshld <- 10
+# Test R2 with threshold value
+R2 <- list()
+
+for(i in seq(1,20, 1)){
+  reg <- lm(log10(n) ~ log10(Pop2011) , data = umz %>% dplyr::filter(n > i))
+  R2[[i]] <- summary(reg)$r.squared
+}
+
+
 ## display graph
 ### with log10
-regUmz <- ggplot(umz %>% dplyr::filter(n > 10), aes(x = Pop2011, y = n)) +
+
+
+regUmz <- ggplot(umz %>% dplyr::filter(n > thrshld), aes(x = Pop2011, y = n)) +
   geom_point () +
   theme_light() +
   scale_y_continuous(trans = 'log10') +
@@ -160,22 +175,24 @@ regUmz
 
 ### Estimer la regression linéaire
 require(stats)
-reg <- lm(log10(n) ~ log10(Pop2011) , data = umz %>% dplyr::filter(n > 10))
+reg <- lm(log10(n) ~ log10(Pop2011) , data = umz %>% dplyr::filter(n > thrshld))
 summary(reg)
+
 ### Equation de la droite de regression :
 eq = paste0("y = 10^ ", round(reg$coefficients[1],2), " * x ^", round(reg$coefficients[2],2))  # On fait l'inverse de lg(y), y = 10^b * x^a
 
 ### Add line et equation
 regUmz + 
-  geom_abline(intercept = -0.78, slope = 0.48, color="#E69F00",
+  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
               linetype = "dashed", size = 1.5) +
-  annotate(geom = "text", x = 25000, y = 1000, label = paste0(eq, "\nR2 = 0.37")) 
+  annotate(geom = "text", x = 25000, y = 1000, label = paste0(eq, "\nR2 = ", 
+                                          round(summary(reg)$r.squared, 2))) 
 
 
 ## Residuals
 ### add residuals and standart residuals to df
 umz <- umz %>% 
-  filter(n > 10)%>%
+  filter(n > thrshld)%>%
   mutate(rezStand = residuals(reg, type = "pearson")) %>% 
   ungroup()
 
@@ -189,14 +206,15 @@ umz <- umz %>%
                                    as.numeric(NA)))
 
 ## Plot with outliers and save pdf
-#pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
+pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
 regUmz + 
   geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
                    aes(label = paste(Name, Country, sep = ", ")),
-                   na.rm = TRUE, nudge_y = 0.05, color = "black") + 
-  geom_abline(intercept = -0.78, slope = 0.48, color= "#E69F00",
+                   na.rm = TRUE, nudge_y = 0.05, color = "black", size = 2.5) + 
+  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
               linetype = "dashed", size = 1.5) +
-  annotate(geom = "text", x = 10000, y = 900, label= paste0(eq, "\nR2 = 0.37"), hjust = 0) 
+  annotate(geom = "label", x = 3000000, y = 50, label= paste0(eq, "\nR2 = ", 
+              round(summary(reg)$r.squared, 2)), hjust = 0, fill = "#E69F00", size = 3) 
 dev.off()
 
 
@@ -209,7 +227,7 @@ cols <- c("#1A7832", "#AFD4A0", "#f6f5c5", carto.pal("wine.pal",2))
 skim(umz$Pop2011)
 
 ### Plot and save
-pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+#pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 rezMap_propChoro(units = umz %>% filter(n > 10),
                  var = "Pop2011", 
                  myVal = c(8000, 1000000, 5000000, 10000000),
@@ -289,7 +307,7 @@ fua <- fua %>%
                                    as.numeric(NA)))
 
 ## Plot with outliers and save pdf
-pdf(file = "AD/OUT/lm_fua.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
+#pdf(file = "AD/OUT/lm_fua.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
 regFua + 
   geom_label_repel(data = fua %>% filter(!is.na(outlier_rezStand)), 
                    aes(label = paste(URAU_NAME, CNTR_CODE, sep = ", ")),
@@ -306,13 +324,28 @@ dev.off()
 bks <- c(min(fua$rezStand), -2 * sdRez, -1 * sdRez, 1 * sdRez, 2 * sdRez, max(fua$rezStand))
 cols <- c("#1A7832", "#AFD4A0", "#f6f5c5", carto.pal("wine.pal",2))
 
+skim(fua$URAU_POPL)
+
 ### Plot and save
-pdf(file = "AD/OUT/rez_fua.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
-rezMap(frame = rec, 
-       bgmap = sfEU, 
-       units = fua %>% filter(n > 10), 
-       var = "rezStand",
-       source = "Sources :",
-       titleLeg = "résidus standardisés\n")
+pdf(file = "AD/OUT/rez_fua_test.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+rezMap_propChoro(units = fua %>% filter(n > 10),
+                 var = "URAU_POPL", 
+                 myVal = c(50000, 2000000, 5000000, 11000000),
+                 var2 = "rezStand",
+                 title1 = "Population des aires urbaines en 2006", 
+                 title2 = "Résidus Standardisés*",
+                 labels = paste("*Résidus de la régression :\n", eq,",\ndiscrétisés selon la moyenne\ndes résidus (=0) et 1 écart-type", sep = ""),
+                 source = "Sources :")
 dev.off()
+
+
+### Plot and save  ---- OLD
+#pdf(file = "AD/OUT/rez_fua.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+# rezMap(frame = rec, 
+#        bgmap = sfEU, 
+#        units = fua %>% filter(n > 10), 
+#        var = "rezStand",
+#        source = "Sources :",
+#        titleLeg = "résidus standardisés\n")
+# dev.off()
 
