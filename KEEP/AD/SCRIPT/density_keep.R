@@ -90,7 +90,7 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.5, add = T)
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.5, add = T)
 
   ## Add legend
   legendChoro(pos = c(1000000, 3000000), 
@@ -282,7 +282,7 @@ bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ## Plot and save pdf
-#pdf(file = "AD/OUT/europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
+pdf(file = "AD/OUT/europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
           frame = rec,
