@@ -88,11 +88,12 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
   bb <- st_bbox(frame)
   par(mar = c(0, 0, 0, 0)) # à ajuster
   
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  # plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
+  #      xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.5, add = T)
+             legend.pos = "n")
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.5, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   ## Add legend
   legendChoro(pos = c(1000000, 3000000), 
@@ -103,14 +104,13 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
               nodata = FALSE, 
               values.rnd = 0, 
               col = cols)
-  
   # Add an explanation text
   text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
   # Add a layout
   layoutLayer(title = "",
               sources = sources,
-              author = "PG,AD, 2019",
+              author = "PG, AD, 2019",
               horiz = F,
               col = NA,
               frame = F,

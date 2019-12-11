@@ -86,11 +86,12 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
   bb <- st_bbox(frame)
   par(mar = c(0, 0, 0, 0)) # à ajuster
   
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  # plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
+  #      xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.5, add = T)
+             legend.pos = "n")
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.5, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
 
   ## Add legend
   legendChoro(pos = c(1000000, 3000000), 
@@ -128,32 +129,29 @@ plot_grids <- function(grid1, grid2, grid3,
   par(mar = c(0, 0, 0, 0), mfrow = c(2, 2), ps=15)
   
   ## plot1
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
+             legend.pos = "n")
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.1, add = T)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add title
   text(x = 1000000, y = 5300000, labels = title1, cex = 0.7, adj = 0, font = 2)
   
   ## plot2
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid2, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
+             legend.pos = "n")
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.1, add = T)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add title
   text(x = 1000000, y = 5300000, labels = title2, cex = 0.7, adj = 0, font = 2)
   
   
   ## plot3
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid3, var = "n", border = NA, breaks= bks, col= cols, 
-             legend.pos = "n", add = T)
-  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.1, add = T)
+             legend.pos = "n")
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.1, add = T)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add title
   text(x = 1000000, y = 5300000, labels = title3, cex = 0.7, adj = 0, font = 2)
