@@ -212,6 +212,13 @@ skim(Projects)
 ## Check doublon id project
 doublonProject <-Projects %>% group_by(ID_PROJECT)%>% filter(n() > 1)
 
+### Saving projects file into RDS 
+
+list.files("Data")
+ProjectsDup <- read.csv2("Data/ProjectsEucicop_all_LeadPartnerDuplicata.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
+saveRDS(ProjectsDup,"Data/ProjectsEucicop_all_LeadPartnerDuplicata.RDS")
+ProjectsUnique <-  read.csv2("Data/ProjectsEucicop_all_noduplicated.csv", stringsAsFactors = F, fileEncoding = "UTF-8")
+saveRDS(ProjectsUnique,"Data/ProjectsEucicop_all_noduplicated.RDS")
 
 #################
 ####### PARTNERS
@@ -423,4 +430,4 @@ write.csv2(Partners,
 Partners <- read.csv2("Data/ParntersEucicop_All.csv", 
                    stringsAsFactors = F, 
                    encoding = "UTF-8")
->>>>>>> 41e569a20ee0c83b626c21d12092ddf475bf1024
+
