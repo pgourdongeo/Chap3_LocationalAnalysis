@@ -320,7 +320,7 @@ Rindex <- ggplot(data = dfRselec,
   labs(x = "",
        y = "Indice R") +
   geom_label_repel(data = dfRselec %>% filter(Period == "2014-2020"),
-                  aes(label = UE_15), hjust = -0.2, size = 2) +
+                  aes(label = UE_15), hjust = -0.2, size = 3) +
   scale_x_discrete(expand = expand_scale(add = .2)) +
   theme_light() +
   labs(caption = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013\nPG, AD, 2019") +
@@ -328,7 +328,7 @@ Rindex <- ggplot(data = dfRselec,
         plot.caption = element_text(size = 6))
 
 #### display and save
-#pdf(file = "AD/OUT/indiceR_partners_test.pdf", width = 8.3, height = 5.8)
+#pdf(file = "AD/OUT/indiceR_partners.pdf", width = 8.3, height = 5.8)
 Rindex
 dev.off()  
 
