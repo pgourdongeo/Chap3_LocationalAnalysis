@@ -307,7 +307,7 @@ Rindex <- ggplot(data = dfRselec,
   labs(x = "",
        y = "Indice R") +
   geom_label_repel(data = dfRselec %>% filter(Period == "2014-2020"),
-                   aes(label = UE_15), hjust = -0.2, size = 2) +
+                   aes(label = UE_15), hjust = -0.2, size = 3) +
   scale_x_discrete(expand = expand_scale(add = .2)) +
   scale_y_continuous(breaks = seq(0.6, 1.8, 0.2)) +
   theme_light() +
@@ -316,7 +316,7 @@ Rindex <- ggplot(data = dfRselec,
         plot.caption = element_text(size = 6))
 
 #### display and save
-#pdf(file = "AD/OUT/indiceR_locality.pdf", width = 8.3, height = 5.8)
+pdf(file = "AD/OUT/indiceR_locality.pdf", width = 8.3, height = 5.8)
 Rindex
 dev.off()  
 
