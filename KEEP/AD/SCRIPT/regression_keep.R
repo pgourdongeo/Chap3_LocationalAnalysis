@@ -214,7 +214,8 @@ regUmz +
   geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
               linetype = "dashed", size = 1.5) +
   annotate(geom = "label", x = 3000000, y = 50, label= paste0(eq, "\nR2 = ", 
-              round(summary(reg)$r.squared, 2)), hjust = 0, fill = "#E69F00", size = 3) 
+              round(summary(reg)$r.squared, 2)), hjust = 0, fill = "#E69F00", size = 3) +
+  labs(caption = "Sources : EUCICOP 2019 ; Tradeve 2015", size = 3)
 dev.off()
 
 
@@ -228,7 +229,7 @@ skim(umz$Pop2011)
 
 ### Plot and save
 #pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
-rezMap_propChoro(units = umz %>% filter(n > 10),
+rezMap_propChoro(units = umz %>% filter(n > thrshld),
                  var = "Pop2011", 
                  myVal = c(8000, 1000000, 5000000, 10000000),
                  var2 = "rezStand",

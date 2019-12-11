@@ -7,9 +7,9 @@
 ##############################################################################
 
 ## Working directory huma-num
-setwd("~/BD_Keep_Interreg/")
+#setwd("~/BD_Keep_Interreg/")
 
-setwd("~/git/Chap3_LocationalAnalysis/KEEP")
+setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
 
 # Library
@@ -28,7 +28,7 @@ library(ggrepel)
 # Import data
 
 
-EtmunPoints <- read.csv2("ETMUN/DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
+EtmunPoints <- read.csv2("DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
 EtmunPoints <- EtmunPoints %>% filter(!is.na(lon))
 
 sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
@@ -37,16 +37,16 @@ sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
 
 
 
-sfEU <- st_read("KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
-rec <- st_read("KEEP/AD/FDCARTE/rec_3035.geojson")
-
-
+rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
 
 
-umz <- st_read("TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 3035)
 
-fua <- st_read("OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp") %>% 
+
+umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 3035)
+
+fua <- st_read("../OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp") %>% 
   st_transform(crs = 3035)
 
 
@@ -86,6 +86,48 @@ rezMap <- function(frame, bgmap, units, var, source, titleLeg){
   
 }
 
+
+rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2, 
+                             title1, title2, labels, source) {
+  
+  par(mar = c(0, 0, 0, 0)) 
+  
+  # Plot
+  plot(st_geometry(bgmap), col = "#E3DEBF", border = "ivory3", lwd = 0.5)
+  propSymbolsChoroLayer(units, 
+                        var = var, inches = 0.3, border = "grey60", lwd = 0.5, symbols = "square",
+                        var2 = var2, breaks = bks, col = cols,
+                        legend.var.pos = NA, legend.var2.pos = NA)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, add = TRUE)
+  
+  # Add legend
+  legendSquaresSymbols(pos = c(1000000, 4200000),
+                       cex = 1,
+                       var = myVal,
+                       inches = 0.3, border = "grey60", lwd = 0.5, col = NA,
+                       title.txt = title1, title.cex = 0.8, values.cex = 0.6)
+  
+  legendChoro(pos = c(1000000, 3000000), 
+              cex = 0.9,
+              title.txt = title2, title.cex = 0.8, values.cex = 0.7,
+              breaks = bks, col = cols, values.rnd = 2, nodata = F)
+  
+  
+  # Add an explanation text
+  text(x = 1000000, y = 2600000, labels = labels, cex = 0.7, adj = 0)
+  
+  # Add a layout
+  layoutLayer(title = "", 
+              sources = source, 
+              author = "PG, AD, 2019", 
+              horiz = FALSE,
+              col = NA, 
+              frame = F, 
+              scale = 500, 
+              posscale = c(6500000, 1000000))
+  
+}
+
 # Fonction pour identifier des outliers dans une distribution :
 is_outlier <- function(x) {
   
@@ -107,68 +149,80 @@ umz <- st_sf(umz,
              geometry = st_geometry(umz))
 
 summary(umz$n)
-# 2284 / 3962 umz with no project :
+# 2011 / 3962 umz with no project :
 # sum(umz$n == 0)
-# 3507 umz with less than 11 projects
+# 3869 umz with less than 11 projects
 # sum(umz$n < 11)
+
+
+# Filter value
+thrshld <- 2
+# Test R2 with threshold value
+R2 <- list()
+
+for(i in seq(1,20, 1)){
+  reg <- lm(log10(n) ~ log10(Pop2011) , data = umz %>% dplyr::filter(n > i))
+  R2[[i]] <- summary(reg)$r.squared
+}
+
 
 ## display graph
 ### with log10
-regUmz <- ggplot(umz %>% dplyr::filter(n > 1), aes(x = Pop2011, y = n)) +
+
+
+regUmz <- ggplot(umz %>% dplyr::filter(n > thrshld), aes(x = Pop2011, y = n)) +
   geom_point () +
   theme_light() +
-    scale_y_continuous(trans = 'log10') +
-   scale_x_continuous(trans = 'log10') +
-  labs(x = "Population 2011 des agglomérations UMZ", 
-       y = "Nombre d'adhésions à des associations de municipalités") 
+  scale_y_continuous(trans = 'log10') +
+  scale_x_continuous(trans = 'log10') +
+  labs(x = "Population 2011 des agglomérations UMZ (log10)", 
+       y = "Nombre d'adhésions à des associations de municipalités (log10)") 
 regUmz
 
 ### Estimer la regression linéaire
 require(stats)
-reg <- lm(log10(n) ~ log10(Pop2011) , data = umz %>% dplyr::filter(n > 1))
-reg <- lm(n ~ Pop2011 , data = umz %>% dplyr::filter(n > 1))
+reg <- lm(log10(n) ~ log10(Pop2011) , data = umz %>% dplyr::filter(n > thrshld))
 summary(reg)
 
 ### Equation de la droite de regression :
 eq = paste0("y = 10^ ", round(reg$coefficients[1],2), " * x ^", round(reg$coefficients[2],2))  # On fait l'inverse de lg(y), y = 10^b * x^a
-eq = paste0("y =",reg$coefficients[2], "x + ",  round(reg$coefficients[1],2))
+
 ### Add line et equation
 regUmz + 
-  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="red",
+  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
               linetype = "dashed", size = 1.5) +
-  annotate(geom="text", x= 2000000, y= 200, label= paste0(eq, "\nR2 = ", round(summary(reg)$r.squared, 3)),
-           color="black") 
+  annotate(geom = "text", x = 25000, y = 1000, label = paste0(eq, "\nR2 = ", 
+                                                              round(summary(reg)$r.squared, 2))) 
 
 
 ## Residuals
 ### add residuals and standart residuals to df
 umz <- umz %>% 
-  filter(n > 1)%>%
+  filter(n > thrshld)%>%
   mutate(rezStand = residuals(reg, type = "pearson")) %>% 
   ungroup()
 
 sdRez <- sd(umz$rezStand)
-summary(umz$rezStand)
+
 ## Outliers
 ### Ajout d'une variable Outlier au DF
-umz <- umz %>% filter(n > 1) %>%
+umz <- umz %>%
   mutate(outlier_rezStand = ifelse(is_outlier(rezStand), 
                                    rezStand, 
                                    as.numeric(NA)))
 
 ## Plot with outliers and save pdf
-#pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
+pdf(file = "OUT/lm_umz_etmun.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
 regUmz + 
   geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
                    aes(label = paste(Name, Country, sep = ", ")),
-                   na.rm = TRUE, nudge_y = 0.05, color = "black") + 
-  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="red",
+                   na.rm = TRUE, nudge_y = 0.05, color = "black", size = 2.5) + 
+  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
               linetype = "dashed", size = 1.5) +
-  annotate(geom="text", x= 20000, y= 100, label= paste0(eq, "\nR2 = 0.48"),
-           color="black") 
-
+  annotate(geom = "label", x = 3000000, y = 10, label= paste0(eq, "\nR2 = ", 
+           round(summary(reg)$r.squared, 2)), hjust = 0, fill = "#E69F00", size = 3) +
+  labs(caption = "Sources : ETMUN 2019 ; Tradeve 2015", size = 3) 
 dev.off()
-
 
 
 ## residuals map (residuals standart)
@@ -176,14 +230,18 @@ dev.off()
 bks <- c(min(umz$rezStand), -2 * sdRez, -1 * sdRez, 1 * sdRez, 2 * sdRez, max(umz$rezStand))
 cols <- c("#1A7832", "#AFD4A0", "#f6f5c5", carto.pal("wine.pal",2))
 
+skim(umz$Pop2011)
+
 ### Plot and save
-#pdf(file = "AD/OUT/rez_umz.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
-rezMap(frame = rec, 
-       bgmap = sfEU, 
-       units = umz %>% filter(n > 10), 
-       var = "rezStand",
-       source = "Sources :",
-       titleLeg = "résidus standardisés\n")
+pdf(file = "OUT/rez_umz_etmun.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+rezMap_propChoro(units = umz %>% filter(n > thrshld),
+                 var = "Pop2011", 
+                 myVal = c(10000, 1000000, 5000000, 10000000),
+                 var2 = "rezStand",
+                 title1 = "Population des UMZ en 2011", 
+                 title2 = "Résidus Standardisés*",
+                 labels = paste("*Résidus de la régression :\n", eq,",\ndiscrétisés selon la moyenne\ndes résidus (=0) et 1 écart-type", sep = ""),
+                 source = "Sources : ETMUN 2019 ; Tradeve 2015")
 dev.off()
 
 
