@@ -73,20 +73,12 @@ kTY_city <- kTY_city %>%
   mutate(P_Kcity_byNw = round(N_Kcity_byNw / Ncities * 100))
 
 kTY_city_spread <- kTY_city %>% 
+  select(Code_Network, KPOP, P_Kcity_byNw) %>% 
   spread(key = KPOP, value = P_Kcity_byNw, sep = "")
-K1 <- kTY_city_spread %>% drop_na(KPOP1) 
-K2 <- kTY_city_spread %>% drop_na(KPOP2)
-K3 <- kTY_city_spread %>% drop_na(KPOP3) 
-K4 <- kTY_city_spread %>% drop_na(KPOP4)  ### too long
 
+network <- left_join(network, kTY_city_spread)           
 
-network <- network %>% 
-  left_join(select(K1, KPOP1)) %>%
-  left_join(select(K2, KPOP2)) %>%
-  left_join(select(K3, KPOP3)) %>%
-  left_join(select(K4, KPOP4))            ### too long
-
-rm(K1, K2, K3, K4, kTY_city_spread, kTY_city)
+rm(kTY_city_spread, kTY_city)
 
 network <- network %>% 
   mutate_at(vars("KPOP1", "KPOP2", "KPOP3", "KPOP4"), 
@@ -170,6 +162,7 @@ for(i in unique(coords3035$Code_Network)){
 rm(bibi, coord, df, i)
 
 # et la distance moyenne ou médiane. 
+require(spdep)
 ##fonction dist moy au plus proche voisin (Ra)
 MeanDistNN <- function(sf, k){
   
@@ -198,7 +191,7 @@ NNdist <- sfUrbactCities %>%
 network <- network %>% left_join(NNdist)
 
 
-
+write.csv2(network, "AD/URBACT/reseauxUrbact.csv", row.names = FALSE, fileEncoding = "UTF-8")
 
 
 #Après on pourrait faire un ACP, ou même une CAH direct 

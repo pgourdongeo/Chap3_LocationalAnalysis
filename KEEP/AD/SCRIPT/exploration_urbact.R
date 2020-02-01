@@ -67,6 +67,11 @@ sfUrbactCitiesAggr <- st_as_sf(urbactCitiesAggr, coords = c("X", "Y"), crs = 432
 
 mapview(sfEU) + mapview(sfUrbactCitiesAggr)
 
+## villes qui participent le plus en espagne
+esp <- urbactCitiesAggr %>% filter(Country == "ES")
+topEsp <- esp %>%  ungroup() %>% top_n(wt = NbPart, n = 7)
+## les projets qui ont lead partner en espagne
+espLead <- urbactCities %>% filter(City.Statut == "Lead Partner" & Country == "ES")
 
 
 
