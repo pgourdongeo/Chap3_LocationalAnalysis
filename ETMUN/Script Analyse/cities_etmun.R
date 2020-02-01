@@ -2,11 +2,13 @@
 #                            VILLES ET MEMBRES ETMUN
 #
 # DESCRIPTION : cartographie du poids des villes européennes dans le réseau ETMUN ;
-#               régression linéaire (pop/nb d'adhésion) - non concluant ;
-#               Anova (nb d'adhésion/niveau admnistratif)
+#               régression linéaire (pop/nb d'adhésion) - non significatif ;
+#               Anova sur nb d'adhésion/niveau admnistratif ;
+#               Anova sur nb d'adhésion/population - non significatif ;
+#               Anova sur nb d'adhésion/type de région (Nuts CP 14-20) - non significatif ;
 # 
 #
-# PG, AD, Octobre 2019
+# PG, AD, janvier 2019
 ##############################################################################
 
 # Working directory huma-num
@@ -24,6 +26,10 @@ library(mapview)
 library(cartography)
 
 
+
+# weight of European cities in ETMUN network - mapping
+#======================================================
+
 # Load data
 etmun <- readRDS("Data/ETMUN_Membership_GNid.RDS")
 skim(etmun)
@@ -37,12 +43,12 @@ rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
 ## rm na : removed 75 out of 17333 rows (<1%)
 etmun <- etmun %>% filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
 
-## transform ti sf
+## transform to sf
 sfEtmun <- st_as_sf(etmun, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
    st_sf(sf_column_name = "geometry") %>%
    st_transform(crs = 3035)
 
-## summarise data by cities
+## summarise members ETMUN by cities
 sfCities <- sfEtmun %>% 
   group_by(geonameId, asciiName) %>% 
   summarise(nbMembers = n())
@@ -50,8 +56,24 @@ sfCities <- sfEtmun %>%
 ## filter cities in Europe
 sfCitiesEur <- st_intersection(sfCities, rec)
 
-## quick view
+## control view
 mapview(sfCitiesEur)
+
+
+
+# View distribution
+freq <- as.data.frame(table(sfCitiesEur$nbMembers))
+
+## create barplots
+distrib <- ggplot(data = sfCitiesEur, aes(x = nbMembers)) +
+  geom_histogram() +
+  scale_y_continuous(trans = "log10")
+
+## display end save
+# pdf(file = "OUT/distrib.pdf", width = 8.3, height = 5.8)
+# distrib
+# dev.off()
+
 
 
 # Fonction create proportional circles map with cartography
@@ -100,8 +122,7 @@ propMap <- function(frame = rec, bgmap = sfEU, sfpts, var,
 }
 
 
-
-## Plot and save
+## Plot raw data
 # pdf(file = "OUT/test.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 # propMap(sfpts = sfCitiesEur %>% filter(nbMembers > 3),
 #         var = "nbMembers",
@@ -112,13 +133,14 @@ propMap <- function(frame = rec, bgmap = sfEU, sfpts, var,
 # dev.off()
 
 ## transfo val
-sfCitiesEur <- sfCitiesEur %>%
-  mutate(nbMembersLog = log10(nbMembers))
-sfCitiesEur <- sfCitiesEur %>%
-  mutate(nbMembersExp = exp(nbMembers))
+# sfCitiesEur <- sfCitiesEur %>%
+#   mutate(nbMembersLog = log10(nbMembers))
+# sfCitiesEur <- sfCitiesEur %>%
+#   mutate(nbMembersExp = exp(nbMembers))
 sfCitiesEur <- sfCitiesEur %>%
   mutate(nbMembers2 = nbMembers*nbMembers)
-# 
+
+## Plot squared data
 # pdf(file = "OUT/test2.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 # propMap(sfpts = sfCitiesEur %>% filter(nbMembers > 3),
 #         var = "nbMembers2",
@@ -130,21 +152,9 @@ sfCitiesEur <- sfCitiesEur %>%
 
 
 
-freq <- as.data.frame(table(sfCitiesEur$nbMembers))
-
-# create barplots
-distrib <- ggplot(data = sfCitiesEur, aes(x = nbMembers)) +
-  geom_histogram() +
-  scale_y_continuous(trans = "log10")
-
-## display end save
-pdf(file = "OUT/distrib.pdf", width = 8.3, height = 5.8)
-distrib
-dev.off()
-
-
-
 # map with ggplot2
+
+## raw data
 #require(ggrepel)
 #require(ggspatial)
 
@@ -176,15 +186,19 @@ citiesEtmun <- ggplot() +
         legend.title = element_text(size = 10),
         legend.text = element_text(size = 7.5))
 
-  
-## display end save
-pdf(file = "OUT/propCitiesEtmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
-citiesEtmun
-dev.off()
+## display and save
+# pdf(file = "OUT/propCitiesEtmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+# citiesEtmun
+# dev.off()
 
 
 
-## Map with squarred values (to emphase the diffrences of proportionnality)
+## Map with squared values (to emphase the diffrences of proportionnality)
+
+### create a scale bar 500km
+myScaleBar <- data.frame(X = c(c(st_bbox(rec)[1]+400000), c(st_bbox(rec)[1]+900000)),
+                         Y = c(c(st_bbox(rec)[2]+400000), c(st_bbox(rec)[2]+400000)))
+
 citiesEtmun2 <- ggplot() + 
   geom_sf(data = sfEU, fill = "#E3DEBF", color = "ivory3", size = 0.5) +
   geom_sf(data = sfCitiesEur %>% filter(nbMembers > 3) %>% st_centroid(),
@@ -201,6 +215,9 @@ citiesEtmun2 <- ggplot() +
   geom_sf_text(data = sfCitiesEur %>% top_n(n = 10),
                aes(label = asciiName), size = 2.2, color = "ivory3",
                check_overlap = TRUE) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5) +
+  annotate("text", label = "500 km", size = 2.5, hjust = 0,
+           x = c(st_bbox(rec)[1]+500000), y = c(st_bbox(rec)[2]+480000)) +
   geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
   coord_sf(crs = 3035, datum = NA,
            xlim = st_bbox(rec)[c(1,3)],
@@ -213,6 +230,7 @@ citiesEtmun2 <- ggplot() +
 
 ## display end save
 pdf(file = "OUT/propCitiesEtmun2.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+par(mar = c(0,0,0,0))
 citiesEtmun2
 dev.off()
 
