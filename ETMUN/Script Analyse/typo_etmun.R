@@ -182,7 +182,7 @@ write.csv2(network, "netETMUNforCAH.csv", row.names = FALSE, fileEncoding = "UTF
 # abstract df for PG
 library(gridExtra)
 library(grid)
-d <- head(network[ , c(1, 3:7, 9, 15)])
+d <- head(network[ , c(1, 3:7, 9:10, 15)])
 pdf(file = "OUT/varCAH_etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
 grid.table(d, rows = NULL)
 dev.off()
