@@ -16,14 +16,11 @@ setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
 
 # Library
-library(readr)
-library(sf)
-library(mapview)
-library(tidyverse)
 library(tidylog)
-library(cartography)
+library(tidyverse)
 library(skimr)
-library(ggsn) # scalebar on maps
+library(sf)
+
 
 
 # Load data
@@ -147,7 +144,7 @@ network <- network %>% left_join(select(df, Code_Network, X_med = medX, Y_med = 
 
 
 # Clean envirmnt
-rm(bibi, coord, df, i, vec, PG, coords3035)
+rm(coord, df, i, vec, PG, coords3035)
 
 
 # et la distance moyenne ou médiane. 
@@ -179,12 +176,17 @@ NNdist <- sfEtmun %>%
 
 network <- network %>% left_join(NNdist)
 
-
+## save for exploratR
 write.csv2(network, "netETMUNforCAH.csv", row.names = FALSE, fileEncoding = "UTF-8")
 
+# abstract df for PG
+library(gridExtra)
+library(grid)
+d <- head(network[ , c(1, 3:7, 9, 15)])
+pdf(file = "OUT/varCAH_etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+grid.table(d, rows = NULL)
+dev.off()
 
-#Après on pourrait faire un ACP, ou même une CAH direct 
-#sur toutes ces grandeurs normalisées pour classifier les projets
 
 
 
@@ -193,16 +195,18 @@ write.csv2(network, "netETMUNforCAH.csv", row.names = FALSE, fileEncoding = "UTF
 ## CODE : https://zenodo.org/record/155333#.XdZn7dVCfIU
 
 # HIERARCHICAL CLUSTERING ----
+library(cluster)
+library(ggdendro)
+library(reshape2)
 
 # compute classification ----
-
 ComputeClassif <- function(df, varquanti, stand, method){
-  classifObj <- agnes(x = df[, varquanti], diss = FALSE, metric = "euclidean", stand = stand, method = method)
+  classifObj <- agnes(x = df[, varquanti], diss = FALSE, metric = "euclidean", 
+                      stand = stand, method = method)
   return(classifObj)
 }
 
 # plot dendrogram ----
-
 PlotDendro <- function(classifobj){
   dendroPlot <- as.dendrogram(classifobj)
   dendroData <- dendro_data(dendroPlot, type = "rectangle")
@@ -215,7 +219,6 @@ PlotDendro <- function(classifobj){
 }
 
 # plot inertia ----
-
 PlotHeight <- function(classifobj){
   sortedHeight <- sort(classifobj$height, decreasing = TRUE)
   relHeigth <- sortedHeight / sum(sortedHeight) * 100
@@ -231,7 +234,6 @@ PlotHeight <- function(classifobj){
 }
 
 # plot profile ----
-
 PlotProfile <- function(classifobj, nbclus){
   dfOri <- as.data.frame(classifobj$data, stringsAsFactors = FALSE)
   clusId <- cutree(classifobj, k = nbclus)
@@ -253,54 +255,28 @@ PlotProfile <- function(classifobj, nbclus){
 }
 
 
-# Plot choropleth map
+myVar <- c("Ncities", "Ncountry", "KPOP1", "KPOP2", "KPOP3", "KPOP4", "Ra", "areaKM2")
+cah <- ComputeClassif(df = network %>% filter(Network_Name != "Covenant of Mayors" & 
+                                                Network_Name != "Climate Alliance"),
+                      varquanti = myVar, method = "ward", stand = TRUE)
 
-CartoVar <- function(spdf, df, idshape, idtab, varquanti, paltype, discret, nbcl){
-  allPal <- c("blue.pal", "orange.pal", "red.pal", "brown.pal", "green.pal",
-              "purple.pal", "pink.pal", "wine.pal", "grey.pal", "turquoise.pal", 
-              "sand.pal", "taupe.pal", "kaki.pal" , "harmo.pal")
-  if(paltype == "quanti"){
-    colPal <- carto.pal(pal1 = allPal[sample(x = 1:14, size = 1)], n1 = nbcl, transparency = TRUE)
-    choroLayer(spdf = spdf, 
-               df = df,
-               spdfid = idshape,
-               dfid = idtab,
-               var = varquanti,
-               method = discret,
-               nclass = nbcl,
-               border = "grey",
-               legend.values.rnd = 1,
-               col = colPal,
-               legend.title.cex = 1, legend.values.cex = 1)
-  } else if (paltype == "diver") {
-    if(nbcl %% 2 == 0){
-      colPal <- carto.pal(pal1 = "orange.pal", n1 = nbcl/2, pal2 = "green.pal", n2 = nbcl / 2, transparency = TRUE)
-    } else {
-      colPal <- carto.pal(pal1 = "orange.pal", n1 = nbcl/2, pal2 = "green.pal", n2 = nbcl / 2, middle = TRUE, transparency = TRUE)
-    }
-    choroLayer(spdf = spdf, 
-               df = df,
-               spdfid = idshape,
-               dfid = idtab,
-               var = varquanti,
-               method = discret,
-               nclass = nbcl,
-               border = "grey",
-               legend.values.rnd = 1,
-               col = colPal,
-               legend.title.cex = 1, legend.values.cex = 1)
-  } else if (paltype == "quali"){
-    colPal <- carto.pal(pal1 = "multi.pal", n1 = nbcl, transparency = TRUE)
-    typoLayer(spdf = spdf, 
-              df = df,
-              spdfid = idshape,
-              dfid = idtab,
-              var = varquanti,
-              border = "grey",
-              col = colPal,
-              legend.title.cex = 1, legend.values.cex = 1)
-  }
-  
-  
-}
+cah <- ComputeClassif(df = network, varquanti = myVar, method = "ward", stand = TRUE)
+
+dendro <- PlotDendro(classifobj = cah)
+inert <- PlotHeight(classifobj = cah)
+myProfiles <- PlotProfile(classifobj = cah, nbclus = 4)
+
+
+network$cluster <- cutree(tree = cah, k = 4)
+freq <- data.frame(table(networkb$cluster))
+
+networkb <- network %>% filter(Network_Name != "Covenant of Mayors"& 
+                                 Network_Name != "Climate Alliance")
+networkb$cluster <- cutree(tree = cah, k = 4)
+freq <- data.frame(table(networkb$cluster))
+
+# pdf(file = "OUT/profilesCAH.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+# myProfiles
+# dev.off()
+
 
