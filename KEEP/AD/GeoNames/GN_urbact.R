@@ -1,5 +1,5 @@
 ## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 
@@ -7,8 +7,8 @@ setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 library(geonames) 
 library(tidyverse)
 library(readr)
-
-options(geonamesUsername="adouet")
+library(skimr)
+options(geonamesUsername="pgourdon")
 #options(geonamesHost="api.geonames.org")
 
 # source(system.file("tests","testing.R",package="geonames"),echo=TRUE)
@@ -65,15 +65,41 @@ urbactCitiesAggr <- urbactCitiesAggr %>%
 # GNdf <- bind_rows(GNplacename, .id = "Name")
 
 ## All urbact cities
-NameLocality <- urbactCitiesAggr$Name
-cntr <- urbactCitiesAggr$ISO
+Id <- urbactCitiesAggr$Name
+
 
 GNplacename <- list()
-for(i in NameLocality){
-  for (j in cntr) {
-    GNplacename[[i]] <- GNsearch(name = i, ISO = j, style = "FULL", 
-                                 maxRows = "1", cities = "cities1000")
-  }
+
+for(i in Id){
+  nameI <- i
+  CountryI<- urbactCitiesAggr[urbactCitiesAggr$Name == i,]$ISO
+  GNplacename[[i]] <-GNsearch(name = nameI , country = CountryI,  style = "FULL", maxRows = "1", cities = "cities1000")
+}
+UrbactCitiesGN <- bind_rows(GNplacename, .id = "Name") %>% complete(Name = names(GNplacename))
+
+skim(UrbactCitiesGN)
+
+saveRDS(UrbactCitiesGN, file = "AD/GeoNames/GNplacenameFirstQuery_13missing.rds")
+write.csv2(UrbactCitiesGN, file = "AD/GeoNames/GNplacenameFirstQuery_13missing.csv", row.names = F)
+
+# Get missing GN query (n= 13)
+NoGNUrbact <- UrbactCitiesGN %>% filter(is.na(geonameId))
+
+
+
+# Test GN on coord
+
+Id2 <- NoGNUrbact$Name
+GNplacenameCoord <- list()
+for(i in Id2){
+  x <- urbactCitiesAggr[urbactCitiesAggr$Name == i,]$X
+  y<- urbactCitiesAggr[urbactCitiesAggr$Name == i,]$Y
+  GNplacenameCoord[[i]] <- GNfindNearbyPlaceName(y, x, radius = "5", maxRows = "1",
+                                                 style = "FULL")
 }
 
-#saveRDS(GNplacename, file = "AD/GeoNames/GNplacename.rds")
+UrbactCitiesGNcoord <- bind_rows(GNplacenameCoord, .id = "Name") %>% complete(Name = names(GNplacenameCoord))
+
+
+saveRDS(UrbactCitiesGNcoord, file = "AD/GeoNames/13missingToCheck_GNCoord.rds")
+write.csv2(UrbactCitiesGNcoord, file = "AD/GeoNames/13missingToCheck_GNCoord.csv", row.names = F)
