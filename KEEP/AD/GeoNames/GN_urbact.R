@@ -4,6 +4,7 @@ setwd("~/BD_Keep_Interreg/KEEP")
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 
 # Library
+library(tidylog)
 library(geonames) 
 library(tidyverse)
 library(readr)
@@ -103,3 +104,52 @@ UrbactCitiesGNcoord <- bind_rows(GNplacenameCoord, .id = "Name") %>% complete(Na
 
 saveRDS(UrbactCitiesGNcoord, file = "AD/GeoNames/13missingToCheck_GNCoord.rds")
 write.csv2(UrbactCitiesGNcoord, file = "AD/GeoNames/13missingToCheck_GNCoord.csv", row.names = F)
+
+
+# check new query of the 13
+GNtoCheck <- readRDS("AD/GeoNames/13missingToCheck_GNCoord.rds")
+GNFirstQ <- readRDS("AD/GeoNames/GNplacenameFirstQuery_13missing.rds")
+
+## Corrections :
+### Morne-à l'eau (Guadeloupe) <- unknown by GN
+GNtoCheck[11, c(2:22, 24:40)] <- NA
+GNtoCheck[11, 23] <- "GN00"
+### Újbuda <- Budapest 
+buda <- GNFirstQ %>% 
+  filter(Name == "Budapest")
+GNtoCheck <- GNtoCheck %>% 
+  bind_rows(buda) %>% 
+  filter(Name != "Újbuda") %>% 
+  select(-distance)
+GNtoCheck[13, 1] <- "Újbuda"
+rm(buda)
+
+## Compile 1rst et 2nd query
+GN_urbact <- GNFirstQ %>% 
+  filter(geonameId != "NA") %>% 
+  rbind(GNtoCheck)
+
+## Add GN information to the urbact base
+### Load db
+urbactCities <- read_delim("AD/URBACT/BdCitiesUrbact_Code_UMZ_LAU2.csv", 
+                           ";", escape_double = FALSE, 
+                           col_types = cols(Code_Network = col_character()), 
+                           trim_ws = TRUE)
+
+urbactCities <- left_join(urbactCities, 
+                          select(GN_urbact, Name, geonameId, asciiName, lat_GN = lat, lng_GN = lng), 
+                          by = "Name")
+
+# Save
+## unique geoname ID
+GNU <- GN_urbact %>% 
+  select(-Name) %>% 
+  filter(!duplicated(geonameId))
+saveRDS(GNU, file = "AD/URBACT/UniqueGNforURBACT.rds")
+
+## Urbact db with GN id, name, lat, long
+saveRDS(urbactCities, file = "AD/URBACT/URBACT_Membership_GNid.rds")
+
+## unique city of Urbact members with all GN information
+saveRDS(GN_urbact, file = "AD/URBACT/URBACT_GNall_uniqueCity.rds")
+
