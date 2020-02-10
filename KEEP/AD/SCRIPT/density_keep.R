@@ -81,7 +81,7 @@ pt_in_grid <- function(feat, adm, cellsize){
 }
 
 ## Plot a gridded map
-plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
+plot_grid <- function(grid, adm, frame, sources, titleLeg, labels, labels2){
   
   bb <- st_bbox(frame)
   par(mar = c(0, 0, 0, 0)) # à ajuster
@@ -104,6 +104,9 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
               col = cols)
   # Add an explanation text
   text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
+  
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels2, cex = 0.75)
   
   # Add a layout
   layoutLayer(title = "",
@@ -272,12 +275,18 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
 # Map participations/cell 2000-2018 - all partners
 #================================================
 
-## 50 km cells
+## 2 500 km2 cells
 europegrided <- pt_in_grid(feat = sfParticipations_snap, adm = sfEU, cellsize = 50000)
 
 ## defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
+
+## Nb projects
+sfProjet <- sfParticipations_snap %>% 
+  filter(!duplicated(ID_PROJECT))
+gridProj <- pt_in_grid(feat = sfProjet, adm = sfEU, cellsize = 50000)
+sum(gridProj[[1]]$n)
 
 ## Plot and save pdf
 pdf(file = "AD/OUT/europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
@@ -286,7 +295,8 @@ plot_grid(grid = europegrided[[1]],
           frame = rec,
           sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ", 
           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
-          labels = "*Discrétisation en\nprogression géométrique")
+          labels = "*Discrétisation en\nprogression géométrique",
+          labels2 = str_c(sum(europegrided[[1]]$n), " participations\n", sum(gridProj[[1]]$n), " projets"))
 dev.off()
 
 ## PCT 0 participation
@@ -302,7 +312,7 @@ nrow(europegrided[[1]][europegrided[[1]]$n == 0,])/ nrow(europegrided[[1]]) *100
 # Maps participations/cell 2000-2006, 2007-2013 et 2014-2020
 #================================================
 
-## 50 km cells
+## 2 500 km2 cells
 europegrided <- pt_in_grid(feat = sfParticipations_snap, adm = sfEU, cellsize = 50000)
 ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
@@ -507,7 +517,7 @@ dev.off()
 
 
 ## Display density cells for lead partners only
-### 50 km cells
+### 2 500 km2 cells
 europegridedL <- pt_in_grid(feat = sfParticipations_snap %>% filter(Lead.Partner == "Yes"), 
                            adm = sfEU, cellsize = 50000)
 skim(europegridedL[[1]])
