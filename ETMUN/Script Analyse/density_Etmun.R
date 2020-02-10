@@ -9,7 +9,7 @@
 
 
 ## Working directory huma-num
-#setwd("~/BD_Keep_Interreg")
+# setwd("~/BD_Keep_Interreg/ETMUN/")
 
 setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
@@ -231,7 +231,7 @@ nrow(europegrided[[1]])
 nrow(europegrided[[1]][europegrided[[1]]$n == 0,])/ nrow(europegrided[[1]]) *100
 
 
-
+mapview(europegrided[[1]])
 
 # density of adhesions by nuts
 #================================================
