@@ -50,6 +50,9 @@ nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>%
 
 etmun_orga <- readRDS("DataSource/BD_ETMUN_ORGANISATION.rds")
 
+## quelles sont les asso dans lesquelles il y a bcp de villes espagnoles (en absolu)
+esp <- sfETMUN_snap %>% filter(CountryCode == "ES") %>% group_by(Network_Name) %>% summarise(n = n())
+
 
 # Functions
 #================================================
