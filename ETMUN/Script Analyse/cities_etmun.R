@@ -35,7 +35,7 @@ etmun <- readRDS("Data/ETMUN_Membership_GNid.RDS")
 skim(etmun)
 
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
-
+sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
 # Prepare data : cities in Europe with nb of members etmun
 ## rm na : removed 75 out of 17333 rows (<1%)
@@ -200,46 +200,51 @@ sfCitiesEur <- sfCitiesEur %>%
 sfCitiesEur <- sfCitiesEur %>%
   mutate(nbMembers2 = nbMembers*nbMembers)
 
+
+# ### Prepare labels 
+# require(ggrepel)
+# 
+# #### recover coordinates X and Y (for position of labels)
+# bibi <- sfCitiesEur %>% 
+#   ungroup() %>% 
+#   top_n(n = 10) %>% 
+#   st_cast("MULTIPOINT") %>%
+#   st_cast("POINT")
+# coords <- as.data.frame(st_coordinates(bibi))
+# 
+# mydf <- bibi %>% 
+#   mutate(X = coords$X, Y = coords$Y) %>% 
+#   as.data.frame() %>% 
+#   select(-geometry) 
+# 
+# rm(coords, bibi)
+
+
+
 ### create a simple and pretty scale bar 500km
-myScaleBar <- data.frame(X = c(c(st_bbox(rec)[1]+400000), c(st_bbox(rec)[1]+900000)),
-                         Y = c(c(st_bbox(rec)[2]+400000), c(st_bbox(rec)[2]+400000)))
-
-### Prepare labels 
-require(ggrepel)
-
-#### recover coordinates X and Y (for position of labels)
-bibi <- sfCitiesEur %>% 
-  ungroup() %>% 
-  top_n(n = 10) %>% 
-  st_cast("MULTIPOINT") %>%
-  st_cast("POINT")
-coords <- as.data.frame(st_coordinates(bibi))
-
-mydf <- bibi %>% 
-  mutate(X = coords$X, Y = coords$Y) %>% 
-  as.data.frame() %>% 
-  select(-geometry) 
-
-rm(coords, bibi)
-
+myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-400000)),
+                         Y = c(c(st_bbox(rec)[2]+200000), c(st_bbox(rec)[2]+200000)))
 
 
 citiesEtmun2 <- ggplot() + 
   geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
   geom_sf(data = sfCitiesEur %>% filter(nbMembers > 3) %>% st_centroid(),
           mapping = aes(size = nbMembers2), colour = "#ff6200B3", show.legend = NA) +
-  scale_size(name = "Nombre de membres ETMUN",
+  scale_size(name = "Nombre d'adhésions par ville\naux associations transnationales\nde municipalités (ETMUN)",
              breaks = c(1600, 400, 200, 16),
              labels = c("40", "20", "10", "4"),
              range = c(0.5, 13)) +
-  annotate("text", label = "Les villes comptant moins de 4 membres\nne figurent pas sur la carte", 
+  annotate("text", label = "Les villes comptant moins de 4 adhésions\nne figurent pas sur la carte", 
            size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
-  annotate("text", label = "Source : ETMUN 2019 / PG, AD, 2019",
-           size = 2.2, x = 6000000, y = 980000, hjust = 0) +
+  annotate("text", label = str_c(sum(sfCitiesEur$nbMembers), " adhésions réparties dans\n", 
+                                 length(unique(etmun$Network_Name)), " associations ETMUN"),
+           size = 3,
+           x = c(st_bbox(rec)[3]-1000000), y = c(st_bbox(rec)[4]-800000)) +
+  annotate("text", label = "Source : ETMUN 2019\nPG, AD, 2019",
+           size = 2.2, 
+           hjust = 1,
+           x = c(st_bbox(rec)[3]), y = c(st_bbox(rec)[2]-130000)) +
   labs(x = "", y = "") +
-  # geom_sf_text(data = sfCitiesEur %>% top_n(n = 10),
-  #              aes(label = asciiName), size = 2.2, color = "grey80", font = 2,
-  #              check_overlap = TRUE) +
   geom_sf_text(data = sfCitiesEur %>% top_n(n = 10),
                aes(label = asciiName), size = 2.2, color = "#4d4d4d",
                check_overlap = TRUE) +
@@ -251,12 +256,12 @@ citiesEtmun2 <- ggplot() +
   #                 size = 2.3) +
   geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
   annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
-           x = c(st_bbox(rec)[1]+500000), y = c(st_bbox(rec)[2]+480000)) +
+           x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
   geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
   coord_sf(crs = 3035, datum = NA,
            xlim = st_bbox(rec)[c(1,3)],
            ylim = st_bbox(rec)[c(2,4)]) +
-  theme_minimal() +
+  theme_void() +
   theme(legend.position =  c(0.18, 0.60), 
         legend.title = element_text(size = 10),
         legend.text = element_text(size = 7.5))
@@ -267,8 +272,9 @@ pdf(file = "OUT/propCitiesEtmun2.pdf", width = 8.3, height = 5.8, pagecentre = F
 citiesEtmun2
 dev.off()
 
-##################################
 
+##################################
+library(stringr)
 
 
 # ANOVA nb of members etmun/administration level
@@ -336,7 +342,7 @@ rm(admin)
 ## APPLI : https://analytics.huma-num.fr/geographie-cites/ExploratR/
 ## CODE : https://zenodo.org/record/155333#.XdZn7dVCfIU
 
-### Anova parameters (1 factor) ---- 
+### Anova parameters (1 factor) --
 AnovaTab <- function(df, varx, vary){
   groupMean <- round(tapply(df[, vary], df[, varx], mean, na.rm = TRUE), digits = 2)
   groupMedian <- round(tapply(df[, vary], df[, varx], median, na.rm = TRUE), digits = 2)
@@ -357,7 +363,7 @@ AnovaTab <- function(df, varx, vary){
   return(tabVariance)
 }
 
-### Anova plot (1 factor) ---- modifié
+### Anova plot (1 factor) -- modifié
 AnovaPlot <- function(df, varx, vary, tx, ty){
   
   xLevels <- sort(unique(df[, varx]))
@@ -402,7 +408,7 @@ AnovaPlot <- function(df, varx, vary, tx, ty){
   return(aovPlot)
 }
 
-### Compute linear model ---- 
+### Compute linear model -- 
 ComputeRegression <- function(df, vardep, varindep, interact = FALSE){
   if(interact == FALSE){
     linMod <- lm(formula = formula(eval(paste(vardep, "~", paste(varindep, collapse = "+")))), data = df)
@@ -458,7 +464,7 @@ dev.off()
 
 
 
-
+#a nettoyer
 
 
 ######################################
