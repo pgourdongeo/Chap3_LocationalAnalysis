@@ -524,6 +524,57 @@ dev.off()
 
 
 
+## MAP: Figure 3.17 –---------------
+## Nombre total de participations aux projets URBACT (II & III) par ville, entre 2007
+## et 2016.  
 
 
+### with squared values (to emphase the differences of proportionnality)
+sfUrbactCitiesAggr <- sfUrbactCitiesAggr %>%
+  mutate(NbPart2 = NbPart*NbPart)
+
+### create a simple and pretty scale bar 500km
+myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-400000)),
+                         Y = c(c(st_bbox(rec)[2]+200000), c(st_bbox(rec)[2]+200000)))
+
+
+citiesUrbact <- ggplot() + 
+  geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
+  geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
+          mapping = aes(size = NbPart2), colour = "#D2019599", show.legend = NA) +
+  scale_size(name = "Nombre de projets URBACT\npar ville (URBACT II & III)",
+             breaks = c(81, 36, 16, 4),
+             labels = c("9", "6", "4", "2"),
+             range = c(0.5, 10)) +
+  annotate("text", label = "Nom des villes : à partir de 4 participations", 
+           size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
+  annotate("text", label = str_c(sum(sfUrbactCitiesAggr$NbPart), " participations\n", 
+                                 length(unique(sfUrbactCitiesAggr$CodeCity)), " villes URBACT"),
+           size = 3,
+           x = c(st_bbox(rec)[3]-1000000), y = c(st_bbox(rec)[4]-800000)) +
+  annotate("text", label = "Source : EUCICOP-URBACT, 2019\nPG, AD, 2019",
+           size = 2.2, 
+           hjust = 1,
+           x = c(st_bbox(rec)[3]), y = c(st_bbox(rec)[2]-130000)) +
+  labs(x = "", y = "") +
+  geom_sf_text(data = sfUrbactCitiesAggr %>% filter(NbPart > 3),
+               aes(label = Name), size = 2.2, color = "#4d4d4d",
+               check_overlap = TRUE) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
+  annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
+           x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
+  geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
+  coord_sf(crs = 3035, datum = NA,
+           xlim = st_bbox(rec)[c(1,3)],
+           ylim = st_bbox(rec)[c(2,4)]) +
+  theme_void() +
+  theme(legend.position =  c(0.18, 0.60), 
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 7.5))
+
+
+## display end save
+pdf(file = "AD/OUT/propCitiesUrbact.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+citiesUrbact
+dev.off()
 

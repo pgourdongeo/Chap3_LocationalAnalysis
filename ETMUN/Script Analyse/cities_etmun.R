@@ -236,7 +236,7 @@ citiesEtmun2 <- ggplot() +
              range = c(0.5, 13)) +
   annotate("text", label = "Les villes comptant moins de 4 adhésions\nne figurent pas sur la carte", 
            size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
-  annotate("text", label = str_c(sum(sfCitiesEur$nbMembers), " adhésions réparties dans\n", 
+  annotate("text", label = str_c(sum(sfCitiesEur$nbMembers), " adhésions\n", 
                                  length(unique(etmun$Network_Name)), " associations ETMUN"),
            size = 3,
            x = c(st_bbox(rec)[3]-1000000), y = c(st_bbox(rec)[4]-800000)) +
@@ -274,7 +274,7 @@ dev.off()
 
 
 ##################################
-library(stringr)
+
 
 
 # ANOVA nb of members etmun/administration level
