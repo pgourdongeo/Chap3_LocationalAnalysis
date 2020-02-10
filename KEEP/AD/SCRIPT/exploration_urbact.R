@@ -43,6 +43,12 @@ urbactCities <- read_delim("AD/URBACT/BdCitiesUrbact_Code_UMZ_LAU2.csv",
                        trim_ws = TRUE)
 
 
+# Nb moy de villes par projet
+urbactCities <- urbactCities %>% 
+  group_by(Code_Network) %>% 
+  mutate(nbCity = length(unique(Name)))
+
+summary(urbactCities$nbCity)
 
 
 # aggregation: nb participation/city
@@ -117,6 +123,8 @@ dev.off()
 ## Nb ville/country --- Luxembourg is not in the network
 freq2 <- as.data.frame(table(urbactCitiesAggr$Country)) %>% 
   mutate(pct = Freq / sum(Freq) * 100)
+
+summary(freq2$Freq)
 
 freq_NbVille <- ggplot(data = freq2,
        aes(x = reorder(Var1, -Freq), y = Freq)) +
@@ -216,7 +224,10 @@ sfEUR <- sfEUR %>%
 
 ### Stock frame limits
 bbrec <- st_bbox(rec)
-#bbeu <- st_bbox(sfEU)
+
+### create a simple and pretty scale bar 500km
+myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-400000)),
+                         Y = c(c(st_bbox(rec)[2]+200000), c(st_bbox(rec)[2]+200000)))
 
 ### plot
 superbeCarte <- ggplot() +
@@ -225,35 +236,28 @@ superbeCarte <- ggplot() +
           aes(fill = TYPO), colour = "ivory3", size = 0.4) +
   scale_fill_manual(name = "Ratio\n(nb de participations /\nnb de villes participantes)*",
                     values = cols, na.value = "ivory4") +
-  ggsn::scalebar(location = "bottomright",
-                 dist = 500, #km
-                 x.min = bbrec[1],
-                 x.max = bbrec[3] - 300000,
-                 y.min = bbrec[2] + 100000,
-                 y.max = bbrec[4],
-                 #dd2km = F,
-                 dist_unit = "km",
-                 st.bottom = FALSE,
-                 #st.dist = .025,
-                 st.size = 2.5,
-                 height = .01,
-                 transform = FALSE) +
-  coord_sf(xlim = bbrec[c(1,3)], ylim =  bbrec[c(2,4)], expand = FALSE) +
-  #geom_sf(data = rec, color = "ivory4", fill = NA) +
-  #ggsn::scalebar(sfEU, dist = 100, dist_unit = "km", transform = FALSE) +
-  theme_void() +
   annotate("text", label = "Ratio moyen* = 1.9", size = 3.5, hjust = 0,
-           x = bbrec[1] + 300000, y = bbrec[2] + 2600000) +
+           x = bbrec[1] + 270000, y = bbrec[2] + 2200000) +
   annotate("text", label = "*Discrétisation effectuée\nselon la moyenne et\n1/2 écart-type et calculée\nsans la valeur maximum",
-           x = bbrec[1] + 300000, y = bbrec[2] +2000000, size = 2.8, hjust = 0) +
-  # annotate("text", x = bbrec[1] + 690000, y = bbrec[2] + 50000, 
-  #          label = "Source : EUCICOP-URBACT, 2019\nPG, AD, 2019", size = 2, hjust = 0) +
-  labs(caption = "Source : EUCICOP-URBACT, 2019\nPG, AD, 2019") +
-  theme(legend.position = c(0.15, 0.8), 
+           x = bbrec[1] + 270000, y = bbrec[2] +1500000, size = 2.8, hjust = 0) +
+  annotate("text", label = str_c(sum(urbactCitiesAggr$NbPart), " participations\n", 
+                                 length(unique(urbactCities$CodeCity)), " villes URBACT"),
+           size = 3,
+           x = c(st_bbox(rec)[3]-1000000), y = c(st_bbox(rec)[4]-800000)) +
+  annotate("text", label = "Source : EUCICOP-URBACT, 2019\nPG, AD, 2019",
+           size = 2.2, hjust = 1,
+           x = c(bbrec[3]), y = c(bbrec[2]-130000)) +
+  geom_sf(data = rec, color = "ivory4", fill = NA) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
+  annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
+           x = c(bbrec[3]-800000), y = c(bbrec[2]+280000)) +
+  coord_sf(crs = 3035, datum = NA,
+           xlim = bbrec[c(1,3)],
+           ylim = bbrec[c(2,4)]) +
+  theme_void() +
+  theme(legend.position = c(0.18, 0.7), 
         legend.text = element_text(size = 9),
-        legend.title = element_text(size = 10),
-        plot.caption = element_text(size = 6),
-        panel.border = element_rect(color = "ivory4", fill = NA, size = 0.4))
+        legend.title = element_text(size = 10))
   
 
 ### display and save
