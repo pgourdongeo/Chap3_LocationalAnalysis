@@ -200,3 +200,83 @@ write.csv2(network, "AD/URBACT/reseauxUrbact.csv", row.names = FALSE, fileEncodi
 
 
 
+
+#--------------------------------------------------------
+# New var for CAH : new city size percentages and a primacy index
+
+
+# Import data
+sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+
+rec <- st_read("AD/FDCARTE/rec_3035.geojson")
+
+urbactCities <- read_delim("AD/URBACT/BdCitiesUrbact_Code_UMZ_LAU2.csv", 
+                           ";", escape_double = FALSE, 
+                           col_types = cols(Code_Network = col_character()), 
+                           trim_ws = TRUE)
+
+
+
+# Creation of a new table of URBACT projects (with number of city in each network)
+network <- urbactCities %>% 
+  group_by(Code_Network) %>% 
+  summarise(Ncities = n()) 
+
+
+# % of cities by city size (category) in each project
+
+## First, create a new vars: class of city size (1, 2, 3 ou 4) 
+## si classe de taille validée, nommer ces classes (petite ville, moyenne, etc. par ex)
+skim(urbactCities$POPLAU2_2015)
+urbactCities <- urbactCities %>% 
+  mutate(KPOP = case_when(POPLAU2_2015 < 50000 ~ "1",
+                          POPLAU2_2015 > 50000 & POPLAU2_2015 < 150000 ~ "2",
+                          POPLAU2_2015 > 150000 & POPLAU2_2015 < 300000 ~ "3",
+                          TRUE ~ "4"))
+
+table(urbactCities$KPOP)
+
+## Count number of cities in each category by network
+kTY_city <- urbactCities %>% 
+  group_by(Code_Network, KPOP) %>% 
+  summarise(N_Kcity_byNw = n())
+
+## Add number of cities in each network
+kTY_city <- left_join(kTY_city, network, by = "Code_Network")
+
+## % 
+kTY_city <- kTY_city %>% 
+  mutate(P_Kcity_byNw = round(N_Kcity_byNw / Ncities * 100))
+
+kTY_city_spread <- kTY_city %>% 
+  select(Code_Network, KPOP, P_Kcity_byNw) %>% 
+  spread(key = KPOP, value = P_Kcity_byNw, sep = "")
+
+network <- left_join(network, kTY_city_spread)           
+
+rm(kTY_city_spread, kTY_city)
+
+network <- network %>% 
+  mutate_at(vars("KPOP1", "KPOP2", "KPOP3", "KPOP4"), 
+            replace_na, 0)
+
+
+
+# primacy index (pop of the biggest city/pop of the smallest)
+
+urbactCities <- urbactCities %>% 
+  group_by(Code_Network) %>% 
+  mutate(primacy_index = max(POPLAU2_2015)/min(POPLAU2_2015))
+
+pI <- urbactCities %>% 
+  select(Code_Network, primacy_index) %>% 
+  filter(!duplicated(Code_Network))
+
+network <- network %>% left_join(pI)
+
+
+write.csv2(network, "AD/URBACT/URBACTforCAH.csv", row.names = FALSE, fileEncoding = "UTF-8")
+
+
+
+
