@@ -70,7 +70,7 @@ pt_in_grid <- function(feat, adm, cellsize){
   . <- st_intersects(grid, feat)
   grid <- st_sf(n = sapply(X = ., FUN = length), grid)
   
-  # cut cells in the borders
+  # list
   ptgrid[["grid"]] <- grid 
   
   # remove null values
@@ -535,6 +535,100 @@ plot_grid(grid = europegridedL[[1]],
           titleLeg = "Nombre de participations des lead partners\naux projets de l'UE\npar carreau de 2 500 km2*",
           labels = "*Discrétisation en\nprogression géométrique")
 dev.off()
+
+
+
+# Map participations/pop 2006/cell 
+#================================================
+
+# le work flow est simple :  
+# 1. Prendre notre grille Europe. 
+# 2. Charger la grid population 2006. 
+# 3. Interpoler avec st_interpolate pour avoir 
+# la population mais sur notre grille 
+# (% de surfaces de petits carreaux = % de population dans nos grands carreaux) 
+# 4. Faire le point in grid comme d'hab en gardant la pop 
+# 5. Calculer un nombre de participations pour 100 000 hab 
+# (ou 10 000 selon les ordres de grandeur) . 
+# 6. Ploter
+
+## load eurostat population grids
+# popGrid <- read_delim("DataSource/GEOSTAT_grid_EU_POP_1K/GEOSTAT_grid_EU_POP_2006_1K_V1_1_1.csv", 
+#                       ";", escape_double = FALSE, trim_ws = TRUE)
+# sfPopGrid <- st_read("DataSource/GEOSTAT_grid_EU_POP_1K/Grid_ETRS89_LAEA_1K_ref_GEOSTAT_2006.shp")
+# 
+# 
+# ## Join pop attibute to sf
+# sfPopGrid <- left_join(select(sfPopGrid, GRD_ID = GRD_INSPIR), popGrid, by = "GRD_ID")
+# 
+# ## transform to 3035
+# sfPopGrid <- sfPopGrid %>% 
+#   st_transform(crs = 3035)
+
+
+## Create a regular grid 
+grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
+#mapview(grid)
+
+### Keep only cells that intersect adm
+. <- st_intersects(grid, sfEU)
+grid <- grid[sapply(X = ., FUN = length)>0]
+#mapview(grid)
+
+## interpolate 
+# test <- st_interpolate_aw(sfPopGrid["POP_TOT"], grid, extensive = TRUE)
+
+## load interpolate grid pop
+interpolate_grid <- readRDS("AD/SHP/interpolation.RDS")
+interpolate_grid <- interpolate_grid %>% select(-Group.1)
+
+# Count pts in grid
+. <- st_intersects(grid, sfParticipations_snap)
+grid <- st_sf(n = sapply(X = ., FUN = length), grid)
+
+## join
+grid <- st_join(interpolate_grid, grid, join = st_equals)
+mapview(grid)
+
+# cut cells in the borders
+grid <- st_intersection(grid, sfEU)
+mapview(grid)
+
+## Add density to df : nb of participations for n inhabitants
+vec <- 10000
+grid <- grid %>% 
+  mutate(density = n / POP_TOT * vec)
+
+
+## Display map
+
+### distribution
+skim(grid$density)
+hist(grid$density)
+
+distrib <- grid %>% filter(density >= 1 & density < 120) 
+skim(distrib$density)
+distrib <- sort(distrib$density)
+hist(distrib)
+
+
+### defines a set of breaks and colors
+# myvar <- nutsUR %>% filter(density != 0) %>% select(density) 
+# bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
+bks <- c(0, getBreaks(v =  distrib, method = "fisher-jenks", nclass = 6), 145000)
+cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 1))
+
+### Plot and save
+pdf(file = "AD/OUT/density_popgrid_eucicopall.pdf",width = 8.3, height = 5.8)
+dens_map(frame = rec, 
+         bgmap = sfEU, 
+         sf = grid, 
+         titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants\net par carreaux de 2 500km2*",
+         sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013 / Eurostat",
+         labels = "*Discrétisation en\nprogression géométrique")
+dev.off()
+
+
 
 
 

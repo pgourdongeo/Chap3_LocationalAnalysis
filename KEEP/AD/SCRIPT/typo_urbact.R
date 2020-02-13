@@ -26,9 +26,9 @@ library(ggsn) # scalebar on maps
 
 
 
-#--------------------------------------------------------
+#------------------------------------------------------------------
 # New var for CAH : new city size percentages and a primacy index
-
+#------------------------------------------------------------------
 
 # Import data
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
@@ -54,6 +54,7 @@ network <- urbactCities %>%
 ## si classe de taille validée, nommer ces classes (petite ville, moyenne, etc. par ex)
 skim(urbactCities$POPLAU2_2015)
 urbactCities <- urbactCities %>% 
+  filter(!is.na(POPLAU2_2015)) %>% 
   mutate(KPOP = case_when(POPLAU2_2015 < 50000 ~ "1",
                           POPLAU2_2015 > 50000 & POPLAU2_2015 < 150000 ~ "2",
                           POPLAU2_2015 > 150000 & POPLAU2_2015 < 300000 ~ "3",
@@ -109,20 +110,20 @@ pI <- urbactCities %>%
   filter(!duplicated(primacy_index))
 
 network <- network %>% left_join(select(pI, Code_Network, primacy_index))
+rm(pI)
 
 # variance pop
 variance <- urbactCities %>% 
   group_by(Code_Network) %>% 
   mutate(ect = sd(POPLAU2_2015),
          moy = mean(POPLAU2_2015),
-         coef_variation = ect/moy) %>% 
+         coefVar_pop = ect/moy) %>% 
   filter(!duplicated(Code_Network))
 
-network <- network %>% left_join(select(variance, Code_Network, coef_variation))
+network <- network %>% left_join(select(variance, Code_Network, coefVar_pop))
+rm(variance)
 
-
-
-### save
+# save for exploratR
 write.csv2(network, "AD/URBACT/URBACTforCAH.csv", row.names = FALSE, fileEncoding = "UTF-8")
 
 
@@ -132,12 +133,12 @@ write.csv2(network, "AD/URBACT/URBACTforCAH.csv", row.names = FALSE, fileEncodin
 ## CODE : https://zenodo.org/record/155333#.XdZn7dVCfIU
 
 
+#--------------------------------------------------------
 
 
 
 
-
-
+## First try --------------------------------
 
 # Import data
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
@@ -311,7 +312,7 @@ write.csv2(network, "AD/URBACT/reseauxUrbact.csv", row.names = FALSE, fileEncodi
 #Après on pourrait faire un ACP, ou même une CAH direct 
 #sur toutes ces grandeurs normalisées pour classifier les projets
 
-
+##  --------------------------------
 
 
 

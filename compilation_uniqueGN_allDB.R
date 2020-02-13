@@ -9,7 +9,7 @@
 ##############################################################################
 
 # Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+#setwd("~/BD_Keep_Interreg")
 
 setwd("~/git/Chap3_LocationalAnalysis")
 
@@ -17,7 +17,7 @@ setwd("~/git/Chap3_LocationalAnalysis")
 library(tidylog)
 library(tidyverse)
 library(sf)
-
+library(mapview)
 
 
 # Load DB
@@ -104,9 +104,52 @@ allDB_gnu <- aggregate(x = allDB[3:9],
                      FUN = max)
 
 
-test <- allDB_gnu %>% 
-  mutate(detect = str_detect(allDB_gnu$asciiName, " ")) %>% 
-  filter(detect == TRUE)
+
+# Add GN variables to allDB_GNU
+
+# Load DB with gn info
+urbact_gnInfo <- readRDS("KEEP/AD/URBACT/UniqueGNforURBACT.rds")
+etmun_gnInfo <- readRDS("ETMUN/Data/UniqueGNforETMUN.rds")
+eucicop_gnInfo <- readRDS("KEEP/Data/GNid_uniqueCity_Eucicop.RDS")
 
 
+urbact_gnInfo <- urbact_gnInfo %>% 
+  rename(lat_GN = lat,
+         lng_GN = lng) %>% 
+  mutate(lat_GN = as.numeric(lat_GN),
+         lng_GN = as.numeric(lng_GN))
+
+
+allGN_info <- eucicop_gnInfo %>% 
+  bind_rows(etmun_gnInfo) %>% 
+  bind_rows(urbact_gnInfo) %>% 
+  filter(!duplicated(geonameId))
+
+
+EuropeGN <- allGN_info %>% 
+  filter(continentCode == "EU")
+EuropeGNsf <-st_as_sf( EuropeGN, coords = c("lng_GN", "lat_GN"), crs = 4326)
+
+mapview(EuropeGNsf)
+
+admin <- allGN_info %>% 
+  filter(continentCode == "EU") %>% 
+  group_by(adminId3) %>% 
+  summarise(n = n()) %>% 
+  filter(n>1)
+
+unique(allGN_info$fcodeName)
+
+typo <- allGN_info %>% 
+  group_by(fcodeName) %>% 
+  summarise(n = n())
+
+
+library(geonames)
+options(geonamesUsername="")
+
+dftest<- GNhierarchy(12047194) %>% slice(nrow(.)-1)
+
+
+  
 
