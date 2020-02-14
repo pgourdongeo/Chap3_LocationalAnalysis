@@ -590,8 +590,21 @@ grid <- st_sf(n = sapply(X = ., FUN = length), grid)
 grid <- st_join(interpolate_grid, grid, join = st_equals)
 mapview(grid)
 
+
+
+### Add ISO 
+CORRESP_CNTR_ISO2 <- read_delim("AD/CORRESP_CNTR_ISO2.csv", 
+                                ";", escape_double = FALSE, trim_ws = TRUE)
+sfEU <- left_join(select(sfEU, ID, NAME_EN, UE28), 
+                   select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), 
+                   by = "NAME_EN")
 # cut cells in the borders
-grid <- st_intersection(grid, sfEU)
+sfEUforCut <- sfEU %>%
+  filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Liechtenstein", "Switzerland")) %>% 
+  filter(NAME_EN != "Croatia")
+mapview(sfEUforCut)
+
+grid <- st_intersection(grid, sfEUforCut)
 mapview(grid)
 
 ## Add density to df : nb of participations for n inhabitants
@@ -600,29 +613,36 @@ grid <- grid %>%
   mutate(density = n / POP_TOT * vec)
 
 
+
+
 ## Display map
 
 ### distribution
 skim(grid$density)
 hist(grid$density)
 
-distrib <- grid %>% filter(density >= 1 & density < 120) 
+distrib <- grid %>% filter(density >= 1 & density < 100)
 skim(distrib$density)
 distrib <- sort(distrib$density)
 hist(distrib)
 
 
+grid2 <- grid %>% 
+  filter(density < 100)
+
+
+
+
 ### defines a set of breaks and colors
-# myvar <- nutsUR %>% filter(density != 0) %>% select(density) 
-# bks <- c(0, getBreaks(v =  myvar$density, method = "geom", nclass = 6))
-bks <- c(0, getBreaks(v =  distrib, method = "fisher-jenks", nclass = 6), 145000)
+bks <- c(0, getBreaks(v =  distrib, method = "geom", nclass = 6))
+#bks <- c(0, getBreaks(v =  distrib, method = "fisher-jenks", nclass = 6), 145000)
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 1))
 
 ### Plot and save
 pdf(file = "AD/OUT/density_popgrid_eucicopall.pdf",width = 8.3, height = 5.8)
 dens_map(frame = rec, 
          bgmap = sfEU, 
-         sf = grid, 
+         sf = grid2, 
          titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants\net par carreaux de 2 500km2*",
          sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013 / Eurostat",
          labels = "*Discrétisation en\nprogression géométrique")
