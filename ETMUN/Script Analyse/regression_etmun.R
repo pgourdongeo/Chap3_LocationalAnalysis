@@ -142,10 +142,10 @@ is_outlier <- function(x) {
 
 ## Count participations in umz
 ### Intersect umz and participations
-inter <- st_intersects(umz, sfAdhesion)
+. <- st_intersects(umz, sfAdhesion)
 ### Count points in polygons
 umz <- st_sf(umz, 
-             n = sapply(X = inter, FUN = length), 
+             n = sapply(X = ., FUN = length), 
              geometry = st_geometry(umz))
 
 summary(umz$n)

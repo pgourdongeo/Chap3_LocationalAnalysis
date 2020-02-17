@@ -1,0 +1,242 @@
+###############################################################################
+#                                 BD city - AFC
+#                          
+# DESCRIPTION : 
+#
+#
+# PG, AD, février 2020
+##############################################################################
+
+# Working directory huma-num
+#setwd("~/BD_Keep_Interreg/CITY")
+
+setwd("~/git/Chap3_LocationalAnalysis/CITY")
+options(scipen = 999)
+
+
+# library
+library(skimr)
+library(tidylog)
+library(tidyverse)
+library(readr)
+library(sf)
+library(mapview)
+
+
+# load data
+city <- readRDS("Data/DBCity.rds")
+
+
+
+# Prepare data
+
+## 1. discretisation of number members/participations/partners by city
+## 5 classes : participation nulle ; unique ; multiple ; forte ; très forte
+
+require(cartography)
+
+### etmun
+myVar <- city %>% filter(members_etmun > 1) 
+myVar <- as.numeric(myVar$members_etmun)
+bks <- c(getBreaks(v = myVar, method = "equal", nclass = 3))
+
+city <- city %>% 
+  mutate(members_etmun_K = case_when(members_etmun == 1 ~ "unique",
+                                     members_etmun >= bks[1] & members_etmun < bks[2] ~ "multiple",
+                                     members_etmun >= bks[2] & members_etmun < bks[3] ~ "forte",
+                                     members_etmun >= bks[3] & members_etmun <= bks[4] ~ "très forte",
+                                     members_etmun == 0 ~ "nulle"))
+
+freq <- as.data.frame(table(city$members_etmun_K))
+
+### urbact
+myVar <- city %>% filter(members_urbact > 1) 
+myVar <- as.numeric(myVar$members_urbact)
+bks <- c(getBreaks(v = myVar, method = "equal", nclass = 3))
+
+city <- city %>% 
+  mutate(members_urbact_K = case_when(members_urbact == 1 ~ "unique",
+                                      members_urbact >= bks[1] & members_urbact < bks[2] ~ "multiple",
+                                      members_urbact >= bks[2] & members_urbact < bks[3] ~ "forte",
+                                      members_urbact >= bks[3] & members_urbact <= bks[4] ~ "très forte",
+                                      members_urbact == 0 ~ "nulle"))
+
+freq <- as.data.frame(table(city$members_urbact_K))
+
+### eucicop - participation
+myVar <- city %>% filter(participations_eucicop > 1) 
+myVar <- as.numeric(myVar$participations_eucicop)
+#bks <- c(getBreaks(v = myVar, method = "equal", nclass = 3))
+bks <- c(2, 20, 200, 700)
+
+city <- city %>% 
+  mutate(participations_eucicop_K = case_when(participations_eucicop == 1 ~ "unique",
+                                      participations_eucicop >= bks[1] & participations_eucicop < bks[2] ~ "multiple",
+                                      participations_eucicop >= bks[2] & participations_eucicop < bks[3] ~ "forte",
+                                      participations_eucicop >= bks[3] & participations_eucicop <= bks[4] ~ "très forte",
+                                      participations_eucicop == 0 ~ "nulle"))
+
+freq <- as.data.frame(table(city$participations_eucicop_K))
+
+
+### eucicop - partner
+myVar <- city %>% filter(partners_eucicop > 1) 
+myVar <- as.numeric(myVar$partners_eucicop)
+bks <- c(2, 20, 200, 700)
+
+city <- city %>% 
+  mutate(partners_eucicop_K = case_when(partners_eucicop == 1 ~ "unique",
+                                        partners_eucicop >= bks[1] & partners_eucicop < bks[2] ~ "multiple",
+                                        partners_eucicop >= bks[2] & partners_eucicop < bks[3] ~ "forte",
+                                        partners_eucicop >= bks[3] & partners_eucicop <= bks[4] ~ "très forte",
+                                        partners_eucicop == 0 ~ "nulle"))
+
+freq <- as.data.frame(table(city$partners_eucicop_K))
+
+rm(freq, myVar, bks)
+
+
+
+
+## 2. City size (population)
+
+### population GN
+city$population <- as.numeric(city$population)
+skim(city$population)
+city <- city %>% 
+  mutate(KPOP_GN = case_when(population > 0 & population < 50000 ~ "petite ville",
+                          population >= 50000 & population < 150000 ~ "ville moyenne",
+                          population >= 150000 & population < 300000 ~ "grande ville",
+                          population >= 300000 ~ "très grande ville",
+                          population == 0 ~ "NA"))
+
+### population UMZ
+#### Load UMZ
+umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 3035)
+
+#### transform df city to sf
+sfcity <- st_as_sf(city, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
+  st_sf(sf_column_name = "geometry") %>%
+  st_transform(crs = 3035)
+
+#### join 'pop2011' UMZ to city
+sfcity <- st_join(sfcity, select(umz, ID_UMZ, NAME_UMZ = Name, POP2011_UMZ = Pop2011),
+                  join = st_intersects)
+
+skim(sfcity$POP2011_UMZ)
+
+#mapview(umz) + mapview(sfcity)
+
+#### classification
+sfcity <- sfcity %>% 
+  mutate(KPOP_UMZ = case_when(POP2011_UMZ > 0 & POP2011_UMZ < 50000 ~ "petite ville",
+                              POP2011_UMZ >= 50000 & POP2011_UMZ < 150000 ~ "ville moyenne",
+                              POP2011_UMZ >= 150000 & POP2011_UMZ < 300000 ~ "grande ville",
+                              POP2011_UMZ >= 300000 ~ "très grande ville",
+                              POP2011_UMZ == 0 ~ "NA"))
+
+
+rm(umz)
+
+
+
+
+## 3. Simplified administration level
+### Load csv
+admin <- read_delim("../ETMUN/Script Analyse/admintyposimplifiee.csv", 
+                    ";", escape_double = FALSE, trim_ws = TRUE)
+
+### Add admin level to the data
+sfcity <- left_join(sfcity, admin, by = "fcodeName")
+
+rm(admin)
+
+
+
+
+## 4. NUTS type (urban/rural)
+### Load nuts
+nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035)
+truc <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp")
+mapview(truc)
+mapview(nutsUR)
+require(lwgeom)
+nutsUR <- st_make_valid(nutsUR)
+
+### first recode variable Typo7
+nutsUR <- nutsUR %>% 
+  mutate(Typo7_v2 = recode(Typo_7Clv2,
+                           "4" = "Régions sous dominance\nd'une métropole",         
+                           "6" = "Régions avec densité\nurbaine élevée",            
+                           "5" = "Régions à majorité\nde villes moyennes",         
+                           "7" = "Régions avec densité\nurbaine et rurale élevées",   
+                           "1" = "Régions rurales\nsous influence métropolitaine",
+                           "2" = "Régions rurales\navec villes petites et moyennes",
+                           "3" = "Régions rurales isolées"))
+
+
+#mapview(nutsUR) + mapview(sfcity)
+
+### snap points in the water !!!
+#### join city points to nuts to have outsiders
+iso <- c("SE", "FI", "EE", "EU", "LT", "PL", "LI", "NL", "HU", "ES",
+         "FR", "GR", "IE", "IT", "AT", "BE", "BG", "CY", "CZ", "DE",
+         "DK", "LU", "LV", "PT", "RO", "SI", "SK", "SM", "GB")
+sfcityEur_joinNUTS <- sfcity %>% 
+  filter(continentCode == "EU") %>% 
+  filter(countryCode %in% iso) %>% 
+  st_join(., select(nutsUR, Nuts_Id))
+outsiders <- sfcityEur_joinNUTS %>% filter(is.na(Nuts_Id))
+#mapview(nutsUR) + mapview(outsiders)
+
+### function to snap outsiders points (due to generalisation of country polygons) to the nearest country polygon
+### Source : https://stackoverflow.com/questions/51292952/snap-a-point-to-the-closest-point-on-a-line-segment-using-sf
+
+st_snap_points <-  function(x, y, max_dist) {
+  
+  if (inherits(x, "sf")) n = nrow(x)
+  if (inherits(x, "sfc")) n = length(x)
+  
+  out = do.call(c,
+                lapply(seq(n), function(i) {
+                  nrst = st_nearest_points(st_geometry(x)[i], y)
+                  nrst_len = st_length(nrst)
+                  nrst_mn = which.min(nrst_len)
+                  if (as.vector(nrst_len[nrst_mn]) > max_dist) return(st_geometry(x)[i])
+                  return(st_cast(nrst[nrst_mn], "POINT")[2])
+                })
+  )
+  return(out)
+}
+
+### Apply function
+require(lwgeom)
+nutsUR2 <- st_make_valid(nutsUR)
+snap_outsiders <- st_snap_points(outsiders, nutsUR, max_dist = 20000)
+
+### add new coords to outsiders 
+outsiders$geometry <- snap_outsiders
+outsiders <- outsiders %>%  select(Nuts_Id)
+#snap_outsiders_in <- cbind(df_outsiders, snap_outsiders)
+#snap_outsiders_in <- st_as_sf(snap_outsiders_in)
+class(outsiders)
+
+### join ousiders snaped to sfETMUN
+sfETMUN_inEU <- sfETMUN_joinEU %>% filter(!is.na(ID)) %>% select(-ID, -NAME_EN, -UE28)
+sfETMUN_outsiders_snaped <- rbind(sfETMUN_inEU, outsiders)
+class(sfETMUN_outsiders_snaped)
+
+
+### add typology to city
+sfcity <- st_join(sfcity, select(nutsUR, TYPO_NUTS = Typo_7Clv2), join = st_intersects)
+
+
+
+
+
+
+
+
+## 5. European region (countryCode)
+
+
