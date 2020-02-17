@@ -1,8 +1,10 @@
 ###############################################################################
 #                                 BD city
 #                          
-# DESCRIPTION : création d'une base de données 'ville' par compilation des trois 
-#               bases ETMUN, KEEP-EUCICOP et URBACT
+# DESCRIPTION : 1. création d'une base de données 'ville' par compilation des trois 
+#               bases ETMUN, KEEP-EUCICOP et URBACT selon leur geonameId
+#               2. aggrégation spatiale des geonameId situés dans une même commune
+#               (ex Paris et ses arrondissements) - à faire
 #
 #
 # PG, AD, février 2020
@@ -18,6 +20,7 @@ library(tidylog)
 library(tidyverse)
 library(sf)
 library(mapview)
+library(skimr) 
 
 
 # Load DB
@@ -107,4 +110,42 @@ allDB <- aggregate(x = allDB[3:9],
                        by = list(geonameId = allDB$geonameId, asciiName = allDB$asciiName), 
                        FUN = max) 
 
-## 
+rm (allGNU, bibi, etmun, urbact, eucicop)
+
+
+
+# Add GN variables to allDB city
+## Load DB GN full info
+urbact_gnInfo <- readRDS("KEEP/AD/URBACT/UniqueGNforURBACT.rds")
+etmun_gnInfo <- readRDS("ETMUN/Data/UniqueGNforETMUN.rds")
+eucicop_gnInfo <- readRDS("KEEP/Data/GNid_uniqueCity_Eucicop.RDS")
+
+## Correct Urbact
+urbact_gnInfo <- urbact_gnInfo %>% 
+  rename(lat_GN = lat, lng_GN = lng ) %>% 
+  mutate(lat_GN = as.numeric(lat_GN),
+         lng_GN = as.numeric(lng_GN))
+
+## All in one
+GNinfoAll <- bind_rows(urbact_gnInfo, etmun_gnInfo) %>% 
+  bind_rows(., eucicop_gnInfo) %>% 
+  filter(!duplicated(geonameId)) 
+
+colnames(GNinfoAll)
+skim(GNinfoAll)
+
+## clean columns
+GNinfoAll <- GNinfoAll %>% 
+  select(geonameId, asciiName, countryCode, lng_GN, lat_GN,
+         continentCode, population, fcodeName, fcode, 
+         everything()) %>% select(-distance, -score)
+
+## save - à faire
+#saveRDS(GNinfoAll, "UniqueGN_info_AllDB.rds")
+
+
+## Finally add wanted info GN to DB city
+allDB <- allDB %>% 
+  left_join(., select(GNinfoAll, geonameId, fcodeName, fcode, 
+                      countryCode, continentCode, population), 
+            by = "geonameId")
