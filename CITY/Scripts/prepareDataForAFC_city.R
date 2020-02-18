@@ -269,6 +269,19 @@ sfcity <-  sfcity %>%
   mutate_at(vars("region"), replace_na, "Southern Europe")
 
 
+## clean df to AFC
+city_afc <- sfcity %>% 
+  select(geonameId, members_etmun_K, members_urbact_K, participations_eucicop_K, partners_eucicop_K,
+         KPOP_GN, KPOP_UMZ, adminLevel, TYPO_NUTS, region) %>% 
+  as.data.frame() %>% 
+  select(-geometry)
 
 
+#==================================
+# ACM
+#==================================
 
+# http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/84-acm-dans-r-avec-factominer-scripts-faciles-et-cours/
+library(FactoMineR)
+
+res.mca <- MCA(city_afc)
