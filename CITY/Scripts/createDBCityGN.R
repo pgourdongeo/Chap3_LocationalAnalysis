@@ -1,8 +1,9 @@
 ###############################################################################
 #                                 BD city
 #                          
-# DESCRIPTION : 1. création d'une base de données 'ville' par compilation des trois 
-#               bases ETMUN, KEEP-EUCICOP et URBACT selon les geonameId 
+# DESCRIPTION : Création d'une base de données 'ville' par : 
+#               1. compilation des trois bases ETMUN, KEEP-EUCICOP et 
+#               URBACT selon les uniques geonameId 
 #               2. aggrégation spatiale des geonameId situés dans une même commune
 #               (ex Paris et ses arrondissements) - à faire
 #

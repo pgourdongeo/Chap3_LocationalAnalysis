@@ -1,7 +1,7 @@
 ###############################################################################
 #                                 BD city - AFC
 #                          
-# DESCRIPTION : 
+# DESCRIPTION : à partir de la BD city, création des variables en vue d'une AFC
 #
 #
 # PG, AD, février 2020
@@ -67,7 +67,7 @@ freq <- as.data.frame(table(city$members_urbact_K))
 myVar <- city %>% filter(participations_eucicop > 1) 
 myVar <- as.numeric(myVar$participations_eucicop)
 #bks <- c(getBreaks(v = myVar, method = "equal", nclass = 3))
-bks <- c(2, 20, 200, 700)
+bks <- c(2, 50, 200, 700)
 
 city <- city %>% 
   mutate(participations_eucicop_K = case_when(participations_eucicop == 1 ~ "unique",
@@ -82,7 +82,7 @@ freq <- as.data.frame(table(city$participations_eucicop_K))
 ### eucicop - partner
 myVar <- city %>% filter(partners_eucicop > 1) 
 myVar <- as.numeric(myVar$partners_eucicop)
-bks <- c(2, 20, 200, 700)
+bks <- c(2, 50, 200, 700)
 
 city <- city %>% 
   mutate(partners_eucicop_K = case_when(partners_eucicop == 1 ~ "unique",
@@ -157,40 +157,27 @@ rm(admin)
 ## 4. NUTS type (urban/rural)
 ### Load nuts
 nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035)
-truc <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp")
-mapview(truc)
-mapview(nutsUR)
-require(lwgeom)
-nutsUR <- st_make_valid(nutsUR)
-
-### first recode variable Typo7
-nutsUR <- nutsUR %>% 
-  mutate(Typo7_v2 = recode(Typo_7Clv2,
-                           "4" = "Régions sous dominance\nd'une métropole",         
-                           "6" = "Régions avec densité\nurbaine élevée",            
-                           "5" = "Régions à majorité\nde villes moyennes",         
-                           "7" = "Régions avec densité\nurbaine et rurale élevées",   
-                           "1" = "Régions rurales\nsous influence métropolitaine",
-                           "2" = "Régions rurales\navec villes petites et moyennes",
-                           "3" = "Régions rurales isolées"))
-
 
 #mapview(nutsUR) + mapview(sfcity)
 
-### snap points in the water !!!
+
+### FIRST - snap outsiders  !!! ----
+
 #### join city points to nuts to have outsiders
 iso <- c("SE", "FI", "EE", "EU", "LT", "PL", "LI", "NL", "HU", "ES",
          "FR", "GR", "IE", "IT", "AT", "BE", "BG", "CY", "CZ", "DE",
          "DK", "LU", "LV", "PT", "RO", "SI", "SK", "SM", "GB")
-sfcityEur_joinNUTS <- sfcity %>% 
+
+outsiders <- sfcity %>% 
   filter(continentCode == "EU") %>% 
   filter(countryCode %in% iso) %>% 
-  st_join(., select(nutsUR, Nuts_Id))
-outsiders <- sfcityEur_joinNUTS %>% filter(is.na(Nuts_Id))
+  st_join(., select(nutsUR, Nuts_Id)) %>% 
+  filter(is.na(Nuts_Id))
+
 #mapview(nutsUR) + mapview(outsiders)
 
-### function to snap outsiders points (due to generalisation of country polygons) to the nearest country polygon
-### Source : https://stackoverflow.com/questions/51292952/snap-a-point-to-the-closest-point-on-a-line-segment-using-sf
+#### function to snap outsiders points (due to generalisation of country polygons) to the nearest country polygon
+#### Source : https://stackoverflow.com/questions/51292952/snap-a-point-to-the-closest-point-on-a-line-segment-using-sf
 
 st_snap_points <-  function(x, y, max_dist) {
   
@@ -209,29 +196,54 @@ st_snap_points <-  function(x, y, max_dist) {
   return(out)
 }
 
-### Apply function
-require(lwgeom)
-nutsUR2 <- st_make_valid(nutsUR)
-snap_outsiders <- st_snap_points(outsiders, nutsUR, max_dist = 20000)
+#### Apply function
+require(purrr) # correction of the nuts shape topology
+snap_outsiders <- st_snap_points(outsiders, compact(nutsUR$geometry), max_dist = 20000)
 
-### add new coords to outsiders 
+#### replace coords to outsiders 
 outsiders$geometry <- snap_outsiders
-outsiders <- outsiders %>%  select(Nuts_Id)
-#snap_outsiders_in <- cbind(df_outsiders, snap_outsiders)
-#snap_outsiders_in <- st_as_sf(snap_outsiders_in)
-class(outsiders)
-
-### join ousiders snaped to sfETMUN
-sfETMUN_inEU <- sfETMUN_joinEU %>% filter(!is.na(ID)) %>% select(-ID, -NAME_EN, -UE28)
-sfETMUN_outsiders_snaped <- rbind(sfETMUN_inEU, outsiders)
-class(sfETMUN_outsiders_snaped)
+outsiders <- outsiders %>%  select(-Nuts_Id)
+#mapview(nutsUR) + mapview(outsiders)
 
 
-### add typology to city
-sfcity <- st_join(sfcity, select(nutsUR, TYPO_NUTS = Typo_7Clv2), join = st_intersects)
+#### join ousiders snaped to insiders
+id <- outsiders$geonameId
+sfcity <- sfcity %>% 
+  filter(!geonameId %in% id) %>% 
+  rbind(., outsiders)
+
+rm(id)
+
+#### verif
+mapview(nutsUR) + mapview(sfcity)
+
+#### ------------
 
 
 
+### Recode variable Typo7
+nutsUR <- nutsUR %>% 
+  mutate(Typo7_v2 = recode(Typo_7Clv2,
+                           "4" = "Régions sous dominance\nd'une métropole",         
+                           "6" = "Régions avec densité\nurbaine élevée",            
+                           "5" = "Régions à majorité\nde villes moyennes",         
+                           "7" = "Régions avec densité\nurbaine et rurale élevées",   
+                           "1" = "Régions rurales\nsous influence métropolitaine",
+                           "2" = "Régions rurales\navec villes petites et moyennes",
+                           "3" = "Régions rurales isolées"))
+
+
+### add typology to the sf with snaped points
+sfcity <- st_join(sfcity, select(nutsUR, TYPO_NUTS = Typo7_v2), join = st_intersects)
+
+#### pts in a cross borders have 2 typo nuts -- to remove 
+doublon <- sfcity %>% filter(duplicated(geonameId))
+doublon <- doublon$geonameId
+doublon <- sfcity %>% filter(geonameId %in% doublon)
+mapview(nutsUR) + mapview(doublon)
+
+#### remove doublon
+sfcity <- sfcity %>% filter(!duplicated(geonameId))
 
 
 
