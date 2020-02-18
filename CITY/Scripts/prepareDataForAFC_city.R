@@ -198,7 +198,7 @@ st_snap_points <-  function(x, y, max_dist) {
 
 #### Apply function
 require(purrr) # correction of the nuts shape topology
-snap_outsiders <- st_snap_points(outsiders, compact(nutsUR$geometry), max_dist = 20000)
+snap_outsiders <- st_snap_points(outsiders, compact(nutsUR$geometry), max_dist = 50000)
 
 #### replace coords to outsiders 
 outsiders$geometry <- snap_outsiders
@@ -212,10 +212,18 @@ sfcity <- sfcity %>%
   filter(!geonameId %in% id) %>% 
   rbind(., outsiders)
 
-rm(id)
-
 #### verif
-mapview(nutsUR) + mapview(sfcity)
+# outsiders <- sfcity %>% 
+#   filter(continentCode == "EU") %>% 
+#   filter(countryCode %in% iso) %>% 
+#   st_join(., select(nutsUR, Nuts_Id)) %>% 
+#   filter(is.na(Nuts_Id))
+
+#mapview(nutsUR) + mapview(outsiders)
+
+rm(id, snap_outsiders, outsiders, st_snap_points, iso)
+
+
 
 #### ------------
 
@@ -245,10 +253,22 @@ mapview(nutsUR) + mapview(doublon)
 #### remove doublon
 sfcity <- sfcity %>% filter(!duplicated(geonameId))
 
+rm(doublon, nutsUR)
 
 
 
 
-## 5. European region (countryCode)
+## 5. European region 
+library(countrycode)
+
+sfcity$region <- countrycode(sfcity$countryCode, origin ="iso2c", destination ="region")
+
+### Warning message: Some values were not matched unambiguously: XK
+
+sfcity <-  sfcity %>% 
+  mutate_at(vars("region"), replace_na, "Southern Europe")
+
+
+
 
 
