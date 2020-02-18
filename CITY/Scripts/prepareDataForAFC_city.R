@@ -1,4 +1,4 @@
-###############################################################################
+vu###############################################################################
 #                                 BD city - AFC
 #                          
 # DESCRIPTION : à partir de la BD city, création des variables en vue d'une AFC
@@ -8,7 +8,7 @@
 ##############################################################################
 
 # Working directory huma-num
-#setwd("~/BD_Keep_Interreg/CITY")
+setwd("~/BD_Keep_Interreg/CITY")
 
 setwd("~/git/Chap3_LocationalAnalysis/CITY")
 options(scipen = 999)
@@ -284,4 +284,38 @@ city_afc <- sfcity %>%
 # http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/84-acm-dans-r-avec-factominer-scripts-faciles-et-cours/
 library(FactoMineR)
 
-res.mca <- MCA(city_afc)
+ df<- Map(paste,city_afc, names(city_afc), sep = '_')%>% as.data.frame() %>% select(-geonameId)
+ 
+res.mca <- MCA(df, graph=FALSE)
+eig.val <- res.mca$eig
+barplot(eig.val[, 2], 
+        names.arg = 1:nrow(eig.val), 
+        main = "Variances Explained by Dimensions (%)",
+        xlab = "Principal Dimensions",
+        ylab = "Percentage of variances",
+        col ="steelblue")
+
+
+plot(res.mca, 
+     invisible = "ind",
+     cex = 0.8,
+     autoLab = "yes")
+
+df2 <- df %>% select(members_etmun_K, KPOP_UMZ, adminLevel)
+
+res.mca <- MCA(df2, graph=FALSE)
+eig.val <- res.mca$eig
+barplot(eig.val[, 2], 
+        names.arg = 1:nrow(eig.val), 
+        main = "Variances Explained by Dimensions (%)",
+        xlab = "Principal Dimensions",
+        ylab = "Percentage of variances",
+        col ="steelblue")
+
+
+plot(res.mca, 
+     invisible = "ind",
+     cex = 0.8)
+
+library(explor)
+explor(res.mca)
