@@ -1,7 +1,8 @@
 vu###############################################################################
-#                                 BD city - AFC
+#                                 BD city - Analyse multivariée
 #                          
-# DESCRIPTION : à partir de la BD city, création des variables en vue d'une AFC
+# DESCRIPTION : à partir de la BD city, création des variables en vue d' 
+#               analyses multivariées (ACP/ACM)
 #
 #
 # PG, AD, février 2020
@@ -107,8 +108,7 @@ city <- city %>%
   mutate(KPOP_GN = case_when(population > 0 & population < 50000 ~ "petite ville",
                           population >= 50000 & population < 150000 ~ "ville moyenne",
                           population >= 150000 & population < 300000 ~ "grande ville",
-                          population >= 300000 ~ "très grande ville",
-                          population == 0 ~ "NA"))
+                          population >= 300000 ~ "très grande ville"))
 
 ### population UMZ
 #### Load UMZ
@@ -132,8 +132,7 @@ sfcity <- sfcity %>%
   mutate(KPOP_UMZ = case_when(POP2011_UMZ > 0 & POP2011_UMZ < 50000 ~ "petite ville",
                               POP2011_UMZ >= 50000 & POP2011_UMZ < 150000 ~ "ville moyenne",
                               POP2011_UMZ >= 150000 & POP2011_UMZ < 300000 ~ "grande ville",
-                              POP2011_UMZ >= 300000 ~ "très grande ville",
-                              POP2011_UMZ == 0 ~ "NA"))
+                              POP2011_UMZ >= 300000 ~ "très grande ville"))
 
 
 rm(umz)
@@ -248,7 +247,7 @@ sfcity <- st_join(sfcity, select(nutsUR, TYPO_NUTS = Typo7_v2), join = st_inters
 doublon <- sfcity %>% filter(duplicated(geonameId))
 doublon <- doublon$geonameId
 doublon <- sfcity %>% filter(geonameId %in% doublon)
-mapview(nutsUR) + mapview(doublon)
+#mapview(nutsUR) + mapview(doublon)
 
 #### remove doublon
 sfcity <- sfcity %>% filter(!duplicated(geonameId))
@@ -269,22 +268,76 @@ sfcity <-  sfcity %>%
   mutate_at(vars("region"), replace_na, "Southern Europe")
 
 
-## clean df to AFC
-city_afc <- sfcity %>% 
-  select(geonameId, members_etmun_K, members_urbact_K, participations_eucicop_K, partners_eucicop_K,
-         KPOP_GN, KPOP_UMZ, adminLevel, TYPO_NUTS, region) %>% 
+
+
+#==================================
+# Corrélation
+#==================================
+library(GGally)
+cityLog <- sfcity %>% 
+  filter(continentCode == "EU") %>% 
+  mutate_at(vars("POP2011_UMZ"), replace_na, 0) %>% 
+  select(members_etmun, members_urbact, participations_eucicop, POP2011_UMZ) %>% 
+  transmute(members_etmun, members_urbact, participations_eucicop, POP2011_UMZ,
+         etmunLog = log10(members_etmun),
+         urbactlog = log10(members_urbact),
+         eucicoplog = log10(participations_eucicop),
+         POPLog = log10(POP2011_UMZ)) %>% 
   as.data.frame() %>% 
   select(-geometry)
+
+ggpairs(cityLog[ , 5:8])
+
+
+
+#==================================
+# ACP
+#==================================
+
+# http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/73-acp-analyse-en-composantes-principales-avec-r-l-essentiel/
+library("FactoMineR")
+
+df<- sfcity %>% 
+  mutate_at(vars("POP2011_UMZ"), replace_na, 0) %>% 
+  filter(continentCode == "EU") %>% 
+  mutate(KPOPUMZ = as.factor(KPOP_UMZ),
+         adminLevel = as.factor(adminLevel),
+         TYPONUTS = as.factor(TYPO_NUTS),
+         region = as.factor(region)) %>% 
+  as.data.frame() %>% 
+  select(-geometry)
+
+#df[, "region"] <- as.factor(df[, "region"])
+#sfcity <- sfcity %>% mutate_at(.vars = c(21:24), .funs = as.factor(.))
+
+res.pca <- PCA(df[ , c(3:5, 20)],
+               scale.unit = TRUE,
+               #quanti.sup = ,
+               quali.sup = df[ , 21:24],
+               graph = FALSE)
+
+
+#http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/80-acp-dans-r-avec-ade4-scripts-faciles/
 
 
 #==================================
 # ACM
 #==================================
 
+## clean df to ACM
+city_afc <- sfcity %>% 
+  #filter(continentCode == "EU") %>% 
+  select(geonameId, members_etmun_K, members_urbact_K, participations_eucicop_K, partners_eucicop_K,
+         KPOP_GN, KPOP_UMZ, adminLevel, TYPO_NUTS, region) %>% 
+  as.data.frame() %>% 
+  select(-geometry)
+
 # http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/84-acm-dans-r-avec-factominer-scripts-faciles-et-cours/
 library(FactoMineR)
 
- df<- Map(paste,city_afc, names(city_afc), sep = '_')%>% as.data.frame() %>% select(-geonameId)
+df<- Map(paste, city_afc, names(city_afc), sep = '_') %>% 
+   as.data.frame() %>% 
+   select(-geonameId)
  
 res.mca <- MCA(df, graph=FALSE)
 eig.val <- res.mca$eig
