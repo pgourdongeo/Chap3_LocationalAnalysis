@@ -9,7 +9,7 @@ vu##############################################################################
 ##############################################################################
 
 # Working directory huma-num
-setwd("~/BD_Keep_Interreg/CITY")
+#setwd("~/BD_Keep_Interreg/CITY")
 
 setwd("~/git/Chap3_LocationalAnalysis/CITY")
 options(scipen = 999)
@@ -334,34 +334,73 @@ explor(res.pca)
 
 library("factoextra")
 indi <- get_pca_ind(res.pca)
+indi <- as.data.frame(indi$coord)
 . <- as.data.frame(indi$coord)
 df <- cbind(df, .)
 
 
 
-
-
-eig.val <- get_eigenvalue(res.pca)
-eig.val
-
-
-
-fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
-
-var <- get_pca_var(res.pca)
-# Coordonnées
-var$coord
-# Cos2: qualité de répresentation
-var$cos2
-# Contributions aux composantes principales
-var$contrib
-
-fviz_pca_var(res.pca, col.var = "black")
-
-
 #http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/80-acp-dans-r-avec-ade4-scripts-faciles/
 
 
+#==================================
+# K-means
+#==================================
+
+# K-means vectors population
+
+## Compute explained variance (setting K) on AFC results
+
+var.expl <- c()
+for (i in 1:40){
+  result <- kmeans(x=indi,
+                   centers=i,
+                   iter.max=100,
+                   nstart=5)
+  var.expl <- append(var.expl,result$betweenss/result$totss)
+}
+
+var.expl <- data.frame(n=1:164,
+                       var=var.expl)
+
+
+ggplot(var.expl, aes(x = n, y = var))+
+  geom_point() + scale_x_continuous(breaks = seq(0,60,5)) +
+  theme(plot.subtitle = element_text(vjust = 1),
+        plot.caption = element_text(vjust = 1),
+        plot.title = element_text(colour = "brown")) +
+  labs(x = "k", y = "variance explained") +
+  labs(title = "K-Means Clustering on Population Vectors ")
+
+# Performing simple K-mean Partition
+## Dendrogram
+K=6
+clusters <- kmeans(x=indi,
+                   centers=K,
+                   iter.max=100,
+                   nstart=5)
+clusters$size/sum(clusters$size)
+clusters$centers
+#apply(clusters$withinss, 1, sum)
+
+clusters$size
+
+
+clustersCenters <- as.data.frame(clusters$centers)
+clustersCenters <- clustersCenters %>%
+  mutate(Cluster = row.names(.))%>%
+  mutate(n = clusters$size)
+
+#library(reshape2)
+clusLong <- clustersCenters %>% 
+  select(-n) %>% 
+  melt(., id.vars = "Cluster") 
+  
+profilePlot <- ggplot(clusLong) +
+  geom_bar(aes(x = variable, y = value), fill = "grey30", position = "identity", stat = "identity") +
+  scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe") +
+  facet_wrap(~ Cluster) + coord_flip() + theme_bw()
+profilePlot
 
 #==================================
 # CAH
@@ -436,7 +475,6 @@ myVar <- c("Dim.1", "Dim.2", "Dim.3", "Dim.4")
 cah <- ComputeClassif(df = df,
                       varquanti = myVar, method = "ward", stand = FALSE)
 
-cah <- ComputeClassif(df = network, varquanti = myVar, method = "ward", stand = TRUE)
 
 dendro <- PlotDendro(classifobj = cah)
 inert <- PlotHeight(classifobj = cah)

@@ -88,17 +88,6 @@ network <- network %>%
 
 
 
-# primacy index (pop of the biggest city/pop of the smallest)
-
-# urbactCities <- urbactCities %>% 
-#   group_by(Code_Network) %>% 
-#   mutate(primacy_index = max(POPLAU2_2015)/min(POPLAU2_2015))
-# 
-# pI <- urbactCities %>% 
-#   select(Code_Network, primacy_index) %>% 
-#   filter(!duplicated(Code_Network))
-# 
-# network <- network %>% left_join(pI)
 
 
 # real primacy index (pop city 1 / pop city 2)
@@ -117,10 +106,10 @@ variance <- urbactCities %>%
   group_by(Code_Network) %>% 
   mutate(ect = sd(POPLAU2_2015),
          moy = mean(POPLAU2_2015),
-         coefVar_pop = ect/moy) %>% 
+         coefVar = ect/moy) %>% 
   filter(!duplicated(Code_Network))
 
-network <- network %>% left_join(select(variance, Code_Network, coefVar_pop))
+network <- network %>% left_join(select(variance, Code_Network, coefVar))
 rm(variance)
 
 # save for exploratR
