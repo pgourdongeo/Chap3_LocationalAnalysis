@@ -291,34 +291,205 @@ ggpairs(cityLog[ , 5:8])
 
 
 #==================================
-# ACP
+# ACP  it works !
 #==================================
 
 # http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/73-acp-analyse-en-composantes-principales-avec-r-l-essentiel/
 library("FactoMineR")
 
 df<- sfcity %>% 
+  mutate(label = paste(sfcity$geonameId, sfcity$asciiName, sep = "_")) %>% 
   mutate_at(vars("POP2011_UMZ"), replace_na, 0) %>% 
   filter(continentCode == "EU") %>% 
+  mutate(region = recode(region, "Western Asia"= "Southern Europe")) %>% # recode Chypre
   mutate(KPOPUMZ = as.factor(KPOP_UMZ),
          adminLevel = as.factor(adminLevel),
-         TYPONUTS = as.factor(TYPO_NUTS),
-         region = as.factor(region)) %>% 
+         region = as.factor(region),
+         TYPONUTS = as.factor(TYPO_NUTS)) %>% 
   as.data.frame() %>% 
-  select(-geometry)
+  select(-geometry)  
+
+rownames(df) <- df[ , 25]
+#df <- select(df, -geonameId, -asciiName)
 
 #df[, "region"] <- as.factor(df[, "region"])
 #sfcity <- sfcity %>% mutate_at(.vars = c(21:24), .funs = as.factor(.))
 
-res.pca <- PCA(df[ , c(3:5, 20)],
+#res.pca <- PCA(df[ , c(3:5, 12, 20)], scale.unit = TRUE, graph = FALSE)
+
+
+df2 <- df %>% select(c(3:5, 12, 22))
+res.pca <- PCA(df2,
                scale.unit = TRUE,
+               #ind.sup = df[ , 1],
                #quanti.sup = ,
-               quali.sup = df[ , 21:24],
+               quali.sup = 5,
                graph = FALSE)
+
+#library(explor)
+explor(res.pca)
+
+
+
+
+library("factoextra")
+indi <- get_pca_ind(res.pca)
+. <- as.data.frame(indi$coord)
+df <- cbind(df, .)
+
+
+
+
+
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+
+
+
+fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
+
+var <- get_pca_var(res.pca)
+# Coordonnées
+var$coord
+# Cos2: qualité de répresentation
+var$cos2
+# Contributions aux composantes principales
+var$contrib
+
+fviz_pca_var(res.pca, col.var = "black")
 
 
 #http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/80-acp-dans-r-avec-ade4-scripts-faciles/
 
+
+
+#==================================
+# CAH
+#==================================
+
+## Commenges H. (2016) ExploratR : outil interactif d'exploration statistique uni- bi- tri- et multi-variée avec R, UMR 8504 Géographie-cités. 
+## APPLI : https://analytics.huma-num.fr/geographie-cites/ExploratR/
+## CODE : https://zenodo.org/record/155333#.XdZn7dVCfIU
+
+# HIERARCHICAL CLUSTERING ----
+library(cluster)
+library(ggdendro)
+library(reshape2)
+
+# compute classification ----
+ComputeClassif <- function(df, varquanti, stand, method){
+  classifObj <- agnes(x = df[, varquanti], diss = FALSE, metric = "euclidean", 
+                      stand = stand, method = method)
+  return(classifObj)
+}
+
+# plot dendrogram ----
+PlotDendro <- function(classifobj){
+  dendroPlot <- as.dendrogram(classifobj)
+  dendroData <- dendro_data(dendroPlot, type = "rectangle")
+  dendroGgplot <- ggplot(segment(dendroData)) +
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+    scale_x_continuous("") + scale_y_continuous("") +
+    theme_bw()
+  
+  return(dendroGgplot)
+}
+
+# plot inertia ----
+PlotHeight <- function(classifobj){
+  sortedHeight <- sort(classifobj$height, decreasing = TRUE)
+  relHeigth <- sortedHeight / sum(sortedHeight) * 100
+  tabHeight <- data.frame(NODES = factor(1:20),
+                          INERTIE = relHeigth[1:20])
+  
+  heightPlot <- ggplot(tabHeight) +
+    geom_bar(aes(x = NODES, y = INERTIE), fill = "grey30", stat = "identity") +
+    scale_x_discrete("Nombre de classes") + scale_y_continuous("Niveau") +
+    theme_bw()
+  
+  return(heightPlot)
+}
+
+# plot profile ----
+PlotProfile <- function(classifobj, nbclus){
+  dfOri <- as.data.frame(classifobj$data, stringsAsFactors = FALSE)
+  clusId <- cutree(classifobj, k = nbclus)
+  dfOri$CLUS <- factor(clusId,
+                       levels = 1:nbclus,
+                       labels = paste("CLASSE", 1:nbclus))
+  clusProfile <- aggregate(dfOri[, 1:ncol(dfOri)-1],
+                           by = list(dfOri$CLUS),
+                           mean)
+  colnames(clusProfile)[1] <- "CLASSE"
+  clusLong <- melt(clusProfile, id.vars = "CLASSE")
+  
+  profilePlot <- ggplot(clusLong) +
+    geom_bar(aes(x = variable, y = value), fill = "grey30", position = "identity", stat = "identity") +
+    scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe") +
+    facet_wrap(~ CLASSE) + coord_flip() + theme_bw()
+  
+  return(list(PROFILE = profilePlot, CLUSID = dfOri$CLUS))
+}
+
+
+myVar <- c("Dim.1", "Dim.2", "Dim.3", "Dim.4")
+cah <- ComputeClassif(df = df,
+                      varquanti = myVar, method = "ward", stand = FALSE)
+
+cah <- ComputeClassif(df = network, varquanti = myVar, method = "ward", stand = TRUE)
+
+dendro <- PlotDendro(classifobj = cah)
+inert <- PlotHeight(classifobj = cah)
+myProfiles <- PlotProfile(classifobj = cah, nbclus = 4)
+
+
+df$cluster <- cutree(tree = cah, k = 4)
+freq <- data.frame(table(networkb$cluster))
+
+
+# pdf(file = "OUT/profilesCAH.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+# myProfiles
+# dev.off()
+
+
+
+
+
+
+#==================================
+# MFA
+#==================================
+#♠ http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/77-afm-analyse-factorielle-multiple-avec-r-l-essentiel/
+df3 <- df %>% 
+  select(c(3:5, 12, 20, 22, 24, 26))
+
+res.mfa <- MFA(df3,
+               group = c(3, 2, 1, 2),
+               type = c(rep("s", 2), rep("n", 2)),
+               ncp = 4,
+               name.group = c("coop", "pop", "admin", "geo"),
+               #num.group.sup = c(4),
+               graph = FALSE)
+
+
+
+#library("factoextra")
+eig.val <- get_eigenvalue(res.mfa)
+eig.val
+fviz_screeplot(res.mfa)
+group <- get_mfa_var(res.mfa, "group")
+# Coordonnées des groupes
+group$coord
+# Cos2: qualité de représentation des groupes
+group$cos2
+# Contributions des dimensions
+group$contrib
+
+fviz_mfa_var(res.mfa, "group")
+
+quanti.var <- get_mfa_var(res.mfa, "quanti.var")
+quanti.var$contrib
+quanti.var$coord
 
 #==================================
 # ACM
