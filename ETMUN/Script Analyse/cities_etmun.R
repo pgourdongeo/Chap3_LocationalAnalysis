@@ -229,7 +229,9 @@ myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-4000
 citiesEtmun2 <- ggplot() + 
   geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
   geom_sf(data = sfCitiesEur %>% filter(nbMembers > 3) %>% st_centroid(),
-          mapping = aes(size = nbMembers2), colour = "#ff6200B3", show.legend = NA) +
+          mapping = aes(size = nbMembers2), colour = "#ff620080", show.legend = NA) +
+  geom_sf(data = sfCitiesEur %>% filter(nbMembers > 3) %>% st_centroid(),
+          mapping = aes(size = nbMembers2), shape = 1, colour = "#ff6200", show.legend = NA) +
   scale_size(name = "Nombre d'adhésions par ville\naux associations transnationales\nde municipalités (ETMUN)",
              breaks = c(1600, 400, 200, 16),
              labels = c("40", "20", "10", "4"),
