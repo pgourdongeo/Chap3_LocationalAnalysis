@@ -1,14 +1,21 @@
-###############################################################################
-#                               snap keep
-#                       
-#                         
-#
-# DESCRIPTION : déplacement des points à l'intérieur des polygones sfEU/NUTSUR
-#
-# PG, AD, Novembre 2019
-##############################################################################
 
-## Working directory huma-num
+##==========================================================================##         
+##                             snap keep - DO NOT RUN                       ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base Eucicop/keep / Rappatriement des points situés au     ##
+##               large des côtes généralisées du shape Europe à l'intérieur ##
+##               des polygones les plus proches                             ##
+##                                                                          ##
+##               Le fichier créé doit servir aux analyses spatiales         ##
+##               impliquant l'intersection des participations avec          ##
+##               le fond europe ou les NUTS urbain/rural                    ##
+##                                                                          ##
+## PG, AD, Novembre 2019                                                    ##
+##==========================================================================##
+
+
+# Working directory huma-num
 #setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
@@ -94,8 +101,7 @@ mapview(sfEU) + mapview(test_outsiders)
 
 
 
-
-# Prepare new sf for density_keep script (combine participations - partners - projects)
+# Prepare new sf for analyse scripts (combine participations - partners - projects)
 
 ## LOAD PARTICIPATIONS
 participations <- readRDS("Data/Participations_All_Eucicop.RDS")
@@ -118,6 +124,5 @@ sfParticipations_snap <- sfParticipations_snap %>%
   left_join(select(projects, Period, ID_PROJECT),  by = "ID_PROJECT")
 
 ## SAVE
-saveRDS(sfParticipations_snap, "Data/sfParticipations_snap.RDS")
+#saveRDS(sfParticipations_snap, "Data/sfParticipations_snap.RDS")
 
-bibi <- readRDS("Data/sfParticipations_snap.RDS")

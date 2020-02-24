@@ -1,18 +1,27 @@
-###############################################################################
-#         CARTOGRAPHIE DES DENSITES de participations aux projets de l'UE
-#                          à partir de la BD KEEP
-#
-# DESCRIPTION : construction d'un carroyage sur l'europe élargie, comptage des 
-# participations aux projets de l'UE par carreau, cartographie des densités de 
-# participations sur plusieurs périodes, cartographie des densités des participations 
-# des partenaires leader sur toute la période 2000-2018. Cartographie des densités par nuts
-# et graphique des participations par type de nuts (urbain/rural)
-#
-# PG, AD, Octobre 2019
-##############################################################################
 
-## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+##==========================================================================##         
+##            CARTOGRAPHIE de la participation aux projets de l'UE          ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base Eucicop/keep / réalisations carto-graphiques          ##
+##               du chapitre 3 (carroyage, dot plot, bar plot)              ##
+##                                                                          ##
+## PG, AD, Octobre 2019                                                     ##
+##==========================================================================##
+
+
+# CONTENTS
+# 1. Map participations/cell 2000-2018 - Fig. 3.4 
+# 2. Map participations/cell 2000-2006, 2007-2013 et 2014-2020 - Fig. 3.5   
+# 3. Barplots numbers of participations by country - Fig. 3.9 
+# 4. Map lead partner density  
+# 5. Map participations/pop 2006/cell - Fig. 3.10
+# 6. Density of participations by nuts 
+# 7. Barplots participations/type of nuts - Fig. 3.11 
+
+
+# Working directory huma-num
+# setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -20,7 +29,6 @@ options(scipen = 999)
 # Library
 library(cartography)
 library(tidyverse)
-library(tidyr)
 library(sf)
 library(tidylog)
 library(skimr)
@@ -29,14 +37,19 @@ library(ggplot2)
 library(readr)
 library(RColorBrewer)
 library(mapview)
-library(ggpubr)
+#library(ggpubr)
 #library(GGally)
 
 
 # Import data
+
+# Use snap points instead
 # participations <- readRDS("Data/Participations_All_Eucicop.RDS")
 # partners <- readRDS("Data/UniquePartners_GNid_Eucicop.RDS")
 # projects <- readRDS("Data/ProjectsEucicop_all_noduplicated.RDS")
+
+## data with snaped points 
+sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
 
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 rec <- st_read("AD/FDCARTE/rec_3035.geojson")
@@ -44,11 +57,10 @@ rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
   st_make_valid()
 
-## data with snaped points 
-sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
 
-# Functions
-#================================================
+
+# ================ Functions ================ 
+
 
 ## Build a regular grid and count points in each cell
 pt_in_grid <- function(feat, adm, cellsize){
@@ -90,7 +102,7 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels, labels2){
   #      xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n")
-  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.75, add = TRUE)
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
 
   ## Add legend
@@ -102,29 +114,40 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels, labels2){
               nodata = FALSE, 
               values.rnd = 0, 
               col = cols)
+  
   # Add an explanation text
   text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
   # Add total
   text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels2, cex = 0.75)
   
-  # Add a layout
-  layoutLayer(title = "",
-    sources = sources,
-    author = "PG, AD, 2019",
-    horiz = F,
-    col = NA,
-    frame = F,
-    scale = 500,
-    posscale = c(6500000, 1000000)
-  )
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1.2, 
+        adj = 0.935,
+        cex = 0.50)
+  
+  # # Add a layout
+  # layoutLayer(title = "",
+  #   sources = sources,
+  #   author = "PG, AD, 2019",
+  #   horiz = TRUE,
+  #   col = NA,
+  #   frame = F,
+  #   scale = 500,
+  #   posscale = c(6500000, 1000000)
+  # )
   
 }
 
 ## Plot 3 maps with a unique legend
-plot_grids <- function(grid1, grid2, grid3, 
-                       title1, title2, title3,
-                       adm, frame, sources, titleLeg, labels, summary){
+plot_grids <- function(grid1, grid2, grid3, title1, title2, title3,
+                       adm, frame, sources, titleLeg, labels, summary, 
+                       tot1, tot2, tot3){
   
   bb <- st_bbox(frame)
   
@@ -134,41 +157,49 @@ plot_grids <- function(grid1, grid2, grid3,
   ## plot1
   choroLayer(grid1, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n")
-  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.1, add = T)
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.2, add = T)
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add title
   text(x = 1000000, y = 5300000, labels = title1, cex = 0.7, adj = 0, font = 2)
   
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = tot1, cex = 0.5)
+  
   ## plot2
   choroLayer(grid2, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n")
-  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.1, add = T)
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.2, add = T)
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add title
   text(x = 1000000, y = 5300000, labels = title2, cex = 0.7, adj = 0, font = 2)
   
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = tot2, cex = 0.5)
   
   ## plot3
   choroLayer(grid3, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n")
-  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.1, add = T)
+  plot(st_geometry(adm), col = NA, border = "ivory4", lwd = 0.2, add = T)
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add title
   text(x = 1000000, y = 5300000, labels = title3, cex = 0.7, adj = 0, font = 2)
   
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = tot3, cex = 0.5)
+  
   
   # Add scalebar
   barscale(500, pos = c(6500000, 1000000))
   
-  # Add sources
-  mtext(text = sources,
-        side = 4, 
-        line = -1.3, 
-        adj = 0.2,
-        cex =0.35)
+  # # Add sources
+  # mtext(text = sources,
+  #       side = 4, 
+  #       line = -1.3, 
+  #       adj = 0.2,
+  #       cex =0.35)
   
   # ## plot4
   plot(st_geometry(frame), border = NA, col = NA)
@@ -184,6 +215,7 @@ plot_grids <- function(grid1, grid2, grid3,
               cex = 1.3,
               col = cols,
               border = "ivory4")
+  
   # Add an explanation text
   text(x = 1000000, y = 2400000, labels = labels, cex = 0.6, adj = 0)
   
@@ -191,12 +223,19 @@ plot_grids <- function(grid1, grid2, grid3,
   text(x = 4200000, y = 3800000, labels = "Part de carreaux vides :", cex = 0.6, adj = 0, font = 2)
   text(x = 4200000, y = 3300000, labels = summary, cex = 0.6, adj = 0, font = 1)
   
-  plot(myPlot, add = TRUE)
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1, 
+        adj = 0.85,
+        cex = 0.38)
+  
+  #plot(myPlot, add = TRUE)
 
 }
 
 ## plot a points map
-plot_points <- function(frame, adm, sf, txtLeg, source){
+plot_points <- function(frame, adm, sf, txtLeg, sources){
   
   # stock bbox
   bb <- st_bbox(frame)
@@ -218,16 +257,26 @@ plot_points <- function(frame, adm, sf, txtLeg, source){
          bty = "n",
          cex = 0.8)
   
-  # Add a layout
-  layoutLayer(title = "",
-              sources = source,
-              author = "PG, AD, 2019",
-              horiz = FALSE,
-              col = NA,
-              frame = F,
-              scale = 500,
-              posscale = c(6500000, 1000000)
-  )
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1.2, 
+        adj = 0.935,
+        cex = 0.50)
+  
+  # # Add a layout
+  # layoutLayer(title = "",
+  #             sources = sources,
+  #             author = "PG, AD, 2019",
+  #             horiz = FALSE,
+  #             col = NA,
+  #             frame = F,
+  #             scale = 500,
+  #             posscale = c(6500000, 1000000)
+  # )
 }
 
 ## Plot a choro map
@@ -259,21 +308,33 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
   # Add an explanation text
   text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
-  # Add a layout
-  layoutLayer(title = "", 
-              sources = sources, 
-              author = "PG, AD, 2019", 
-              horiz = FALSE,
-              col = NA, 
-              frame = F, 
-              scale = 500, 
-              posscale = c(6500000, 1000000))
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1.2, 
+        adj = 0.935,
+        cex = 0.50)
+  
+  # # Add a layout
+  # layoutLayer(title = "", 
+  #             sources = sources, 
+  #             author = "PG, AD, 2019", 
+  #             horiz = FALSE,
+  #             col = NA, 
+  #             frame = F, 
+  #             scale = 500, 
+  #             posscale = c(6500000, 1000000))
   
 }
 
 
-# Map participations/cell 2000-2018 - all partners
-#================================================
+
+
+# ==== 1. Map participations/cell 2000-2018 - Fig. 3.4 ==== 
+
 
 ## 2 500 km2 cells
 europegrided <- pt_in_grid(feat = sfParticipations_snap, adm = sfEU, cellsize = 50000)
@@ -288,19 +349,18 @@ sfProjet <- sfParticipations_snap %>%
 gridProj <- pt_in_grid(feat = sfProjet, adm = sfEU, cellsize = 50000)
 sum(gridProj[[1]]$n)
 
-## Plot and save pdf
+## Plot and save pdf - fig. 3.4
 pdf(file = "AD/OUT/europeGrid_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
           frame = rec,
-          sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ", 
+          sources = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019", 
           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
           labels = "*Discrétisation en\nprogression géométrique",
           labels2 = str_c(sum(europegrided[[1]]$n), " participations\n", sum(gridProj[[1]]$n), " projets"))
 dev.off()
 
 ## PCT 0 participation
-
 summary(europegrided[[1]]$n)
 sum(europegrided[[1]]$n)
 skim(europegrided[[1]])
@@ -309,11 +369,13 @@ nrow(europegrided[[1]][europegrided[[1]]$n == 0,])/ nrow(europegrided[[1]]) *100
 
 
 
-# Maps participations/cell 2000-2006, 2007-2013 et 2014-2020
-#================================================
+
+# ==== 2. Map participations/cell 2000-2006, 2007-2013 et 2014-2020 - Fig. 3.5 ==== 
+
 
 ## 2 500 km2 cells
 europegrided <- pt_in_grid(feat = sfParticipations_snap, adm = sfEU, cellsize = 50000)
+
 ## defines a unique set of breaks for all maps (same legend as the 2000-2018 map)
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
@@ -361,7 +423,7 @@ myPlot <- ggplot(data = dfSummary, aes(x = Period, y = P0)) +
   theme(plot.caption = element_text(size = 6))
 
 
-## DO NOT RUN ------------------------------------------------------
+# ##DO NOT RUN ---
 # plot1 <- plot_grid(grid = europegrided[[1]], 
 #           adm = sfEU,
 #           frame = rec,
@@ -396,10 +458,22 @@ myPlot <- ggplot(data = dfSummary, aes(x = Period, y = P0)) +
 # pdf(file = "AD/OUT/test.pdf", width = 8.3, height = 5.8)
 # gridExtra::grid.arrange(superbeCarte,superbeCarte, superbeCarte, myPlot, nrow = 2, ncol = 2)  
 # dev.off()
-## END ------------------------------------------------------
+
+## Nb projects by period
+sfProjet <- sfParticipations_snap %>% 
+  group_by(Period) %>% 
+  filter(!duplicated(ID_PROJECT))
+gridProj1 <- pt_in_grid(feat = sfProjet %>% filter(Period == "2000-2006"), 
+                        adm = sfEU, cellsize = 50000)
+gridProj2 <- pt_in_grid(feat = sfProjet %>% filter(Period == "2007-2013"), 
+                        adm = sfEU, cellsize = 50000)
+gridProj3<- pt_in_grid(feat = sfProjet %>% filter(Period == "2014-2020"), 
+                       adm = sfEU, cellsize = 50000)
+sumProj <- c(sum(gridProj1[[1]]$n), sum(gridProj2[[1]]$n), sum(gridProj3[[1]]$n))
 
 
-## display maps and save pdf
+
+## display maps and save pdf - fig. 3.5
 pdf(file = "AD/OUT/europeGridPeriod_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_grids(grid1 = europegrided1[[1]], 
            grid2 = europegrided2[[1]],
@@ -410,14 +484,22 @@ plot_grids(grid1 = europegrided1[[1]],
            adm = sfEU,
            frame = rec,
            titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
-           sources = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019 / PG, AD, 2019",
+           sources = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019",
            labels = "*Discrétisation en\nprogression géométrique",
-           summary = "2000-2006 = 75%\n2007-2013 = 72%\n2014-2020 = 84%")
+           summary = "2000-2006 = 75%\n2007-2013 = 72%\n2014-2020 = 84%",
+           tot1 = str_c(sum(europegrided1[[1]]$n), " participations\n", 
+                        sumProj[1], " projets"),
+           tot2 = str_c(sum(europegrided2[[1]]$n), " participations\n", 
+                        sumProj[2], " projets"),
+           tot3 = str_c(sum(europegrided3[[1]]$n), " participations\n", 
+                        sumProj[3], " projets"))
 dev.off()
 
 
-# Barplots numbers of participations by country 
-#================================================
+
+
+# ==== 3. Barplots numbers of participations by country - Fig. 3.9 ==== 
+
 
 ## data with snaped points 
 sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
@@ -431,7 +513,7 @@ sfEU <- left_join(select(sfEU, ID, NAME_EN, UE28),
                    by = "NAME_EN")
 
 
-## Count participations/coutry/period
+## Count participations/country/period
 dfPartPeriodCount <- sfParticipations_snap %>% 
   st_intersection(., select(sfEU, NAME_EN, ISO_SF, UE28)) %>%
   group_by(ISO_SF) %>% 
@@ -457,7 +539,14 @@ sum(dfpartCntr$nbp_cp)
 dfpartCntrUE <- dfpartCntr %>% filter(., UE28 == TRUE) %>% filter(!duplicated(ISO_SF))
 sum(dfpartCntrUE$nbp_cp)
 
-## Plot participation/country
+## nb projects
+nbproj <- sfParticipations_snap %>% 
+  st_intersection(., select(sfEU, NAME_EN, ISO_SF, UE28)) %>% 
+  filter(UE28 == TRUE)
+length(unique(nbproj$ID_PROJECT))
+  
+
+## Plot participation/country ~ fig. 3.9
 partCntr <- ggplot(data = dfpartCntrUE, 
                    aes(x = reorder(NAME_EN, -nbp_c), y = nbp_c)) +
   geom_bar(stat = "identity", position = "dodge") +
@@ -465,9 +554,12 @@ partCntr <- ggplot(data = dfpartCntrUE,
             position = position_dodge(0.9), 
             vjust = 1.6, color = "white", size = 2) +
   labs(x = "UE28",
-       y = "Nombre de participations sur la période 2000-2019") +
+       y = "Nombre de participations en Europe sur la période 2000-2019") +
+  annotate(geom = "label", x = 20, y = 6000, hjust = 0, size = 3,
+           label= paste0(sum(dfpartCntr$nbp_cp), " participations\n",
+                         length(unique(nbproj$ID_PROJECT)), " projets")) +
   theme_light() +
-  labs(caption = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019") +
+  labs(caption = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019\nPG, AD, 2019") +
   theme(legend.position = c(0.6, 0.8),
         axis.text.x = element_text(angle = 30, hjust = 1),
         plot.caption = element_text(size = 6)) 
@@ -478,7 +570,7 @@ partCntr
 dev.off()
 
 
-## faceting participation/country/period
+## faceting participation/country/period ~ not used in the text
 partCntrP <- ggplot(data = na.omit(dfpartCntrUE), 
        aes(x = reorder(NAME_EN, -nbp_c), y = nbp_cp)) +
   geom_bar(stat = "identity", position = "dodge", width = .7) +
@@ -501,18 +593,22 @@ dev.off()
 
 
 
-# map lead partner density
-#================================================
 
-sfParticipations <- readRDS("sfParticipations_full.RDS")
+# ==== 4. Map lead partner density - ==== reprendre ici
 
-## Display points and save
+
+## data with snaped points 
+#sfParticipations <- readRDS("sfParticipations_full.RDS")
+sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
+
+## Dots map
+### Display points and save
 pdf(file = "AD/OUT/densityLead_eucicopall.pdf", width = 8.3, height = 5.8)
 plot_points(frame = rec,
             adm = sfEU,
-            sf = sfParticipations %>% filter(Lead.Partner == "Yes"),
+            sf = sfParticipations_snap %>% filter(Lead.Partner == "Yes"),
             txtLeg = "Chaque point représente\nune participation d'un lead partner\naux projets de l'UE",
-            source = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019")
+            source = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019")
 dev.off()
 
 
@@ -522,6 +618,7 @@ europegridedL <- pt_in_grid(feat = sfParticipations_snap %>% filter(Lead.Partner
                            adm = sfEU, cellsize = 50000)
 skim(europegridedL[[1]])
 sum(europegridedL[[1]]$n)
+
 ### defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegridedL[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
@@ -538,19 +635,9 @@ dev.off()
 
 
 
-# Map participations/pop 2006/cell 
-#================================================
 
-# le work flow est simple :  
-# 1. Prendre notre grille Europe. 
-# 2. Charger la grid population 2006. 
-# 3. Interpoler avec st_interpolate pour avoir 
-# la population mais sur notre grille 
-# (% de surfaces de petits carreaux = % de population dans nos grands carreaux) 
-# 4. Faire le point in grid comme d'hab en gardant la pop 
-# 5. Calculer un nombre de participations pour 100 000 hab 
-# (ou 10 000 selon les ordres de grandeur) . 
-# 6. Ploter
+# ==== 5. Map participations/pop 2006/cell - Fig. 3.10 ==== 
+
 
 ## load eurostat population grids
 # popGrid <- read_delim("DataSource/GEOSTAT_grid_EU_POP_1K/GEOSTAT_grid_EU_POP_2006_1K_V1_1_1.csv", 
@@ -575,7 +662,7 @@ grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
 grid <- grid[sapply(X = ., FUN = length)>0]
 #mapview(grid)
 
-## interpolate 
+## interpolate ~ done on humamum server
 # test <- st_interpolate_aw(sfPopGrid["POP_TOT"], grid, extensive = TRUE)
 
 ## load interpolate grid pop
@@ -613,8 +700,6 @@ grid <- grid %>%
   mutate(density = n / POP_TOT * vec)
 
 
-
-
 ## Display map
 
 ### distribution
@@ -629,8 +714,6 @@ hist(distrib)
 
 grid2 <- grid %>% 
   filter(density < 100)
-
-
 
 
 ### defines a set of breaks and colors
@@ -651,10 +734,8 @@ dev.off()
 
 
 
+# ==== 6. Density of participations by nuts - Fig. ? ==== 
 
-
-# density of participations by nuts
-#================================================
 
 ## Prepare data
 ### Intersect nuts and participations
@@ -699,8 +780,9 @@ dev.off()
 
 
 
-# Barplots participations/type of nuts
-#================================================
+
+# ==== 7. Barplots participations/type of nuts - Fig. 3.11 ==== 
+
 
 # average numbers of participations by type of nuts
 nutsUR <- nutsUR %>% 
@@ -730,7 +812,7 @@ projNuts <- ggplot(data = bibi, aes(x = reorder(Typo7, -nbm), y = nbm, fill = Le
         axis.text.x = element_text(size = 9, angle = 20, vjust = 0.8),
         plot.caption = element_text(size = 6)) 
 
-# display end save
+# display and save
 pdf(file = "AD/OUT/particip_nutsUR_eucicopall.pdf", width = 8.3, height = 5.8)
 projNuts
 dev.off()

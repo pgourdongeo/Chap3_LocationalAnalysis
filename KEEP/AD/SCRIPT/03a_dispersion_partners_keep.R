@@ -1,14 +1,22 @@
-###############################################################################
-#                                   INDICES DE DISPERSION
-#                         analyse du semis de points 'partners' de la BD KEEP
-#
-# DESCRIPTION :  Calcul de l'indice de dispersion et des centres de gravités
-# (point moyen et point médian) aux trois périodes
-#
-# PG, AD, Novembre 2019
-################################################################################
 
-## Working directory huma-num
+##==========================================================================##         
+##                         INDICES DE DISPERSION                            ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base Eucicop/keep / analyse du semis de points 'partners'  ##
+##               de la BD KEEP ; Calcul de l'indice de dispersion et        ##
+##               des centres de gravités (point moyen et point médian)      ##
+##               aux trois périodes                                         ##
+##                                                                          ##
+## PG, AD, Novembre 2019                                                    ##
+##==========================================================================##
+
+# CONTENTS
+## 1. MAP - dotplot partners in large Europe
+## 2. GRAPHIC - Dispersion index (R) - Fig. 3.7
+## 3. DIAGRAM - Centre de gravité - Fig. 3.6 
+
+# Working directory huma-num
 #setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
@@ -43,6 +51,10 @@ rec <- st_read("AD/FDCARTE/rec_3035.geojson")
 
 
 
+
+# ================ Prepare data ================
+
+
 ## Prepare data Partners
 
 ### Count nb particip/partner
@@ -74,8 +86,6 @@ partners <- left_join(select(partners, ID_PARTNER, ID_PROJECT, Country = Country
 #### rm duplicated rows
 partners <- partners %>% 
   filter(!duplicated(ID_PARTNER))
-
-
 
 
 ## Prepare sf Europe
@@ -116,7 +126,8 @@ sfEU <- sfEU %>%
 
 
 
-# MAP - dotplot partners in large Europe------------------
+
+# ==== 1. MAP - dotplot partners in large Europe ====
 
 ## FUNCTION : plot a points map
 plot_points <- function(frame, adm, sf, title, source){
@@ -156,30 +167,27 @@ partners_inEU <- st_intersection(partners, select(sfEU, ID_POLY = ID, ISO_POLY =
 ## Display and save
 pdf(file = "AD/OUT/dotplot_partners_1420.pdf", width = 8.3, height = 5.8)
 plot_points(frame = rec, 
-                        adm = sfEU, 
-                        sf = partners_inEU %>% filter(Period == "2014-2020"),
-                        title = "Entre 2014 et 2020",
-                        source = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019")
+            adm = sfEU, 
+            sf = partners_inEU %>% filter(Period == "2014-2020"),
+            title = "Entre 2014 et 2020",
+            source = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019")
 dev.off() 
 
-# end ------------------
 
 
 
+# ==== 2. GRAPHIC - Dispersion index (R) - Fig. 3.7 ====
 
-## Dispersion index (R) ------------------------------
-
-### Filter le tableau de points avec les pays 
-### pour lesquels on veut calculer les indices de dispersion
-### UE28 + Balkan, Suisse et Norway = 37 countries
+## Filter le tableau de points avec les pays 
+## pour lesquels on veut calculer les indices de dispersion
+## UE28 + Balkan, Suisse et Norway = 37 countries
 partners_inEU <- st_intersection(partners, select(sfEUR, ID_POLY = ID, ISO_POLY = ISO))
 #mapView(sfEUR) + mapView(partners_inEU)
 
 
+## Analyse de voisinage et processus de Poisson (cf. PUMAIN, ST-JULIEN)
 
-### Analyse de voisinage et processus de Poisson (cf. PUMAIN, ST-JULIEN)
-
-#### Création d'une fonction dist moy au plus proche voisin (Ra)
+### Création d'une fonction dist moy au plus proche voisin (Ra)
 MeanDistNN <- function(sf, k){
   
   sp <- as(sf, "Spatial")
@@ -204,9 +212,9 @@ MeanDistNN(sf = partners_inEU %>% filter(Period == "2014-2020"), k= 1) # 4085 m
 
 table(partners_inEU$Country)
 
-#### Compute mean dist for each period 
+### Compute mean dist for each period 
 
-##### Simple solution in dplyr
+#### Simple solution in dplyr
 # partnersE <- partners_inEU %>% 
 #   group_by(Period) %>% 
 #   mutate(N= n()) %>% 
@@ -219,7 +227,7 @@ NNdistEur <- partners_inEU %>%
   rename(Ra = `MeanDistNN(sf = ., k = 1)` )
 
 
-#### Prepare df 
+### Prepare df 
 NPartnersEUR <- partners_inEU %>% 
   group_by(Period) %>% 
   summarise(Npoints = n())
@@ -228,8 +236,8 @@ NNdistEur <- NNdistEur %>%
   left_join(NPartnersEUR) %>%
   mutate(Area = sum(sfEUR2$Area))
 
-#### Calculate Re (estimated mean distance) and R index (gap between observed and estimated : Ra/Re)
-#### R = 0 -> concentration ; R = 1 -> Poisson random ; r > 1 -> dispersion 
+### Calculate Re (estimated mean distance) and R index (gap between observed and estimated : Ra/Re)
+### R = 0 -> concentration ; R = 1 -> Poisson random ; r > 1 -> dispersion 
 NNdistEur <- NNdistEur %>%
   mutate(Area = as.numeric(Area),
          Re = 1/(2*sqrt(Npoints/Area)),
@@ -238,9 +246,9 @@ NNdistEur <- NNdistEur %>%
 rm(NPartnersEUR)
 
 
-#### Compute mean dist for each period and each country
+### Compute mean dist for each period and each country
 
-##### Simple solution in dplyr
+#### Simple solution in dplyr
 partnersCNTR <- partners_inEU %>% 
   group_by(ISO_POLY, Period) %>% 
   mutate(N= n()) %>% 
@@ -252,7 +260,7 @@ NNdistCountry <- partnersCNTR %>%
   rename(Ra = `MeanDistNN(sf = ., k = 1)` )
 
 
-#### Prepare df 
+### Prepare df 
 NPartners <- partners_inEU %>% 
   group_by(ISO_POLY, Period) %>% 
   summarise(Npoints = n())
@@ -263,8 +271,8 @@ NNdistCountry <- NNdistCountry %>%
   select(-geometry.x, -geometry.y)
 
 
-#### Calculate Re (estimated mean distance) and R index (gap between observed and estimated : Ra/Re)
-#### R = 0 -> concentration ; R = 1 -> Poisson random ; r > 1 -> dispersion 
+### Calculate Re (estimated mean distance) and R index (gap between observed and estimated : Ra/Re)
+### R = 0 -> concentration ; R = 1 -> Poisson random ; r > 1 -> dispersion 
 NNdistCountry <- NNdistCountry %>%
   mutate(Area = as.numeric(Area),
          Re = 1/(2*sqrt(Npoints/Area)),
@@ -274,32 +282,32 @@ rm(NPartners, partnersCNTR)
 
 
 
-### Visualization 
+### ~Visualization ----
 dfR <- NNdistCountry
 
-# #### Members of EU since 2004 or after
+# ### Members of EU since 2004 or after
 # uePost <- c("CY", "EE", "HU", "LV", "LT", "MT", "PL", "SK", "SI", "CZ", "BG", "RO", "HR")
-# #### UE-15 + suissse, Norvège
+# ### UE-15 + suissse, Norvège
 # ue15 <- c("DE", "BE", "FR", "IT", "LU", "NL", "DK", "IE", "GB", "GR", "ES", "PT", "AT", "FI", "SE", "CH", "NO")
 
-#### PG selection of countries 
+### PG selection of countries 
 selec <- c("FR", "IT", "ES", "FI", "SE", "LT", "LV", "BG", "RO", "CZ", "DE", "HU")
 
 dfRselec <- dfR %>% filter(ISO_POLY %in% selec) %>% rename(UE_15 = ISO_POLY)
 
-#### Add european R index
+### Add european R index
 NNdistEur<- NNdistEur %>% 
   mutate(UE_15 = "Europe") %>% 
   as.data.frame()
 dfRselec <- rbind(dfRselec, NNdistEur)
 
-#### Fun with colors
+### Fun colors
 #library(ggthemes)
 #scales::show_col(few_pal()(18))
 #library(hrbrthemes)
 #scales::show_col(ipsum_pal()(18))
 
-#### Need 13 colors
+### Need 13 colors
 # library(ggsci)
 # scales::show_col(pal_rickandmorty()(12))
 # myPal <- c(pal_rickandmorty()(12), "black")
@@ -311,7 +319,7 @@ myPal <- c("#82491EFF", "#24325FFF", "#FB6467FF",
 
 dfRselec$UE_15 <- factor(dfRselec$UE_15, levels = c("FR", "IT", "ES", "FI", "SE", "LT", "LV", "BG", "RO", "CZ", "DE", "HU", "Europe"))
 
-#### Plot
+### Plot
 Rindex <- ggplot(data = dfRselec, 
                  mapping = aes(x = Period, y = R, color= UE_15, group = UE_15)) +
   scale_color_manual("UE_15", values = myPal) +
@@ -359,25 +367,24 @@ pdf(file = "AD/OUT/indiceR_partners_tab.pdf", width = 8.3, height = 5.8)
 grid.table(myTble, rows = NULL)
 dev.off() 
 
-## end---------------------
 
 
 
+# ==== 3. DIAGRAM - Centre de gravité - Fig. 3.6 ====
 
-## Centre de gravité ---------------------------------
 
-### data : points compris dans l'Europe large   
+## data : points compris dans l'Europe large   
 partners_inEU <- st_intersection(partners, select(sfEU, ID_POLY = ID, ISO_POLY = ISO))
 
 
-### xy
+## xy
 coord <- as.data.frame(st_coordinates(partners_inEU))
 dfPartners <- partners_inEU %>% 
   mutate(x = coord$X, y = coord$Y) %>% 
   as.data.frame() %>% 
   select(-geometry) 
 
-### Point moyen pondéré par le stock de participation
+## Point moyen pondéré par le stock de participation
 PG <- dfPartners %>% 
   group_by(Period) %>% 
   summarise(., x = mean(x), y = mean(y),
@@ -386,7 +393,7 @@ PG <- dfPartners %>%
   mutate(CG = "point moyen")
 
 
-### Point médian
+## Point médian
 require(ICSNP)
 
 df <- data.frame(x = numeric(3), y = numeric(3))
@@ -405,11 +412,11 @@ PG <- rbind(select(PG, -Mx_p, -My_p), df)
 # Clean envirmnt
 rm(bibi, coord, coords, df, i)
 
-## end---------------------
 
 
 
-## Visualization  --------------------
+### ~Visualization ----
+
 
 ### diagram
 

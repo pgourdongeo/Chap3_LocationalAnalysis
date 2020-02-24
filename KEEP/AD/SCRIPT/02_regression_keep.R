@@ -1,13 +1,20 @@
-###############################################################################
-#               ANALYSE BIVARIEE : participations ~ taille des agglo
-#
-# DESCRIPTION : régression linéaire et cartographie des résidus
-# 
-# PG, AD, Octobre 2019
-##############################################################################
 
-## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+##==========================================================================##         
+##            ANALYSE BIVARIEE : participations ~ taille des agglo          ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base Eucicop/keep / régression linéaire et                 ##
+##               cartographie des résidus                                   ##
+##                                                                          ##
+## PG, AD, Octobre 2019                                                     ##
+##==========================================================================##
+
+# CONTENTS
+## 1. UMZ - Fig. 3.12
+
+
+# Working directory huma-num
+# setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -43,6 +50,8 @@ sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
 
 
 
+
+# ================ Functions ================ 
 
 # FUNCTION - Display the residuals map
 rezMap <- function(frame, bgmap, units, var, source, titleLeg){
@@ -133,7 +142,8 @@ is_outlier <- function(x) {
 
 
 
-#========= UMZ ==========
+# ==== 1. UMZ - Fig. 3.12 ==== 
+
 
 ## Count participations in umz
 ### Intersect umz and participations
@@ -205,7 +215,7 @@ umz <- umz %>%
                                    rezStand, 
                                    as.numeric(NA)))
 
-## Plot with outliers and save pdf
+## Plot with outliers and save pdf - fig. 3.12
 pdf(file = "AD/OUT/lm_umz.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
 regUmz + 
   geom_label_repel(data = umz %>% filter(!is.na(outlier_rezStand)), 
@@ -253,7 +263,7 @@ dev.off()
 
 
 
-#========= FUA ==========
+# ==== 2. FUA  ==== 
 
 ## select only LUZ 
 fua <- fua %>% filter(URAU_CATG == "L")

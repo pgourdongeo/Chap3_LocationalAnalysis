@@ -1,13 +1,17 @@
-###############################################################################
-#                     EXPLORATION DE LA BD KEEP 
-#
-# DESCRIPTION : analyse des densités des projets selon différents maillages 
-# (nuts, umz, fua, carroyage) et pas de temps
-# PG, AD
-# Octobre 2019
-##############################################################################
-## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+
+##==========================================================================##         
+##            EXPLORATION DE LA BD EUCICOP/KEEP                             ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : analyse des densités des projets selon différents          ##
+##               maillages (nuts, umz, fua, carroyage) et pas de temps      ##
+##                                                                          ##
+## PG, AD, Octobre 2019                                                     ##
+##==========================================================================##
+
+
+# Working directory huma-num
+# setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)

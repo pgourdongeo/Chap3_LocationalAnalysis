@@ -1,12 +1,15 @@
-###############################################################################
-#                           TYPOLOGIE DES PROJETS URBACT
-#                         
-#
-# DESCRIPTION : réalisation d'une typologie des projets URBACT 
-#
-# PG, AD, Novembre 2019
-##############################################################################
 
+##==========================================================================##         
+##                      TYPOLOGIE DES PROJETS URBACT                        ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base URBACT / préparation des variables en vue de la       ##
+##               réalisation d'une typologie des projets (CAH)              ##
+##                                                                          ##
+## PG, AD, Novembre 2019                                                    ##
+##==========================================================================##
+
+# CONTENTS
 
 # Working directory huma-num
 #setwd("~/BD_Keep_Interreg/KEEP")
@@ -26,10 +29,6 @@ library(ggsn) # scalebar on maps
 
 
 
-#------------------------------------------------------------------
-# New var for CAH : new city size percentages and a primacy index
-#------------------------------------------------------------------
-
 # Import data
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
@@ -42,16 +41,19 @@ urbactCities <- read_delim("AD/URBACT/BdCitiesUrbact_Code_UMZ_LAU2.csv",
 
 
 
-# Creation of a new table of URBACT projects (with number of city in each network)
+
+# ==== Last try : new city size percentages, primacy index & coef of variation =====
+
+## Creation of a new table of URBACT projects (with number of city in each network)
 network <- urbactCities %>% 
   group_by(Code_Network) %>% 
   summarise(Ncities = n()) 
 
 
-# % of cities by city size (category) in each project
+## % of cities by city size (category) in each project
 
-## First, create a new vars: class of city size (1, 2, 3 ou 4) 
-## si classe de taille validée, nommer ces classes (petite ville, moyenne, etc. par ex)
+### First, create a new vars: class of city size (1, 2, 3 ou 4) 
+### si classe de taille validée, nommer ces classes (petite ville, moyenne, etc. par ex)
 skim(urbactCities$POPLAU2_2015)
 urbactCities <- urbactCities %>% 
   filter(!is.na(POPLAU2_2015)) %>% 
@@ -62,15 +64,15 @@ urbactCities <- urbactCities %>%
 
 table(urbactCities$KPOP)
 
-## Count number of cities in each category by network
+### Count number of cities in each category by network
 kTY_city <- urbactCities %>% 
   group_by(Code_Network, KPOP) %>% 
   summarise(N_Kcity_byNw = n())
 
-## Add number of cities in each network
+### Add number of cities in each network
 kTY_city <- left_join(kTY_city, network, by = "Code_Network")
 
-## % 
+### % 
 kTY_city <- kTY_city %>% 
   mutate(P_Kcity_byNw = round(N_Kcity_byNw / Ncities * 100))
 
@@ -87,10 +89,7 @@ network <- network %>%
             replace_na, 0)
 
 
-
-
-
-# real primacy index (pop city 1 / pop city 2)
+## real primacy index (pop city 1 / pop city 2)
 pI <- urbactCities %>% 
   group_by(Code_Network) %>% 
   top_n(n = 2, wt = POPLAU2_2015) %>% 
@@ -101,7 +100,7 @@ pI <- urbactCities %>%
 network <- network %>% left_join(select(pI, Code_Network, primacy_index))
 rm(pI)
 
-# variance pop
+## coef of variation on the pop
 variance <- urbactCities %>% 
   group_by(Code_Network) %>% 
   mutate(ect = sd(POPLAU2_2015),
@@ -112,7 +111,7 @@ variance <- urbactCities %>%
 network <- network %>% left_join(select(variance, Code_Network, coefVar))
 rm(variance)
 
-# save for exploratR
+## save for exploratR
 write.csv2(network, "AD/URBACT/URBACTforCAH.csv", row.names = FALSE, fileEncoding = "UTF-8")
 
 
@@ -122,14 +121,13 @@ write.csv2(network, "AD/URBACT/URBACTforCAH.csv", row.names = FALSE, fileEncodin
 ## CODE : https://zenodo.org/record/155333#.XdZn7dVCfIU
 
 
-#--------------------------------------------------------
 
 
 
+# ==== First try  =====
 
-## First try --------------------------------
 
-# Import data
+## Import data
 sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
 rec <- st_read("AD/FDCARTE/rec_3035.geojson")
@@ -141,16 +139,16 @@ urbactCities <- read_delim("AD/URBACT/BdCitiesUrbact_Code_UMZ_LAU2.csv",
 
 
 
-# Creation of a new table of URBACT projects (with number of city in each network)
+## Creation of a new table of URBACT projects (with number of city in each network)
 network <- urbactCities %>% 
   group_by(Code_Network) %>% 
   summarise(Ncities = n()) 
 
 
-# % of cities by city size (category) in each project
+## % of cities by city size (category) in each project
 
-## First, create a new vars: class of city size (1, 2, 3 ou 4) 
-## si classe de taille validée, nommer ces classes (petite ville, moyenne, etc. par ex)
+### First, create a new vars: class of city size (1, 2, 3 ou 4) 
+### si classe de taille validée, nommer ces classes (petite ville, moyenne, etc. par ex)
 skim(urbactCities$POPLAU2_2015)
 urbactCities <- urbactCities %>% 
   mutate(KPOP = case_when(POPLAU2_2015 < 50000 ~ "1",
@@ -164,15 +162,15 @@ urbactCities <- urbactCities %>%
 
 table(urbactCities$KPOP)
 
-## Count number of cities in each category by network
+### Count number of cities in each category by network
 kTY_city <- urbactCities %>% 
   group_by(Code_Network, KPOP) %>% 
   summarise(N_Kcity_byNw = n())
 
-## Add number of cities in each network
+### Add number of cities in each network
 kTY_city <- left_join(kTY_city, network, by = "Code_Network")
 
-## % 
+### % 
 kTY_city <- kTY_city %>% 
   mutate(P_Kcity_byNw = round(N_Kcity_byNw / Ncities * 100))
 
@@ -260,14 +258,12 @@ for(i in unique(coords3035$Code_Network)){
 }
 
 
-
-
 # Clean envirmnt
 rm(bibi, coord, df, i)
 
-# et la distance moyenne ou médiane. 
+## et la distance moyenne ou médiane. 
 require(spdep)
-##fonction dist moy au plus proche voisin (Ra)
+## fonction dist moy au plus proche voisin (Ra)
 MeanDistNN <- function(sf, k){
   
   sp <- as(sf, "Spatial")
@@ -301,7 +297,6 @@ write.csv2(network, "AD/URBACT/reseauxUrbact.csv", row.names = FALSE, fileEncodi
 #Après on pourrait faire un ACP, ou même une CAH direct 
 #sur toutes ces grandeurs normalisées pour classifier les projets
 
-##  --------------------------------
 
 
 
