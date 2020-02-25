@@ -1,4 +1,8 @@
-.Rproj.user
+/.Rproj.user/*
 .Rhistory
 .RData
 .Ruserdata
+/GEOSTAT_PopGrid/*
+/OtherGeometry/*
+/LAU2/*
+/CITY/Data/*

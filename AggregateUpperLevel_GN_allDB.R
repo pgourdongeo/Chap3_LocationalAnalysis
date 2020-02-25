@@ -133,7 +133,7 @@ rm(DuplicatedAdmin2)
 ## Chaeck problem
 EuropeGN <- GNinfoAll %>% filter(continentCode == "EU")
 
-EuropeGNsf <-st_as_sf( EuropeGN, coords = c("lng_GN", "lat_GN"), crs = 4326)
+EuropeGNsf <-st_as_sf( EuropeGN, coords = c("lng_GN", "lat_GN"), crs = 4326)%>% st_transform(crs=3035)
 
 library(mapview)
 
@@ -187,3 +187,33 @@ GNinfoCleanAll <- GNinfoCleanAll %>% select(geonameId, asciiName, countryCode, l
 
 saveRDS(GNinfoCleanAll, "UniqueGN_info_AllDB.rds")
 saveRDS(DicoUpperHierar, "DicoGN_UpperHierarchy.rds")
+
+pbGN <- GNhierarchy(731950)
+pb2 <-  GNhierarchy(8030383)
+pb2 <-  GNhierarchy(2595741)
+pbParis <-GNhierarchy(6455259)
+pbstras <-GNhierarchy(11071622)
+GNhierarchy(560391)
+############################## PB GN info all antijoin did not work 
+################################and some of new upper level geonames are missing in GNinfo_allDB
+#Other metho with LAU2 DB
+
+LAU2sf <- st_read("LAU2/LAU2_6111_2015.geojson")
+
+LAU2sf <- LAU2sf %>% st_make_valid() %>%st_cast( to= "POLYGON")
+
+
+JoinPOintInLAU <- st_join(LAU2sf, EuropeGNsf, join = st_intersects)
+# nb <- st_intersects(LAU2sf,EuropeGNsf)
+# 
+# count <- st_sf(n=sapply(X = nb,FUN = length), LAU2sf)
+
+JoinPOintInLAU <- JoinPOintInLAU %>% filter(!is.na(geonameId))
+
+Morethan1 <- JoinPOintInLAU %>% group_by(NSI_CODE11)%>% mutate(nGN= n())%>% filter(nGN > 1)
+
+library(mapview)
+
+mapview(Morethan1)+mapview(EuropeGNsfInLAU)
+
+EuropeGNsfInLAU <- EuropeGNsf %>% filter(geonameId %in% Morethan1$geonameId)
