@@ -1,15 +1,25 @@
-###############################################################################
-#                         Exploration de la BD URBACT
-#                         
-#
-# DESCRIPTION : 
-#
-# PG, AD, Novembre 2019
-##############################################################################
+
+##==========================================================================##         
+##                       Exploration de la BD URBACT                        ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION :         ##
+##                       ##
+##                       ##
+##                       ##
+##                                                                          ##
+## PG, AD, Novembre 2019                                                    ##
+##==========================================================================##
 
 
-## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+# CONTENTS
+## 1. Headcount - Fig. 3.16
+## 2. GRAPHIC - Dispersion index (R) - Fig. 3.8 
+## 3. DIAGRAM - Centre de gravité
+
+
+# Working directory huma-num
+# setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 
@@ -43,7 +53,9 @@ urbactCities <- read_delim("AD/URBACT/BdCitiesUrbact_Code_UMZ_LAU2.csv",
                        trim_ws = TRUE)
 
 
-# Nb moy de villes par projet
+# ================ Prepare data ================
+
+## Number of city by network 
 urbactCities <- urbactCities %>% 
   group_by(Code_Network) %>% 
   mutate(nbCity = length(unique(Name)))
@@ -51,13 +63,13 @@ urbactCities <- urbactCities %>%
 summary(urbactCities$nbCity)
 
 
-# aggregation: nb participation/city
+## aggregation: nb participation/city
 
-## Prepare data
+## Prepare df
 urbactCitiesAggr <- urbactCities %>%
   mutate(Lead = ifelse(City.Statut == "Lead Partner", 1, 0)) %>%
   select(CodeCity, Name, X, Y, Country, Region.x, Continent.x, 
-         POPLAU2_2015, ID_UMZ, Pop2011, Lead) %>%
+         POPLAU2_2015, ID_UMZ, Pop2011, Lead, nbCity) %>%
   group_by(CodeCity) %>%
   mutate(NbPart = n(), NbLeader = sum(Lead)) %>% 
   select(-Lead) %>%
@@ -73,16 +85,22 @@ sfUrbactCitiesAggr <- st_as_sf(urbactCitiesAggr, coords = c("X", "Y"), crs = 432
 
 mapview(sfEU) + mapview(sfUrbactCitiesAggr)
 
-## villes qui participent le plus en espagne
-esp <- urbactCitiesAggr %>% filter(Country == "ES")
-topEsp <- esp %>%  ungroup() %>% top_n(wt = NbPart, n = 7)
-## les projets qui ont lead partner en espagne
-espLead <- urbactCities %>% filter(City.Statut == "Lead Partner" & Country == "ES")
+# ## villes qui participent le plus en espagne
+# esp <- urbactCitiesAggr %>% filter(Country == "ES")
+# topEsp <- esp %>%  ungroup() %>% top_n(wt = NbPart, n = 7)
+# ## les projets qui ont lead partner en espagne
+# espLead <- urbactCities %>% filter(City.Statut == "Lead Partner" & Country == "ES")
 
 
 
-## Effectifs -------------------------------------------
+
+# ================ 1. Headcount ================
+
+
+## ----~barplot Nb participation/city ----
+
 freq <- as.data.frame(table(urbactCitiesAggr$NbPart))
+
 freq_nbpart <- ggplot(data = freq,
        aes(x = Var1, y = Freq)) +
   geom_bar(stat = "Identity") +
@@ -91,16 +109,18 @@ freq_nbpart <- ggplot(data = freq,
             vjust = 1.42, color = "white", size = 4) +
   labs(x = "Nombre de participations par ville", 
        y = "Nombre de villes") +
+  labs(caption = "Sources : EUCICOP-URBACT 2019 / PG, AD, 2019") +
   theme_light() +
-  annotate("text", x = 4, y = 150, label = "404 villes\n765 participations", hjust = 0) 
+  annotate("text", x = 4, y = 150, label = "404 villes\n765 participations", hjust = 0) +
+  theme(plot.caption = element_text(size = 6))
 
-# display end save
-#pdf(file = "AD/OUT/freq_nbpart_urbact.pdf", width = 8.3, height = 5.8)
+## display end save
+pdf(file = "AD/OUT/freq_nbpartByCity_urbact.pdf", width = 8.3, height = 5.8)
 freq_nbpart
 dev.off()
 
 
-## Effectifs en %
+## ----~barplot Nb participation/city% ----
 freq <- freq %>% 
   mutate(pct = Freq / sum(Freq) * 100)
 
@@ -112,15 +132,21 @@ freq_pctPart <- ggplot(data = freq,
             vjust = 1.42, color = "white", size = 4) +
   labs(x = "Nombre de participations par ville", 
        y = "Pourcentage de villes impliquées") +
+  labs(caption = "Sources : EUCICOP-URBACT 2019 / PG, AD, 2019") +
   theme_light() +
-  annotate("text", x = 4, y = 30, label = "404 villes\n765 participations", hjust = 0)
+  annotate("text", x = 4, y = 30, label = "404 villes\n765 participations", hjust = 0)+
+  theme(plot.caption = element_text(size = 6))
 
-# display and save
-#pdf(file = "AD/OUT/freq_pctpart_urbact.pdf", width = 8.3, height = 5.8)
+## display and save
+pdf(file = "AD/OUT/freq_pctpart_urbact.pdf", width = 8.3, height = 5.8)
 freq_pctPart
 dev.off()
 
-## Nb ville/country --- Luxembourg is not in the network
+
+## ----~Fig. 3.16 : barplot Nb city/country ---- 
+
+#Luxembourg is not in the network
+
 freq2 <- as.data.frame(table(urbactCitiesAggr$Country)) %>% 
   mutate(pct = Freq / sum(Freq) * 100)
 
@@ -131,17 +157,20 @@ freq_NbVille <- ggplot(data = freq2,
   geom_bar(stat = "Identity") +
   labs(x = "Pays impliqués dans des projets URBACT", 
        y = "Nombre de villes du réseau URBACT") +
+  labs(caption = "Sources : EUCICOP-URBACT 2019 / PG, AD, 2019") +
   theme_light() +
-  annotate("text", x = 15, y = 40, label = "404 villes\n29 pays", hjust = 0) 
+  annotate("text", x = 15, y = 40, label = "404 villes\n29 pays", hjust = 0) +
+  theme(plot.caption = element_text(size = 6))
+
 
 # display and save
-#pdf(file = "AD/OUT/freq_NbVille_urbact.pdf", width = 8.3, height = 5.8)
+pdf(file = "AD/OUT/freq_NbVille_urbact.pdf", width = 8.3, height = 5.8)
 freq_NbVille
 dev.off()
 
 
-
-## MAP: Ratio participations/city by country ----------------------------------
+## reprendre ici -------
+## ===== 2. MAP: Ratio participations/city by country ======
 urbactCitiesAggr <- urbactCitiesAggr %>% 
   group_by(Country) %>% 
   mutate(RATIO = sum(NbPart)/length(Name)) %>% 
@@ -231,7 +260,7 @@ myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-4000
 
 ### plot
 superbeCarte <- ggplot() +
-  geom_sf(data = sfEU, color = "ivory3", fill = "#E3DEBF", size = 0.4) +
+  geom_sf(data = sfEU, color = "ivory3", fill = "#f9e8d0", size = 0.4) +
   geom_sf(data = sfEUR,
           aes(fill = TYPO), colour = "ivory3", size = 0.4) +
   scale_fill_manual(name = "Ratio\n(nb de participations /\nnb de villes participantes)*",

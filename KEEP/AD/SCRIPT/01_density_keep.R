@@ -235,7 +235,7 @@ plot_grids <- function(grid1, grid2, grid3, title1, title2, title3,
 }
 
 ## plot a points map
-plot_points <- function(frame, adm, sf, txtLeg, sources){
+plot_points <- function(frame, adm, sf, txtLeg, sources, labels){
   
   # stock bbox
   bb <- st_bbox(frame)
@@ -243,12 +243,15 @@ plot_points <- function(frame, adm, sf, txtLeg, sources){
   # Define margins
   par(mar = c(0,0,0,0))
   
+  sf <- st_intersection(rec, sf)
+  
   # Plot the map
+  # plot(st_geometry(frame), border = NA, lwd = 0.5, col = NA,
+  #      xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
   plot(st_geometry(adm), col = "ivory4")
   plot(st_geometry(sf), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
   plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)], add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add a legend
   legend(x = 1000000,
@@ -256,6 +259,9 @@ plot_points <- function(frame, adm, sf, txtLeg, sources){
          legend = txtLeg, 
          bty = "n",
          cex = 0.8)
+  
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels, cex = 0.75)
   
   # Add scalebar
   barscale(500, pos = c(6500000, 1000000))
@@ -280,7 +286,7 @@ plot_points <- function(frame, adm, sf, txtLeg, sources){
 }
 
 ## Plot a choro map
-dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
+dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels, labels2){
   
   # set the margins
   bb <- st_bbox(frame)
@@ -289,7 +295,7 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
   # Plot
   plot(st_geometry(frame), border = NA, lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  plot(st_geometry(bgmap), col = "#E3DEBF", border = "ivory3", lwd = 0.5, add = TRUE)
+  plot(st_geometry(bgmap), col = "#f9e8d0", border = "ivory3", lwd = 0.5, add = TRUE)
   choroLayer(sf, var = "density", border = NA, breaks= bks, col= cols, 
              legend.pos = "density", add = TRUE)
   plot(st_geometry(sf), col = NA, border = "ivory4", lwd = 0.1, add = TRUE)
@@ -307,6 +313,9 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
   
   # Add an explanation text
   text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
+  
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels2, cex = 0.75)
   
   # Add scalebar
   barscale(500, pos = c(6500000, 1000000))
@@ -344,9 +353,9 @@ bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
 ## Nb projects
-sfProjet <- sfParticipations_snap %>% 
+. <- sfParticipations_snap %>% 
   filter(!duplicated(ID_PROJECT))
-gridProj <- pt_in_grid(feat = sfProjet, adm = sfEU, cellsize = 50000)
+gridProj <- pt_in_grid(feat = ., adm = sfEU, cellsize = 50000)
 sum(gridProj[[1]]$n)
 
 ## Plot and save pdf - fig. 3.4
@@ -357,7 +366,8 @@ plot_grid(grid = europegrided[[1]],
           sources = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019", 
           titleLeg = "Nombre de participations\naux projets de l'UE\npar carreau de 2 500 km2*",
           labels = "*Discrétisation en\nprogression géométrique",
-          labels2 = str_c(sum(europegrided[[1]]$n), " participations\n", sum(gridProj[[1]]$n), " projets"))
+          labels2 = str_c(ceiling(sum(europegrided[[1]]$n)/100)*100, " participations\n", 
+                          ceiling(sum(gridProj[[1]]$n)/100)*100, " projets"))
 dev.off()
 
 ## PCT 0 participation
@@ -413,14 +423,14 @@ dfSummary <- dfSummary %>%
   gather(key = "Period", value = "P0")
 
 
-myPlot <- ggplot(data = dfSummary, aes(x = Period, y = P0)) +
-  geom_bar(stat = "identity", width = 0.35) +
-  geom_text(aes(label = paste(P0, " %", sep = "")), position = position_dodge(0.9), vjust = 1.6, color = "white") +
-  labs(x = "",
-       y = "Part de carreaux vides") +
-  theme_light() +
-  labs(caption = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019") +
-  theme(plot.caption = element_text(size = 6))
+# myPlot <- ggplot(data = dfSummary, aes(x = Period, y = P0)) +
+#   geom_bar(stat = "identity", width = 0.35) +
+#   geom_text(aes(label = paste(P0, " %", sep = "")), position = position_dodge(0.9), vjust = 1.6, color = "white") +
+#   labs(x = "",
+#        y = "Part de carreaux vides") +
+#   theme_light() +
+#   labs(caption = "Source : EUCICOP 2019 / KEEP Closed Projects 2000-2019\nPG, AD, 2019") +
+#   theme(plot.caption = element_text(size = 6))
 
 
 # ##DO NOT RUN ---
@@ -487,15 +497,15 @@ plot_grids(grid1 = europegrided1[[1]],
            sources = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019",
            labels = "*Discrétisation en\nprogression géométrique",
            summary = "2000-2006 = 75%\n2007-2013 = 72%\n2014-2020 = 84%",
-           tot1 = str_c(sum(europegrided1[[1]]$n), " participations\n", 
+           tot1 = str_c(floor(sum(europegrided1[[1]]$n)/100)*100, " participations\n", 
                         sumProj[1], " projets"),
-           tot2 = str_c(sum(europegrided2[[1]]$n), " participations\n", 
-                        sumProj[2], " projets"),
-           tot3 = str_c(sum(europegrided3[[1]]$n), " participations\n", 
-                        sumProj[3], " projets"))
+           tot2 = str_c(ceiling(sum(europegrided2[[1]]$n)/100)*100, " participations\n", 
+                        ceiling(sumProj[2]/100)*100, " projets"),
+           tot3 = str_c(floor(sum(europegrided3[[1]]$n)/100)*100, " participations\n", 
+                        floor(sumProj[3]/100)*100, " projets"))
 dev.off()
 
-
+rm(list = ls()) 
 
 
 # ==== 3. Barplots numbers of participations by country - Fig. 3.9 ==== 
@@ -594,12 +604,19 @@ dev.off()
 
 
 
-# ==== 4. Map lead partner density - ==== reprendre ici
+# ==== 4. Map lead partner density & dots plot ==== 
 
 
 ## data with snaped points 
-#sfParticipations <- readRDS("sfParticipations_full.RDS")
 sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
+
+
+## count 
+. <- st_intersection(rec, sfParticipations_snap) %>% 
+  filter(Lead.Partner == "Yes")
+nb <- c(length(unique(.$ID_PARTICIPATION)), 
+        length(unique(.$ID_PARTNER)), 
+        length(unique(.$ID_PROJECT)))
 
 ## Dots map
 ### Display points and save
@@ -608,7 +625,9 @@ plot_points(frame = rec,
             adm = sfEU,
             sf = sfParticipations_snap %>% filter(Lead.Partner == "Yes"),
             txtLeg = "Chaque point représente\nune participation d'un lead partner\naux projets de l'UE",
-            source = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019")
+            source = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019",
+            labels = str_c(ceiling(nb[2]/100)*100, " lead partners\n", 
+                           floor(nb[3]/100)*100, " projets"))
 dev.off()
 
 
@@ -628,9 +647,10 @@ pdf(file = "AD/OUT/europeGrid_lead_eucicopall.pdf",width = 8.3, height = 5.8)
 plot_grid(grid = europegridedL[[1]], 
           adm = sfEU,
           frame = rec,
-          sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019", 
+          sources = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG, AD, 2019", 
           titleLeg = "Nombre de participations des lead partners\naux projets de l'UE\npar carreau de 2 500 km2*",
-          labels = "*Discrétisation en\nprogression géométrique")
+          labels = "*Discrétisation en\nprogression géométrique",
+          labels2 = "")
 dev.off()
 
 
@@ -639,60 +659,23 @@ dev.off()
 # ==== 5. Map participations/pop 2006/cell - Fig. 3.10 ==== 
 
 
-## load eurostat population grids
-# popGrid <- read_delim("DataSource/GEOSTAT_grid_EU_POP_1K/GEOSTAT_grid_EU_POP_2006_1K_V1_1_1.csv", 
-#                       ";", escape_double = FALSE, trim_ws = TRUE)
-# sfPopGrid <- st_read("DataSource/GEOSTAT_grid_EU_POP_1K/Grid_ETRS89_LAEA_1K_ref_GEOSTAT_2006.shp")
-# 
-# 
-# ## Join pop attibute to sf
-# sfPopGrid <- left_join(select(sfPopGrid, GRD_ID = GRD_INSPIR), popGrid, by = "GRD_ID")
-# 
-# ## transform to 3035
-# sfPopGrid <- sfPopGrid %>% 
-#   st_transform(crs = 3035)
-
-
-## Create a regular grid 
-grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
-#mapview(grid)
-
-### Keep only cells that intersect adm
-. <- st_intersects(grid, sfEU)
-grid <- grid[sapply(X = ., FUN = length)>0]
-#mapview(grid)
-
-## interpolate ~ done on humamum server
-# test <- st_interpolate_aw(sfPopGrid["POP_TOT"], grid, extensive = TRUE)
+## see script 01b_interpolation.R for building pop interpolate grid
 
 ## load interpolate grid pop
 interpolate_grid <- readRDS("AD/SHP/interpolation.RDS")
 interpolate_grid <- interpolate_grid %>% select(-Group.1)
 
-# Count pts in grid
-. <- st_intersects(grid, sfParticipations_snap)
-grid <- st_sf(n = sapply(X = ., FUN = length), grid)
+### Intersect interpolate_grid and participations
+. <- st_intersects(interpolate_grid, sfParticipations_snap)
+### Count points in polygons
+grid <- st_sf(n = sapply(X = ., FUN = length),
+             geometry = st_geometry(interpolate_grid))
+sum(grid$n)
 
-## join
-grid <- st_join(interpolate_grid, grid, join = st_equals)
+### add pop
+grid <- st_join(select(interpolate_grid, -Group.1), grid, join = st_equals)
 mapview(grid)
 
-
-
-### Add ISO 
-CORRESP_CNTR_ISO2 <- read_delim("AD/CORRESP_CNTR_ISO2.csv", 
-                                ";", escape_double = FALSE, trim_ws = TRUE)
-sfEU <- left_join(select(sfEU, ID, NAME_EN, UE28), 
-                   select(CORRESP_CNTR_ISO2, NAME_EN = COUNTRY, ISO = ISO_A2), 
-                   by = "NAME_EN")
-# cut cells in the borders
-sfEUforCut <- sfEU %>%
-  filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Liechtenstein", "Switzerland")) %>% 
-  filter(NAME_EN != "Croatia")
-mapview(sfEUforCut)
-
-grid <- st_intersection(grid, sfEUforCut)
-mapview(grid)
 
 ## Add density to df : nb of participations for n inhabitants
 vec <- 10000
@@ -703,17 +686,12 @@ grid <- grid %>%
 ## Display map
 
 ### distribution
-skim(grid$density)
-hist(grid$density)
+# skim(grid$density)
+# hist(grid$density)
 
-distrib <- grid %>% filter(density >= 1 & density < 100)
-skim(distrib$density)
+### supression des valeurs extrêmes (density < 100) 
+distrib <- grid %>% filter(density >= 1 & density < 100) 
 distrib <- sort(distrib$density)
-hist(distrib)
-
-
-grid2 <- grid %>% 
-  filter(density < 100)
 
 
 ### defines a set of breaks and colors
@@ -725,16 +703,17 @@ cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 1))
 pdf(file = "AD/OUT/density_popgrid_eucicopall.pdf",width = 8.3, height = 5.8)
 dens_map(frame = rec, 
          bgmap = sfEU, 
-         sf = grid2, 
+         sf = grid %>% filter(density < 100), 
          titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants\net par carreaux de 2 500km2*",
-         sources = "Sources : EUCICOP 2019 / KEEP Closed Projects 2000-2019 ; ESPON DB 2013 / Eurostat",
-         labels = "*Discrétisation en\nprogression géométrique")
+         sources = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 ; ESPON DB 2013 ; Geostat 2006 / PG, AD 2020",
+         labels = "*Discrétisation en\nprogression géométrique",
+         labels2 = str_c(floor(sum(grid$n)/100)*100, " participations\n19000 projets"))
 dev.off()
 
 
 
 
-# ==== 6. Density of participations by nuts - Fig. ? ==== 
+# ==== 6. Density of participations by nuts ==== 
 
 
 ## Prepare data

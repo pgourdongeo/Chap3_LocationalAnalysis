@@ -10,7 +10,8 @@
 ##==========================================================================##
 
 # CONTENTS
-## 1. UMZ - Fig. 3.12
+## 1. partcipation ~ UMZ - Fig. 3.12
+## 2. partcipation ~ FUA 
 
 
 # Working directory huma-num
@@ -130,8 +131,6 @@ rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2,
   
 }
 
-
-
 # Fonction pour identifier des outliers dans une distribution :
 is_outlier <- function(x) {
   
@@ -142,15 +141,15 @@ is_outlier <- function(x) {
 
 
 
-# ==== 1. UMZ - Fig. 3.12 ==== 
+# ==== 1. partcipation ~ UMZ - Fig. 3.12 ==== 
 
 
 ## Count participations in umz
 ### Intersect umz and participations
-inter <- st_intersects(umz, sfParticipations_snap)
+. <- st_intersects(umz, sfParticipations_snap)
 ### Count points in polygons
 umz <- st_sf(umz, 
-             n = sapply(X = inter, FUN = length), 
+             n = sapply(X = ., FUN = length), 
              geometry = st_geometry(umz))
 
 # 1744 / 3962 umz with no project :
@@ -263,17 +262,17 @@ dev.off()
 
 
 
-# ==== 2. FUA  ==== 
+# ==== 2. partcipation ~ FUA  ==== 
 
 ## select only LUZ 
 fua <- fua %>% filter(URAU_CATG == "L")
 
 ## Count participations in FUA
 ### Intersect fua and participations
-inter <- st_intersects(fua, sfParticipations_snap)
+. <- st_intersects(fua, sfParticipations_snap)
 ### Count points in polygons
 fua <- st_sf(fua, 
-             n = sapply(X = inter, FUN = length), 
+             n = sapply(X = ., FUN = length), 
              geometry = st_geometry(fua))
 
 ## display graph

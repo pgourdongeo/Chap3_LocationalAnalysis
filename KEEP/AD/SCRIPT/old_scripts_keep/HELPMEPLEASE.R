@@ -50,14 +50,26 @@ sfPopGrid <- sfPopGrid %>%
 grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
 mapview(grid)
 
-### Keep only cells that intersect lands
+## Keep only cells that intersect admin
 . <- st_intersects(grid, sfEU)
 grid <- grid[sapply(X = ., FUN = length)>0]
 mapview(grid)
 
+# and cut cells in the borders
+sfEU <- sfEU %>%
+  filter(UE28 == TRUE | NAME_EN %in% c("Norway", "Liechtenstein", "Switzerland", "Iceland",
+                                       "Azores", "Madeira", "Canary Islands")) %>% 
+  filter(NAME_EN != "Croatia")
+mapview(sfEU)
+
+### intersect
+grid <- st_intersection(grid, sfEU)
+mapview(grid)
+
+
 ## interpolate 
-test <- st_interpolate_aw(sfPopGrid["POP_TOT"], grid, extensive = TRUE)
+interpo <- st_interpolate_aw(sfPopGrid["POP_TOT"], grid, extensive = TRUE)
 
 
 ## save
-saveRDS(test, "AD/SHP/interpolation.RDS")
+saveRDS(interpo, "AD/SHP/interpolation.RDS")
