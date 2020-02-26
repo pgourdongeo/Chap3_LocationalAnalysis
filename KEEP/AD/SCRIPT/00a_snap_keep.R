@@ -20,6 +20,7 @@
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 
+# library
 library(sf)
 library(tidyverse)
 library(tidylog)
@@ -76,7 +77,7 @@ st_snap_points = function(x, y, max_dist) {
 }
 
 ## Apply function
-snap_outsiders <- st_snap_points(outsiders, sfEU, max_dist = 20000)
+snap_outsiders <- st_snap_points(outsiders, sfEU, max_dist = 50000)
 
 ## check results
 mapview(sfEU) + mapview(snap_outsiders, col.regions = "red")

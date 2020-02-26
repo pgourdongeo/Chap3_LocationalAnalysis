@@ -1,14 +1,23 @@
-###############################################################################
-#                         CARTOGRAPHIE DES DENSITES 
-#
-# DESCRIPTION : construction d'un carroyage sur l'europe élargie, comptage des 
-# participations aux projets de l'UE par carreau, cartographie des densités d'adhésion
-#
-# PG, AD, Octobre 2019
-##############################################################################
+
+##==========================================================================##         
+##                         CARTOGRAPHIE DES DENSITES                        ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base ETMUN / réalisations carto-graphiques                 ##
+##               du chapitre 3 (carroyage, dot plot, bar plot)              ##
+##                                                                          ##
+## PG, AD, Octobre 2019                                                     ##
+##==========================================================================##
+
+# CONTENTS
+# 1. Mapping: adhesions/cell 2019 - Fig. 3.13
+# 2. Mapping: density of adhesions by nuts
+# 3. Barplots adhesions/type of nuts - fig. 3.14
+# 4. Barplots nb adhésion/country
+# 5. Barplots nb seats/country
 
 
-## Working directory huma-num
+# Working directory huma-num
 # setwd("~/BD_Keep_Interreg/ETMUN/")
 
 setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
@@ -27,17 +36,17 @@ library(RColorBrewer)
 library(mapview)
 
 
-
 # Import data
+
+## old
 # EtmunPoints <- read.csv2("DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
-# 
 # ## rm na before transform to sf : removed 75 out of 17333 rows (<1%)
 # EtmunPoints <- EtmunPoints %>% filter_at(.vars = c("lon", "lat"), any_vars(!is.na(.)))
-# 
 # sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
 #   st_sf(sf_column_name = "geometry") %>%
 #   st_transform(crs = 3035)
 
+## snap points (see snap_etmun.R)
 sfETMUN_snap <- readRDS("Data/sfETMUN_snap.RDS")
 
 sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
@@ -47,15 +56,15 @@ rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
 nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
   st_make_valid()
 
-
 etmun_orga <- readRDS("DataSource/BD_ETMUN_ORGANISATION.rds")
 
 ## quelles sont les asso dans lesquelles il y a bcp de villes espagnoles (en absolu)
 ##esp <- sfETMUN_snap %>% filter(CountryCode == "ES") %>% group_by(Network_Name) %>% summarise(n = n())
 
 
-# Functions
-#================================================
+
+
+# ================ Functions ================ 
 
 ## Build a regular grid and count points in each cell
 pt_in_grid <- function(feat, adm, cellsize){
@@ -88,16 +97,15 @@ pt_in_grid <- function(feat, adm, cellsize){
 }
 
 ## Plot a gridded map
-plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
+plot_grid <- function(grid, adm, frame, sources, titleLeg, labels, labels2){
   
   bb <- st_bbox(frame)
   par(mar = c(0, 0, 0, 0)) # à ajuster
   
-  # plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-  #      xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
+  # Plot the map
   choroLayer(grid, var = "n", border = NA, breaks= bks, col= cols, 
              legend.pos = "n")
-  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "white", lwd = 0.75, add = TRUE)
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   ## Add legend
@@ -109,25 +117,27 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels){
               nodata = FALSE, 
               values.rnd = 0, 
               col = cols)
+  
   # Add an explanation text
   text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
-  # Add a layout
-  layoutLayer(title = "",
-              sources = sources,
-              author = "PG, AD, 2019",
-              horiz = F,
-              col = NA,
-              frame = F,
-              scale = 500,
-              posscale = c(6500000, 1000000)
-  )
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels2, cex = 0.75)
+  
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1.2, 
+        adj = 0.935,
+        cex = 0.50)
   
 }
 
-
 ## plot a points map
-plot_points <- function(frame, adm, sf, txtLeg, source){
+plot_points <- function(frame, adm, sf, txtLeg, sources, labels){
   
   # stock bbox
   bb <- st_bbox(frame)
@@ -135,32 +145,38 @@ plot_points <- function(frame, adm, sf, txtLeg, source){
   # Define margins
   par(mar = c(0,0,0,0))
   
+  sf <- st_intersection(rec, sf)
+  
   # Plot the map
   plot(st_geometry(adm), col = "ivory4")
   plot(st_geometry(sf), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
   plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA,
-       xlim = bb[c(1,3)], ylim =  bb[c(2,4)], add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
   # Add a legend
-  legend(x = "left", 
+  legend(x = 1000000,
+         y = 4500000,
          legend = txtLeg, 
          bty = "n",
          cex = 0.8)
-  # Add a layout
-  layoutLayer(title = "",
-              sources = source,
-              author = "PG, AD, 2019",
-              horiz = TRUE,
-              col = NA,
-              frame = F,
-              scale = 500,
-              posscale = c(6500000, 1000000)
-  )
+  
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels, cex = 0.75)
+  
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1.2, 
+        adj = 0.935,
+        cex = 0.50)
+  
 }
 
 ## Plot a choro map
-dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
+dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels, labels2){
   
   # set the margins
   bb <- st_bbox(frame)
@@ -169,7 +185,7 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
   # Plot
   plot(st_geometry(frame), border = NA, lwd = 0.5, col = NA,
        xlim = bb[c(1,3)], ylim =  bb[c(2,4)])
-  plot(st_geometry(bgmap), col = "#E3DEBF", border = "ivory3", lwd = 0.5, add = TRUE)
+  plot(st_geometry(bgmap), col = "#f9e8d0", border = "ivory3", lwd = 0.5, add = TRUE)
   choroLayer(sf, var = "density", border = NA, breaks= bks, col= cols, 
              legend.pos = "density", add = TRUE)
   plot(st_geometry(sf), col = NA, border = "ivory4", lwd = 0.1, add = TRUE)
@@ -181,69 +197,34 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels){
               values.cex = 0.7,
               title.txt = titleLeg, 
               breaks = bks, 
-              nodata = FALSE, 
+              nodata = F, 
               values.rnd = 0, 
               col = cols)
   
   # Add an explanation text
   text(x = 1000000, y = 2700000, labels = labels, cex = 0.7, adj = 0)
   
-  # Add a layout
-  layoutLayer(title = "", 
-              sources = sources, 
-              author = "PG, AD, 2019", 
-              horiz = FALSE,
-              col = NA, 
-              frame = F, 
-              scale = 500, 
-              posscale = c(6500000, 1000000))
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels2, cex = 0.75)
+  
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = sources,
+        side = 1, 
+        line = -1.2, 
+        adj = 0.935,
+        cex = 0.50)
+
   
 }
 
 
 
-# Map adhesions/pop 2006/cell 
-#================================================
+  
+# ===== 1. Mapping: adhesions/cell 2019 - Fig. 3.13 ===== 
 
-# le work flow est simple :  
-# 1. Prendre notre grille Europe. 
-# 2. Charger la grid population 2006. 
-# 3. Interpoler avec st_interpolate pour avoir 
-# la population mais sur notre grille 
-# (% de surfaces de petits carreaux = % de population dans nos grands carreaux) 
-# 4. Faire le point in grid comme d'hab en gardant la pop 
-# 5. Calculer un nombre de participations pour 100 000 hab 
-# (ou 10 000 selon les ordres de grandeur) . 
-# 6. Ploter
-
-## load eurostat population grids
-popGrid <- read_delim("DataSource/GEOSTAT_grid_EU_POP_1K/GEOSTAT_grid_EU_POP_2006_1K_V1_1_1.csv", 
-                      ";", escape_double = FALSE, trim_ws = TRUE)
-sfPopGrid <- st_read("DataSource/GEOSTAT_grid_EU_POP_1K/Grid_ETRS89_LAEA_1K_ref_GEOSTAT_2006.shp")
-
-
-## Join pop attibute to sf
-sfPopGrid <- left_join(select(sfPopGrid, GRD_ID = GRD_INSPIR), popGrid, by = "GRD_ID")
-
-## transform to 3035
-sfPopGrid <- sfPopGrid %>% 
-  st_transform(crs = 3035)
-
-## Create a regular grid 
-grid <- st_make_grid(x = sfEU, cellsize = 50000, what = "polygons")
-mapview(grid)
-
-### Keep only cells that intersect adm
-. <- st_intersects(grid, sfEU)
-grid <- grid[sapply(X = ., FUN = length)>0]
-mapview(grid)
-
-## interpolate 
-test <- st_interpolate_aw(sfPopGrid, grid)
-
-
-# Map adhesions/cell 2019 
-#================================================
 
 ## 50 km cells
 europegrided <- pt_in_grid(feat = sfETMUN_snap, adm = sfEU, cellsize = 50000)
@@ -251,42 +232,51 @@ europegrided <- pt_in_grid(feat = sfETMUN_snap, adm = sfEU, cellsize = 50000)
 ## visualize distribution
 skim(europegrided[[1]])
 hist(europegrided[[1]]$n)
+
 ## defines a set of breaks and colors
 bks <- c(0, getBreaks(v = europegrided[[2]]$n, method = "geom", nclass = 6))
 cols <- c("#e5dddb", carto.pal("turquoise.pal", length(bks) - 2))
 
-## Plot and save pdf
+## Nb network
+. <- sfETMUN_snap %>% 
+  filter(!duplicated(Code_Network))
+gridNW <- pt_in_grid(feat = ., adm = sfEU, cellsize = 50000)
+sum(gridNW[[1]]$n)
+
+## Plot and save pdf é fig. 3.13
 pdf(file = "OUT/europeGrid_etmunall.pdf", width = 8.3, height = 5.8)
 plot_grid(grid = europegrided[[1]], 
           adm = sfEU,
           frame = rec,
-          sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA", 
+          sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA / PG, AD, 2019", 
           titleLeg = "Nombre d'adhésions aux associations\nde municipalités par carreau de 2 500 km2*",
-          labels = "*Discrétisation en progression\ngéométrique")
+          labels = "*Discrétisation en progression\ngéométrique",
+          labels2 = str_c(ceiling(sum(europegrided[[1]]$n)/100)*100, " adhésionss\n", 
+                          sum(gridNW[[1]]$n), " réseaux"))
 
 dev.off()
 
 ## PCT 0 participation : 72% de carreaux vides
-
 summary(europegrided[[1]]$n)
 sum(europegrided[[1]]$n)
 skim(europegrided[[1]])
 nrow(europegrided[[1]])
 nrow(europegrided[[1]][europegrided[[1]]$n == 0,])/ nrow(europegrided[[1]]) *100
+#mapview(europegrided[[1]])
 
 
-mapview(europegrided[[1]])
 
-# density of adhesions by nuts
-#================================================
+
+# ===== 2. Mapping: density of adhesions by nuts ===== 
+
 
 ## Prepare data
 ### Intersect nuts and participations
-inter <- st_intersects(nutsUR, sfETMUN_snap)
+. <- st_intersects(nutsUR, sfETMUN_snap)
 
 ### Count points in polygons
 nutsUR <- st_sf(nutsUR, 
-                n = sapply(X = inter, FUN = length), 
+                n = sapply(X = ., FUN = length), 
                 geometry = st_geometry(nutsUR))
 
 ## Add density to df : nb of participations for 10 000 inhabitants
@@ -320,22 +310,33 @@ dev.off()
 
 
 
-# Barplots participations/type of nuts
-#================================================
+# ===== 3. Barplots adhesions/type of nuts - fig. 3.14 ===== 
 
-# average numbers of participations by type of nuts
-nutsUR <- nutsUR %>% 
+
+## load nuts
+nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
+  st_make_valid()
+
+## Prepare data
+### Intersect nuts and adhesions
+. <- st_intersects(nutsUR, sfETMUN_snap)
+### Count points in polygons
+nutsUR <- st_sf(nutsUR, 
+                n = sapply(X = ., FUN = length), 
+                geometry = st_geometry(nutsUR))
+
+# average numbers of adhesions by type of nuts
+countUR <- nutsUR %>% 
   group_by(Typo7) %>% 
-  mutate(nbm = mean(n)) %>% 
-  ungroup()
+  summarise(nbm = mean(n)) %>% 
+  mutate(Lead = "Adhésions à des associations de municipalités") %>% 
+  as.data.frame() %>% 
+  select(-geometry)
 
-bibi <- data.frame(Typo7 = unique(nutsUR$Typo7), 
-                   nbm = unique(nutsUR$nbm),
-                   Lead = "Adhésions à des associations de municipalités")
 
 
 # create barplots
-projNuts <- ggplot(data = bibi, aes(x = reorder(Typo7, -nbm), y = nbm, fill = Lead)) +
+projNuts <- ggplot(data = countUR, aes(x = reorder(Typo7, -nbm), y = nbm, fill = Lead)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = round(nbm)), position = position_dodge(0.9), vjust = 1.6, color = "white") +
   labs(x = "Types de NUTS",
@@ -353,8 +354,10 @@ projNuts
 dev.off()
 
 
-# Barplots nb adhésion/pays
-#================================================
+
+
+# ===== 4. Barplots nb adhésion/country ===== 
+
 
 freq <- as.data.frame(table(sfETMUN_snap$CountryCode))
 freq <- freq %>% top_n(n = 20)
@@ -379,8 +382,8 @@ top20
 dev.off()
 
 
-# Barplots nb siège/pays
-#================================================
+
+# ===== 5. Barplots nb seats/country ===== 
 
 freq <- as.data.frame(table(etmun_orga$'Country (secretariat)'))
 freq <- freq %>% top_n(n = 6)
