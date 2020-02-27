@@ -1,15 +1,16 @@
-###############################################################################
-#                               TYPOLOGIE ETMUN
-#                         
-#
-# DESCRIPTION : réalisation d'une typologie des réseaux ETMUN, CAH
-#               
-#
-# PG, AD, février 2019
-##############################################################################
+
+##==========================================================================##         
+##                        TYPOLOGIE DEs RESEAUX ETMUN                       ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Préparation des données en vue d'une typologie (CAH)       ##
+##               cartographie des résidus                                   ##
+##                                                                          ##
+## PG, AD, février 2020                                                     ##
+##==========================================================================##
 
 
-## Working directory huma-num
+# Working directory huma-num
 #setwd("~/BD_Keep_Interreg/")
 
 setwd("~/git/Chap3_LocationalAnalysis/ETMUN")

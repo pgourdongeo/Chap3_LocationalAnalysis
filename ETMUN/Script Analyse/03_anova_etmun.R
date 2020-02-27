@@ -1,18 +1,24 @@
-###############################################################################
-#                            VILLES ET MEMBRES ETMUN
-#
-# DESCRIPTION : cartographie du poids des villes européennes dans le réseau ETMUN ;
-#               régression linéaire (pop/nb d'adhésion) - non significatif ;
-#               Anova sur nb d'adhésion/niveau admnistratif ;
-#               Anova sur nb d'adhésion/population - non significatif ;
-#               Anova sur nb d'adhésion/type de région (Nuts CP 14-20) - non significatif ;
-# 
-#
-# PG, AD, janvier 2019
-##############################################################################
+
+##==========================================================================##         
+##            ANALYSE UNI et BIVARIEE : VILLES ET MEMBRES ETMUN             ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base ETMUN / régression linéaire et                        ##
+##               cartographie des résidus                                   ##
+##                                                                          ##
+## PG, AD, janvier 2020                                                     ##
+##==========================================================================##
+
+# CONTENTS
+# 1. Fig. 3.19: mapping weight of European cities in ETMUN network 
+# 2. Fig. 3.20: ANOVA nb of members etmun/administration level
+# régression linéaire (pop/nb d'adhésion) - non significatif 
+# Anova sur nb d'adhésion/population - non significatif 
+# Anova sur nb d'adhésion/type de région (Nuts CP 14-20) - non significatif 
+
 
 # Working directory huma-num
-#setwd("~/BD_Keep_Interreg/KEEP")
+# setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
@@ -24,30 +30,33 @@ library(tidyverse)
 library(sf)
 library(mapview)
 library(cartography)
+library(stringr)
+library(readr)
 
 
 
-# weight of European cities in ETMUN network - mapping
-#======================================================
 
-# Load data
+# ==== 1. Fig. 3.19: mapping weight of European cities in ETMUN network ==== 
+
+## ----~~ Load data ----
+
 etmun <- readRDS("Data/ETMUN_Membership_GNid.RDS")
 skim(etmun)
 
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
 sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
-# Prepare data : cities in Europe with nb of members etmun
-## rm na : removed 75 out of 17333 rows (<1%)
+## ----~~ Prepare data: cities in Europe with nb of members etmun ----
+## rm na : removed 9 out of 17333 rows (<1%)
 sfCitiesEur <- etmun %>% filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
 
-## transform to sf
+### transform to sf
 sfCitiesEur <- st_as_sf(sfCitiesEur, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
   st_transform(crs = 3035)
 
-# ## filter cities in Europe
-#sfCitiesEur <- sfCitiesEur %>%  filter(Continent == "Europe")
+### filter cities in Europe
+# sfCitiesEur <- sfCitiesEur %>%  filter(Continent == "Europe")
 sfCitiesEur <- st_intersection(sfCitiesEur, rec)
 
 #mapview(sfCitiesEur)
@@ -59,9 +68,7 @@ sfCitiesEur <- sfCitiesEur %>%
   ungroup()
 
 
-
-
-# View distribution
+## ----~~ View distribution ----
 freq <- as.data.frame(table(sfCitiesEur$nbMembers))
 
 ## create barplots
@@ -75,151 +82,11 @@ distrib <- ggplot(data = sfCitiesEur, aes(x = nbMembers)) +
 # dev.off()
 
 
-############ mapping with cartography #############
+## ----~~ Mapping with ggplot ----
 
-# Fonction create proportional circles map 
-propMap <- function(frame = rec, bgmap = sfEU, sfpts, var,
-                    varLeg, titleLeg, labels, source) {
-  
-  par(mar = c(0, 0, 0, 0)) 
-  
-  # Plot
-  plot(st_geometry(bgmap), col = "#E3DEBF", border = "ivory3", lwd = 0.5)
-  propSymbolsLayer(sfpts, var = var, 
-                   col = "#370028", inches = 0.2, 
-                   border = "white", lwd = 0.2, symbols = "circle",
-                   legend.pos = NA, add = TRUE)
-  labelLayer(sfCitiesEur %>% top_n(n = 10), txt = "asciiName",
-             col= "white", 
-             cex = 0.6, 
-             font = 1,
-             halo = TRUE, 
-             bg = "black",
-             r = 0.05, 
-             overlap = FALSE, 
-             show.lines = TRUE)
-  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, add = TRUE)
-  
-  # Add legend
-  legendCirclesSymbols(pos = c(1000000, 3000000),
-                       cex = 1,
-                       var = varLeg,
-                       inches = 0.2, col = "#370028", border = "white", lwd = 0.2, 
-                       title.txt = titleLeg, title.cex = 0.8, values.cex = 0.6, style = "e")
-  
-  # Add an explanation text
-  text(x = 1000000, y = 2600000, labels = labels, cex = 0.7, adj = 0)
-  
-  # Add a layout
-  layoutLayer(title = "", 
-              sources = source, 
-              author = "PG, AD, 2019", 
-              horiz = FALSE,
-              col = NA, 
-              frame = F, 
-              scale = 500, 
-              posscale = c(6500000, 1000000))
-  
-}
-
-
-## Plot raw data
-# pdf(file = "OUT/test.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
-# propMap(sfpts = sfCitiesEur %>% filter(nbMembers > 3),
-#         var = "nbMembers",
-#         varLeg = c(4, 10, 20, 40),
-#         titleLeg = "Nombre de membres ETMUN",
-#         labels = "Les villes comptant moins de 4 membres\nne figurent pas sur la carte",
-#         source = "Source : ETMUN 2019")
-# dev.off()
-
-## transfo val
-# sfCitiesEur <- sfCitiesEur %>%
-#   mutate(nbMembersLog = log10(nbMembers))
-# sfCitiesEur <- sfCitiesEur %>%
-#   mutate(nbMembersExp = exp(nbMembers))
+### Map with squared values (to emphase the differences of proportionnality)
 sfCitiesEur <- sfCitiesEur %>%
   mutate(nbMembers2 = nbMembers*nbMembers)
-
-## Plot squared data
-# pdf(file = "OUT/test2.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
-# propMap(sfpts = sfCitiesEur %>% filter(nbMembers > 3),
-#         var = "nbMembers2",
-#         varLeg = c(16, 100, 400, 1600),
-#         titleLeg = "Nombre de membres ETMUN (au carré)",
-#         labels = "Les villes comptant moins de 4 membres\nne figurent pas sur la carte",
-#         source = "Source : ETMUN 2019")
-# dev.off()
-
-##################################
-
-############ mapping with ggplot2 #############
-
-## raw data
-#require(ggrepel)
-#require(ggspatial)
-
-# citiesEtmun <- ggplot() + 
-#   geom_sf(data = sfEU, fill = "#E3DEBF", color = "ivory3", size = 0.5) +
-#   geom_sf(data = sfCitiesEur %>% filter(nbMembers > 3) %>% st_centroid(),
-#           mapping = aes(size = nbMembers), color = "#370028B3", show.legend = "point") +
-#   scale_size(name = "Nombre de membres ETMUN",
-#              breaks = c(40, 20, 10, 4),
-#              range = c(1,12)) +
-#   annotate("text", label = "Les villes comptant moins de 4 membres\nne figurent pas sur la carte", 
-#            size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
-#   annotate("text", label = "Source : ETMUN 2019 / PG, AD, 2019",
-#            size = 2.2, x = 6000000, y = 980000, hjust = 0) +
-#   labs(x = "", y = "") +
-#   geom_sf_text(data = sfCitiesEur %>% top_n(n = 10),
-#                aes(label = asciiName), size = 2.4, color = "white",
-#                check_overlap = TRUE) +
-#   # geom_label_repel(data = sfCitiesEur %>% top_n(n = 10), 
-#   #                  aes(x = , y = , label = asciiName), hjust = -0.2, vjust = -0.2, size = 2) +
-#   geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
-#   coord_sf(crs = 3035, datum = NA,
-#            xlim = st_bbox(rec)[c(1,3)],
-#            ylim = st_bbox(rec)[c(2,4)]) +
-#   #annotation_scale() +
-#   theme_minimal() +
-#   #labs(caption = "Source : ETMUN 2019 / PG, AD, 2019") +
-#   theme(legend.position =  c(0.18, 0.60), 
-#         legend.title = element_text(size = 10),
-#         legend.text = element_text(size = 7.5))
-
-## display and save
-# pdf(file = "OUT/propCitiesEtmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
-# citiesEtmun
-# dev.off()
-
-
-
-## Map with squared values (to emphase the differences of proportionnality)
-
-### Calculate new values
-sfCitiesEur <- sfCitiesEur %>%
-  mutate(nbMembers2 = nbMembers*nbMembers)
-
-
-# ### Prepare labels 
-# require(ggrepel)
-# 
-# #### recover coordinates X and Y (for position of labels)
-# bibi <- sfCitiesEur %>% 
-#   ungroup() %>% 
-#   top_n(n = 10) %>% 
-#   st_cast("MULTIPOINT") %>%
-#   st_cast("POINT")
-# coords <- as.data.frame(st_coordinates(bibi))
-# 
-# mydf <- bibi %>% 
-#   mutate(X = coords$X, Y = coords$Y) %>% 
-#   as.data.frame() %>% 
-#   select(-geometry) 
-# 
-# rm(coords, bibi)
-
-
 
 ### create a simple and pretty scale bar 500km
 myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-400000)),
@@ -238,11 +105,11 @@ citiesEtmun2 <- ggplot() +
              range = c(0.5, 13)) +
   annotate("text", label = "Les villes comptant moins de 4 adhésions\nne figurent pas sur la carte", 
            size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
-  annotate("text", label = str_c(sum(sfCitiesEur$nbMembers), " adhésions\n", 
-                                 length(unique(etmun$Network_Name)), " associations ETMUN"),
-           size = 3,
+  annotate("text", size = 3,
+           label = str_c(ceiling(sum(sfCitiesEur$nbMembers)/100)*100, " adhésions\n", 
+                   length(unique(etmun$Network_Name)), " associations ETMUN"),
            x = c(st_bbox(rec)[3]-1000000), y = c(st_bbox(rec)[4]-800000)) +
-  annotate("text", label = "Source : ETMUN 2019\nPG, AD, 2019",
+  annotate("text", label = "Source : ETMUN 2019 / PG, AD, 2019",
            size = 2.2, 
            hjust = 1,
            x = c(st_bbox(rec)[3]), y = c(st_bbox(rec)[2]-130000)) +
@@ -250,12 +117,6 @@ citiesEtmun2 <- ggplot() +
   geom_sf_text(data = sfCitiesEur %>% top_n(n = 10),
                aes(label = asciiName), size = 2.2, color = "#4d4d4d",
                check_overlap = TRUE) +
-  # geom_text_repel(data = mydf,
-  #                 aes(x = X, y = Y, label = asciiName),
-  #                 #point.padding = NA,
-  #                 nudge_x = mydf$X + 10,
-  #                 #nudge_y = 1000,
-  #                 size = 2.3) +
   geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
   annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
            x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
@@ -275,17 +136,13 @@ citiesEtmun2
 dev.off()
 
 
-##################################
 
 
 
-# ANOVA nb of members etmun/administration level
-#======================================================
+# ==== 2. Fig. 3.20: ANOVA nb of members etmun/administration level ==== 
 
 
-library(readr)
-
-# Load data
+## ----~~ Load data ----
 etmun <- readRDS("Data/ETMUN_Membership_GNid.RDS")
 uniqueGN <- readRDS("Data/UniqueGNforETMUN.RDS")
 admin <- read_delim("Script Analyse/admintyposimplifiee.csv", 
@@ -293,22 +150,22 @@ admin <- read_delim("Script Analyse/admintyposimplifiee.csv",
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
 
 
-# Prepare data : cities in Europe with nb of members etmun
-## rm na : removed 75 out of 17333 rows (<1%)
+## ----~~ Prepare data: cities in Europe with nb of members etmun ----
+## rm na : removed 9 out of 17333 rows (<1%)
 sfCitiesEur <- etmun %>% filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
 
-## transform to sf
+### transform to sf
 sfCitiesEur <- st_as_sf(sfCitiesEur, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
   st_transform(crs = 3035)
 
-# ## filter cities in Europe
+### filter cities in Europe
 #sfCitiesEur <- sfCitiesEur %>%  filter(Continent == "Europe")
 sfCitiesEur <- st_intersection(sfCitiesEur, rec)
 
 #mapview(sfCitiesEur)
 
-## summarise members ETMUN by cities
+### summarise members ETMUN by cities
 sfCitiesEur <- sfCitiesEur %>% 
   group_by(geonameId, asciiName) %>% 
   summarise(nbMembers = n()) %>% 
@@ -322,24 +179,27 @@ uniqueGN <- left_join(uniqueGN, admin, by = "fcodeName")
 sfCitiesEur <- left_join(sfCitiesEur, select(uniqueGN, geonameId, adminLevel), by = "geonameId")
 citiesEur <- sfCitiesEur %>% 
   filter(!is.na(adminLevel)) %>% 
-  as.data.frame() %>% 
-  select(-geometry) 
+  st_drop_geometry()
 
 ### corrections before anova
-citiesEur[2864, 4] <- c("capital of a political entity")
 citiesEur <- citiesEur %>% 
-  filter(adminLevel != "other")
+  filter(adminLevel != "other") %>% 
+  mutate(adminLevel = recode(adminLevel, 
+                             "seat of government of a political entity" = "capital of a political entity")) %>% 
+  as.data.frame() 
 
+
+skim(citiesEur)
 
 ### clean
-rm(admin)
+rm(admin, uniqueGN)
 
 
 ### Save for EploratR
 #write.csv2(citiesEur, "Script Analyse/citiesEur.csv", row.names = F, fileEncoding = "UTF-8")
 
 
-## ANOVA FUNCTIONS
+## ----~~ ANOVA functions ----
 ## Commenges H. (2016) ExploratR : outil interactif d'exploration statistique uni- bi- tri- et multi-variée avec R, UMR 8504 Géographie-cités. 
 ## APPLI : https://analytics.huma-num.fr/geographie-cites/ExploratR/
 ## CODE : https://zenodo.org/record/155333#.XdZn7dVCfIU
@@ -403,7 +263,7 @@ AnovaPlot <- function(df, varx, vary, tx, ty){
     scale_y_continuous(name = ty) +
     labs(x = tx, y = ty) +
     theme_bw() +
-    labs(caption = "Source : ETMUN, 2019\nPG, AD, 2019") +
+    labs(caption = "Source : ETMUN, 2019 / PG, AD, 2019") +
     theme(axis.text.x = element_text(size = 9, angle = 20, vjust = 0.6),
           plot.caption = element_text(size = 6))
   
@@ -436,27 +296,29 @@ ComputeRegression <- function(df, vardep, varindep, interact = FALSE){
 }
 
 
-## Stat summary (varx = quali, vary = quanti)
+## ----~~ Apply function and plot ----
+
+### Stat summary (varx = quali, vary = quanti)
 anovaTab <- AnovaTab(df = citiesEur, varx = c("adminLevel"), vary = c("nbMembers")) 
 resume <- ComputeRegression(citiesEur, vardep = "nbMembers", varindep = "adminLevel")
 resume$TABCOEF
 
 ### save tab
-library(gridExtra)
-library(grid)
-pdf(file = "OUT/tabANOVA_etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+require(gridExtra)
+require(grid)
+pdf(file = "OUT/ANOVAtab_adh_admin_etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
 grid.table(anovaTab, rows = NULL)
 dev.off()
 
 
-## Anova plot
+### Anova plot
 require(RColorBrewer)
 anovaPlot <- AnovaPlot(df = citiesEur, c("adminLevel"), c("nbMembers"), 
                        tx = "",
                        ty = "Nombre d'adhésions au réseau ETMUN") 
 
 ### save plot
-pdf(file = "OUT/ANOVAboxplot_etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+pdf(file = "OUT/ANOVAboxplot_adh_admin__etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
 anovaPlot
 dev.off()
 
@@ -464,7 +326,7 @@ dev.off()
 
 
 
-
+# ==== reprendre ici ==== 
 
 #a nettoyer
 

@@ -1,11 +1,15 @@
-###############################################################################
-#              CARTOGRAPHIE DES SEMIS DE POINTS DES ASSOCIATIONS
-#                          exploration de la BD ETMUN
-#
-# DESCRIPTION : 
-#
-# PG, AD, Octobre 2019
-##############################################################################
+
+##==========================================================================##         
+##        CARTOGRAPHIE DES SEMIS DE POINTS DES ASSOCIATIONS ETMUN           ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : réalisation des planches carto de semis de points          ##
+##               sur fond OSM                                               ##
+##                                                                          ##
+## PG, AD, Octobre 2019                                                     ##
+##==========================================================================##
+
+
 
 # Working directory huma-num
 #setwd("~/BD_Keep_Interreg/KEEP")
@@ -26,13 +30,19 @@ library(rosm)
 library(ggsci)
 
 
-# Import data
+
+# ==== Import data ==== 
+
+
 list.files("DataSource")
 ETMUN <- read.csv2("DataSource/MembersETMUNGeocode.csv", 
                    stringsAsFactors = F, 
                    encoding = "UTF-8")
 
-# prepare data
+
+# ==== Prepare data ==== 
+
+
 skim(ETMUN)
 
 ## rm na before transform to sf : removed 75 out of 17333 rows (<1%)
@@ -49,10 +59,13 @@ ETMUN_Point <- ETMUN_Point %>%
 skim(ETMUN_Point)
 
 
+
+# ==== Functions ====
+
+
 #osm.types()
 
-# Functions
-## add scale bar and sources 
+## need scale bar and sources 
 
 ## return all maps in a list (too long) 
 PlotPoints <- function(sf, facetvar, size, colourColumn, 
@@ -117,7 +130,10 @@ Gridplots <- function(myplots, n, sources){
 
 
 
-# Planches pour chap3  ----------------------------------------
+
+# ==== Planches pour chap3 ====
+
+
 #dir.create("OUT/planche_chap3")
 
 ## Prepare data Europe
@@ -184,8 +200,8 @@ ggsave(plot = Points_List[[1]], "OUT/planche_chap3/members_EFUS_ETMUN_planche_6.
 
 
 
-# Planches pour chap2  ----------------------------------------
-dir.create("OUT/planche_chap2")
+# ==== Planches pour chap2 ====
+#dir.create("OUT/planche_chap2")
 
 ## Prepare data Europe
 vecNet <- c( "ICP", "UBC", "OWHC", "EAHTR")
@@ -209,9 +225,8 @@ for (i in 1:length(Grid_list)) {
 
 
 
-
-# Planches Carto pour annexe  ------------------------------------
-dir.create("OUT/planche_annexe")
+# ==== Planches pour annexe ====
+#dir.create("OUT/planche_annexe")
 
 ## select Networks according to their spatial extent (EUROPE/ALL WORLD)
 freq <- as.data.frame(table(ETMUN_Point$Network_Name, ETMUN_Point$EuropeYN))

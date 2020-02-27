@@ -1,13 +1,22 @@
-###############################################################################
-#               ANALYSE BIVARIEE : adhesion ~ taille des agglo
-#
-# DESCRIPTION : régression linéaire et cartographie des résidus
-# 
-# PG, AD, Octobre 2019
-##############################################################################
 
-## Working directory huma-num
-#setwd("~/BD_Keep_Interreg/")
+##==========================================================================##         
+##            ANALYSE BIVARIEE : adhésions ~ taille des agglo               ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base ETMUN / régression linéaire et                        ##
+##               cartographie des résidus                                   ##
+##                                                                          ##
+## PG, AD, Octobre 2019                                                     ##
+##==========================================================================##
+
+# CONTENTS
+## 1. adhesion ~ UMZ - Fig. 3.15
+## 2. partcipation ~ FUA 
+
+
+
+# Working directory huma-num
+# setwd("~/BD_Keep_Interreg/")
 
 setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
@@ -25,24 +34,22 @@ library(ggrepel)
 #library(GGally)
 
 
-# Import data
 
+# =========== Import data ===========
 
-EtmunPoints <- read.csv2("DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
-EtmunPoints <- EtmunPoints %>% filter(!is.na(lon))
+## old
+# EtmunPoints <- read.csv2("DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
+# EtmunPoints <- EtmunPoints %>% filter(!is.na(lon))
+# sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
+#   st_sf(sf_column_name = "geometry") %>%
+#   st_transform(crs = 3035)
 
-sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
-  st_sf(sf_column_name = "geometry") %>%
-  st_transform(crs = 3035)
-
-
+## snap points (see snap_etmun.R)
+sfETMUN_snap <- readRDS("Data/sfETMUN_snap.RDS")
 
 sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
-
-
-
 
 umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 3035)
 
@@ -50,6 +57,8 @@ fua <- st_read("../OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp") %>
   st_transform(crs = 3035)
 
 
+
+# ================ Functions ================ 
 
 # FUNCTION - Display the residuals map
 rezMap <- function(frame, bgmap, units, var, source, titleLeg){
@@ -85,7 +94,6 @@ rezMap <- function(frame, bgmap, units, var, source, titleLeg){
               posscale = c(6500000, 1000000))
   
 }
-
 
 rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2, 
                              title1, title2, labels, source) {
@@ -138,7 +146,7 @@ is_outlier <- function(x) {
 
 
 
-#========= UMZ ==========
+# ==== 1. adhesion ~ UMZ - Fig. 3.15 ==== 
 
 ## Count participations in umz
 ### Intersect umz and participations
@@ -168,8 +176,6 @@ for(i in seq(1,20, 1)){
 
 ## display graph
 ### with log10
-
-
 regUmz <- ggplot(umz %>% dplyr::filter(n > thrshld), aes(x = Pop2011, y = n)) +
   geom_point () +
   theme_light() +
@@ -247,7 +253,7 @@ dev.off()
 
 
 
-#========= FUA ==========
+# ==== 2. adhesion ~ FUA  ==== 
 
 ## select only LUZ 
 fua <- fua %>% filter(URAU_CATG == "L")
