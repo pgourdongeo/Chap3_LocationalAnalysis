@@ -27,12 +27,22 @@ library(tidylog)
 library(mapview)
 library(skimr)
 
-# load data
+
+
+# ==== load data ====
 list.files("Data")
 
 ## LOAD PARTNERS
 partners <- readRDS("Data/UniquePartners_GNid_Eucicop.RDS")
+## LOAD BG MAP
+sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+## LOAD PARTICIPATIONS
+participations <- readRDS("Data/Participations_All_Eucicop.RDS")
+## LOAD PROJECTS
+projects <- readRDS("Data/ProjectsEucicop_all_noduplicated.RDS")
 
+
+# ==== prepare data ====
 # df to sf : removed 219 out of 58855 rows (<1%)
 partners <- partners %>% 
   filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
@@ -41,20 +51,12 @@ sfPartners <- st_as_sf(partners, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
   st_transform(crs = 3035)
 
-mapview(sfEU) + mapview(sfPartners)
-
-## LOAD BG MAP
-sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+#mapview(sfEU) + mapview(sfPartners)
 
 
-# SNAP 
 
-## join partners to europe to have outsiders
-sfPartners_joinEU <- st_join(sfPartners, select(sfEU, ID, NAME_EN, UE28)) %>% 
-  filter(!duplicated(ID_PARTNER))
-outsiders <- sfPartners_joinEU %>% filter(is.na(ID))
+# ==== SNAP ====
 
-mapview(sfEU) + mapview(outsiders)
 
 ## function to snap outsiders points (due to generalisation of country polygons) to the nearest country polygon
 ## Source : https://stackoverflow.com/questions/51292952/snap-a-point-to-the-closest-point-on-a-line-segment-using-sf
@@ -76,40 +78,42 @@ st_snap_points = function(x, y, max_dist) {
   return(out)
 }
 
+## join partners to europe to have outsiders
+outsiders <- st_join(sfPartners, select(sfEU, ID, NAME_EN, UE28)) %>% 
+  filter(!duplicated(ID_PARTNER)) %>% 
+  filter(is.na(ID))
+
+mapview(sfEU) + mapview(outsiders)
+
 ## Apply function
 snap_outsiders <- st_snap_points(outsiders, sfEU, max_dist = 50000)
 
-## check results
-mapview(sfEU) + mapview(snap_outsiders, col.regions = "red")
-
-###add new coords to outsiders 
+## add new coords to outsiders 
 outsiders$geometry <- snap_outsiders
 outsiders <- outsiders %>%  select(-ID, -NAME_EN, -UE28)
-class(outsiders)
 
 ## join ousiders snaped to sfPartner
-sfPartners_inEU <- sfPartners_joinEU %>% filter(!is.na(ID)) %>% select(-ID, -NAME_EN, -UE28)
-sfPartners_outsiders_snaped <- rbind(sfPartners_inEU, outsiders)
-class(sfPartners_outsiders_snaped)
+id <- outsiders$geonameId
+sfPartners <- sfPartners %>% 
+  filter(!geonameId %in% id) %>% 
+  rbind(., outsiders)
 
 ### verif
-mapview(sfEU) + mapview(sfPartners_outsiders_snaped)
-### join partners to europe to check outsiders (>20km) numbers
-test <- st_join(sfPartners_outsiders_snaped, select(sfEU, ID, NAME_EN, UE28)) %>% 
-  filter(!duplicated(ID_PARTNER))
-test_outsiders <- test %>% filter(is.na(ID))
-mapview(sfEU) + mapview(test_outsiders)
+outsiders <- st_join(sfPartners, select(sfEU, ID, NAME_EN, UE28)) %>% 
+  filter(!duplicated(ID_PARTNER)) %>% 
+  filter(is.na(ID))
+#mapview(sfEU) + mapview(outsiders)
+
+rm(outsiders, id, snap_outsiders)
 
 
+# ==== Prepare new sf for analyse scripts ====
+# (combine participations - partners - projects)
 
-# Prepare new sf for analyse scripts (combine participations - partners - projects)
-
-## LOAD PARTICIPATIONS
-participations <- readRDS("Data/Participations_All_Eucicop.RDS")
 
 ## Add coords partners (with snaped points of outsiders) to participations
 sfParticipations_snap <- participations %>% 
-  left_join(sfPartners_outsiders_snaped, by = "ID_PARTNER")
+  left_join(sfPartners, by = "ID_PARTNER")
 class(sfParticipations_snap)
 sfParticipations_snap <- st_as_sf(sfParticipations_snap)
 class(sfParticipations_snap)
@@ -117,8 +121,6 @@ class(sfParticipations_snap)
 sfParticipations_snap <- sfParticipations_snap %>% 
   filter(!is.na(st_dimension(geometry)))
 
-## LOAD PROJECTS
-projects <- readRDS("Data/ProjectsEucicop_all_noduplicated.RDS")
 
 ### add period to participations
 sfParticipations_snap <- sfParticipations_snap %>% 
