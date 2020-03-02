@@ -28,6 +28,8 @@ library(sf)
 etmun <- readRDS("Data/ETMUN_Membership_GNid.RDS")
 uniqueGN <- readRDS("Data/UniqueGNforETMUN.RDS")
 
+## rm na : removed 9 out of 17333 rows (<1%)
+etmun <- etmun %>% filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
 
 # Creation of a new table of ETMUN NETWORKS (with number of city in each network)
 network <- etmun %>% 
@@ -38,17 +40,17 @@ network <- etmun %>%
 etmun <- left_join(etmun, select(uniqueGN, geonameId, population), by = "geonameId")
 etmun$population <- as.numeric(etmun$population)
 
+rm(uniqueGN)
+
 # % of cities by city size (category) in each project
 
 ## First, create a new vars: class of city size (1, 2, 3 ou 4) 
-## si classe de taille validée, nommer ces classes (petite ville, moyenne, etc. par ex)
 skim(etmun$population)
 etmun <- etmun %>% 
-  mutate(KPOP = case_when(population > 500 & population < 50000 ~ "1",
-                          population > 50000 & population < 200000 ~ "2",
-                          population > 200000 & population < 500000 ~ "3",
-                          population > 500000 ~ "4",
-                         TRUE ~ "NA")) %>% 
+  mutate(KPOP = case_when(population < 50000 ~ "1",
+                          population >= 50000 & population < 150000 ~ "2",
+                          population > 150000 & population < 300000 ~ "3",
+                          population >= 300000 ~ "4")) %>% 
   group_by(Code_Network) %>% 
   mutate(Ncountry = length(unique(CountryName)))
 
@@ -75,7 +77,7 @@ network <- left_join(network, kTY_city_spread)
 rm(kTY_city_spread, kTY_city)
 
 network <- network %>% 
-  mutate_at(vars("KPOP1", "KPOP2", "KPOP3", "KPOP4", "KPOPNA"), 
+  mutate_at(vars("KPOP1", "KPOP2", "KPOP3", "KPOP4"), 
             replace_na, 0)
 
 
@@ -88,8 +90,30 @@ network <- network %>% left_join(Ncountry)
 
 rm(Ncountry)
 
+## primacy index (pop city 1 / pop city 2)
+pI <- etmun %>% 
+  group_by(Code_Network) %>% 
+  top_n(n = 2, wt = population) %>% 
+  arrange(Code_Network, population) %>% 
+  mutate(primacy_index = round(max(population)/min(population), 2)) %>% 
+  filter(!duplicated(primacy_index))
+
+network <- network %>% left_join(select(pI, Code_Network, primacy_index))
+rm(pI)
+
+## coef of variation on the pop
+variance <- etmun %>% 
+  group_by(Code_Network) %>% 
+  mutate(ect = sd(population, na.rm = TRUE),
+         moy = mean(population, na.rm = TRUE),
+         cvPop = round(ect/moy, 2)) %>% 
+  filter(!duplicated(Code_Network))
+
+network <- network %>% left_join(select(variance, Code_Network, cvPop))
+rm(variance)
+
 ## l'area de la bonding box formée par le semis de point 
-etmun <- etmun %>% filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
+#etmun <- etmun %>% filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
 sfEtmun <- st_as_sf(etmun, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
   st_transform(crs = 3035)
@@ -105,10 +129,10 @@ for (i in vec) {
 }
 
 dfarea <- dfarea %>% 
-  mutate(areaKM2 = area/1e+6)
+  mutate(bb_areaKM2 = round(area/1e+6))
 rm(polyg, bx, area, i, vec)
 network <- network %>% 
-  left_join(., select(dfarea, Code_Network, areaKM2), by = "Code_Network")
+  left_join(., select(dfarea, Code_Network, bb_areaKM2), by = "Code_Network")
 
 rm(dfarea)
 
@@ -129,7 +153,7 @@ PG <- coords3035 %>%
 
 network <- network %>% left_join(select(PG, Code_Network, X_mean = X, Y_mean = Y))
 
-### Point médian marche pas
+### Point médian 
 require(ICSNP)
 
 vec <- unique(coords3035$Code_Network)
@@ -148,7 +172,7 @@ network <- network %>% left_join(select(df, Code_Network, X_med = medX, Y_med = 
 rm(coord, df, i, vec, PG, coords3035)
 
 
-# et la distance moyenne ou médiane. 
+# et la distance moyenne ou médiane + coef var
 require(spdep)
 ##fonction dist moy au plus proche voisin (Ra)
 MeanDistNN <- function(sf, k){
@@ -163,22 +187,51 @@ MeanDistNN <- function(sf, k){
   
   distnei <- unlist(distnei)
   
-  meanDist <- mean(distnei)
+  meanDist <- round(mean(distnei))
   
-  return(meanDist)
+  medDist <- round(median(distnei))
+  
+  cvDist <- round(sd(distnei)/meanDist, 2)
+  
+  a <- data.frame(meanDist, medDist, cvDist)
+  
+  return(a)
   
 }
 
 ## compute for each network
 NNdist <- sfEtmun %>%
   group_by(Code_Network) %>% 
-  do(as.data.frame(MeanDistNN(sf=., k = 1))) %>% 
-  rename(Ra = `MeanDistNN(sf = ., k = 1)` )
+  do(as.data.frame(MeanDistNN(sf=., k = 1))) 
 
 network <- network %>% left_join(NNdist)
 
+rm(NNdist)
+
+# convexe hull and area ans square root (= distance type)
+make_hull <- function(sf){
+  convex <- st_sf(st_convex_hull(st_union(sf)))
+  convex <- convex %>% 
+    rename(geometry = 'st_convex_hull.st_union.sf..') %>% 
+    mutate(area = st_area(.),
+           areaKM2 = round(area/1e+6),
+           r_areaKM2 = round(sqrt(areaKM2)))
+  return(convex)
+} 
+net_hull <- sfEtmun %>% 
+  group_by(Network_Name) %>% 
+  do((make_hull(sf=.))) %>% 
+  st_sf()
+
+network <- network %>% left_join(select(net_hull, Network_Name, 
+                                        ch_areaKM2 = areaKM2, ch_r_areaKM2 = r_areaKM2))
+
+rm(net_hull)
+
 ## save for exploratR
-write.csv2(network, "netETMUNforCAH.csv", row.names = FALSE, fileEncoding = "UTF-8")
+dfnetwork <- network %>% select(-geometry) %>% as.data.frame()
+write.csv2(dfnetwork, "netETMUNforCAH.csv", row.names = FALSE, fileEncoding = "UTF-8")
+
 
 # abstract df for PG
 library(gridExtra)

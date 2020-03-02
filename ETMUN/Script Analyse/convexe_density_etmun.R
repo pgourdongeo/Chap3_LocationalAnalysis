@@ -1,10 +1,13 @@
-###############################################################################
-#               ANALYSE DE DENSITE des semis ETMUN
-#
-# DESCRIPTION : 
-# 
-# PG, AD, Octobre 2019
-##############################################################################
+
+##==========================================================================##         
+##                                                 ##
+##                                                                          ##
+##                                                                          ##    
+## DESCRIPTION : Base ETMUN /              ##
+##                                                                          ##
+## PG, AD, février 2020                                                     ##
+##==========================================================================##
+
 
 ## Working directory huma-num
 #setwd("~/BD_Keep_Interreg/")
@@ -13,44 +16,88 @@ setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
 
 # Library
-library(cartography)
-library(dplyr)
-library(sf)
-library(sp)
 library(tidylog)
-library(skimr)
-library(lwgeom)
-library(ggplot2)
-library(ggrepel)
-library(spatstat)
-library(maptools)
+library(tidyverse)
+library(sf)
+# library(cartography)
+# 
+# library(skimr)
+# library(lwgeom)
+# library(ggplot2)
+# library(ggrepel)
+# library(spatstat)
+#library(sp)
+# 
 
 
 # Import data
 
+ETMUN <- read.csv2("Data/ETMUN_Membership_GNid.csv", stringsAsFactors = F) 
+# df to sf : removed 75 out of 17333 rows (<1%)
+ETMUN <- ETMUN %>% filter_at(.vars = c("lng_GN", "lat_GN"), any_vars(!is.na(.)))
 
-EtmunPoints <- read.csv2("DataSource/MembersETMUNGeocode.csv", stringsAsFactors = F) 
-EtmunPoints <- EtmunPoints %>% filter(!is.na(lon))
-
-sfAdhesion <- st_as_sf(EtmunPoints, coords = c("lon", "lat"), crs = 4326) %>%
+sfETMUN <- st_as_sf(ETMUN, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
   st_transform(crs = 3035)
 
-
-
 sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
 
-rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
+
+
+
+## convexe hull
+
+### pour un réseau
+X_sf <- sfETMUN %>% filter(Network_Name == "EAHTR")
+X_env <- st_convex_hull(st_union(X_sf))
+st_area(X_env)
+
+### plot
+par(mar = c(0,0,0,0))
+plot(X_env)
+plot(st_geometry(sfEU), add = TRUE)
+plot(st_geometry(X_sf), add = TRUE)
+
+### pour chacun des réseaux
+make_hull <- function(sf){
+  convex <- st_sf(st_convex_hull(st_union(sf)))
+  convex <- convex %>% 
+    rename(geometry = 'st_convex_hull.st_union.sf..') %>% 
+    mutate(area = st_area(.),
+           areaKM2 = round(area/1e+6))
+  return(convex)
+} 
+net_hull <- sfETMUN %>% 
+  group_by(Network_Name) %>% 
+  do((make_hull(sf=.))) %>% 
+  st_sf()
+
+plot(net_hull %>% filter(Network_Name == "EAHTR"))
+
+
+## densité et mode
+### ggplot
+ggplot(data = ETMUN %>% filter(Network_Name == "EAHTR"),
+       aes(x = lng_GN, y = lat_GN)) +
+  geom_density_2d(show.legend = TRUE) +
+  geom_point() 
+
 
 
 # https://training.fws.gov/courses/references/tutorials/geospatial/CSP7304/documents/PointPatterTutorial.pdf
-X_sf <- sfAdhesion %>% filter(Network_Name == "EAHTR")
-#X_sf <- sfAdhesion 
-X <- as(X_sf, 'Spatial')
-X <- as.ppp.SpatialPoints(X)
-summary(X)
 
-par(mar = c(0,0,0,0))
+library(maptools)
+
+X_sf <- sfETMUN %>% filter(Network_Name == "EAHTR")
+X <- X_sf %>% 
+  as(., 'Spatial') %>% 
+  as.ppp.SpatialPoints(.)
+
+
+truc <- summary(X)
+truc$intensity
+
+par(mar = c(1,1,1,1))
 plot(density(X))
 plot(st_geometry(sfEU), add = TRUE)
 plot(st_geometry(X_sf), add = TRUE)
@@ -59,13 +106,21 @@ contour(density(X))
 plot(st_geometry(sfEU), add = TRUE)
 plot(st_geometry(X_sf), add = TRUE)
 
-
-#
-env <- st_convex_hull(st_union(X_sf))
-plot(density(X))
-plot(env, add = TRUE)
+K3 <- density(X, kernel = "disc", 
+              sigma=50) # Using a 50km bandwidth
+K3 <- density(X, kernel = "disc")
+plot(K3, main=NULL, las=1)
+contour(K3, add=TRUE)
 plot(st_geometry(sfEU), add = TRUE)
 plot(st_geometry(X_sf), add = TRUE)
+
+
+#https://mgimond.github.io/Spatial/point-pattern-analysis-in-r.html#density-based-analysis-1
+
+
+
+
+
 
 
 
