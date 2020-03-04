@@ -141,8 +141,8 @@ GNinfoAll <- GNinfoAll %>%
          continentCode, population, fcodeName, fcode, 
          everything()) %>% select(-distance, -score)
 
-## save - à faire
-#saveRDS(GNinfoAll, "?/?/UniqueGN_info_AllDB.rds")
+## save 
+saveRDS(GNinfoAll, "CITY/Data/UniqueGN_info_AllDB.rds")
 
 
 ## Finally add wanted info GN to DB city
