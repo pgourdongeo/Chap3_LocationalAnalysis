@@ -5,4 +5,7 @@
 /GEOSTAT_PopGrid/*
 /OtherGeometry/*
 /LAU2/*
-/CITY/Data/*
+/CITY/Data/AdminDelimPop0611.RDS
+/CITY/AdminDelimPop0611.RDS
+/KEEP/AD/SHP/*
+.Rproj.user
