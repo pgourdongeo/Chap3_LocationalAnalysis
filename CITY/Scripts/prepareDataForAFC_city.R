@@ -268,7 +268,31 @@ sfcity <-  sfcity %>%
   mutate_at(vars("region"), replace_na, "Southern Europe")
 
 
+sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
+sfcityE <- st_intersection(sfcity, rec)
+library(ggplot2)
 
+### create a simple and pretty scale bar 500km
+myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-400000)),
+                         Y = c(c(st_bbox(rec)[2]+200000), c(st_bbox(rec)[2]+200000)))
+
+ggplot()+
+  geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
+  geom_sf(data = sfcityE %>% filter(continentCode == "EU") ,
+          mapping = aes(colour = members_etmun_K), size = 0.75, shape = 20, show.legend = NA)+
+  scale_colour_manual(values = c("orange", "yellow", "grey60", "red", "#375D81")) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
+  annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
+           x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
+  geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
+  coord_sf(crs = 3035, datum = NA,
+           xlim = st_bbox(rec)[c(1,3)],
+           ylim = st_bbox(rec)[c(2,4)]) +
+  theme_void() +
+  theme(legend.position =  c(0.18, 0.60), 
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 7.5))
 
 #==================================
 # Corrélation
@@ -581,3 +605,10 @@ plot(res.mca,
 
 library(explor)
 explor(res.mca)
+
+
+
+
+
+# load data
+admin <- readRDS("Data/AdminDelimPop0611.RDS")
