@@ -1,0 +1,25 @@
+---
+title: "WorkflowDBCity_Correction"
+author: "Paul Gourdon"
+date: "10/03/2020"
+output: html_document
+---
+
+
+## Main goal and Data Description
+
+ Create a database to aggregate info of EUCICOP, URBACT and ETMUN databases at the administrative level of cities (LAU).
+ Try to correct Geonames Info to get one GN point per LAU.
+ All R scripts are in folder Scripts of CITY.
+
+## Workflow
+
+- (1) Create a DBCITY with the 3 differents DB (EUCICOP, URBACT, ETMUN). Each Geonames entity has a count of EUCICOP participations, URBACT participation, and a number of membership in transnational municipal networks (ETMUN) => createDBCityGN.R
+
+- (2) Prepare the geographical layer of administrative entities (LAU, except for UK and IE --- Urban Area). Get the population by interpolating population grids (2006 and 2011) of GEOSTAT  => PrepAdminShapeAndPopEU.R
+
+- (3) Aggregate the DBCITY (GN entities => points) by spatial joint with Administrative delineations (Polygons) (see step 2). When several points (GN entities) are in the same admin polygon, aggregate all info to the most populated GN entity. Keep only one GN object per polygon : create a dictionnary to correct EUCICOP, URBACT and ETMUN DB (replace old geonames ID by new when aggregated) => AggregateGN_SpatialJoin_AdminDelim.R
+
+- (4) Correct all DB (ETMUN, EUCICOP, URBACT) with new geonames ID, replacing old geonames ID by new when aggregated => CorrectAllDB_WithNewGNid_AfterAggregationAtLAU.R
+
+- (5) Do multivariate analyses on corrected DB City => prepareDataForAFC_city.R

@@ -74,3 +74,7 @@ eucicopPartners  <- CorrectDb(DftoCorrect = eucicopPartners, Dico= DicoGN, GNinf
 saveRDS( eucicopPartners  , "CITY/CorrectedDB/UniquePartners_GNid_EucicopCorr.RDS")
 write.csv2( eucicopPartners  , "CITY/CorrectedDB/UniquePartners_GNid_EucicopCorr.csv", row.names = F)
 
+## Check the GN info 
+GNinfoSf <- st_as_sf(GNinfoSimpleDb %>% filter(!is.na(lat_GN)), coords = c("lng_GN", "lat_GN"), crs = 4326)
+
+mapview(GNinfoSf)
