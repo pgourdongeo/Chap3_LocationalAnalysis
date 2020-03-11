@@ -16,7 +16,7 @@
 
 
 # Working directory huma-num
-# setwd("~/BD_Keep_Interreg/KEEP")
+setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -44,9 +44,6 @@ umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 303
 
 fua <- st_read("../OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp") %>% 
   st_transform(crs = 3035)
-
-nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
-  st_make_valid()
 
 ## data with snaped points 
 sfParticipations_snap <- readRDS("Data/sfParticipations_snap.RDS")
@@ -143,8 +140,8 @@ is_outlier <- function(x) {
 
 
 
-# ==== 1. partcipation ~ UMZ - Fig. 3.12 ==== 
-
+# ==== 1. partcipation ~ UMZ ==== 
+#NO CORRELATION
 
 ## Count participations in umz
 ### Intersect umz and participations
@@ -265,7 +262,7 @@ dev.off()
 
 
 # ==== 2. partcipation ~ FUA  ==== 
-
+#No CORRELATION
 ## select only LUZ 
 fua <- fua %>% filter(URAU_CATG == "L")
 
@@ -363,19 +360,34 @@ dev.off()
 
 
 
-# ==== 3. partcipation ~ FUA & UMZ ==== 
+# ==== 3. partcipation ~ FUA & UMZ . Figure 3.13 ==== 
+# Make two geom points to show the absence of structure
+## Filter Paris and London outliers
+umz <- umz %>% mutate(Name = recode(Name, "Helsinki = Helsingfors" = "Helsinki", 
+                                    "Essen // Duisburg // Dortmund // Bochum // Gelsen*" = "Essen/Dortmund",
+                                    "Lille // Roubaix // Tourcoing" = "Lille"))
 
-## Count participations 
-countP <- function(df1, df2){
-  
-  ### Intersect umz and participations
-  inter <- st_intersects(df1, df2)
-  ### Count points in polygons
-  df1 <- st_sf(df1, 
-               n = sapply(X = inter, FUN = length), 
-               geometry = st_geometry(df1))
-  return(df1)
-}
+regUmz <- ggplot(umz %>% filter(Pop2011< 9000000), aes(x = Pop2011, y = n)) +
+  geom_point () +
+  geom_label_repel(data = umz %>% filter(Pop2011< 9000000)%>%filter(Pop2011> 3500000 | n>500) , 
+                   aes(x = Pop2011, y = n, label = Name),  na.rm = TRUE, nudge_y = 0.05, color = "black", size = 4)+
+  theme( axis.title.x = element_text(size = 14),
+               axis.title.y = element_text(size = 14)) +
+  labs(x = "Population 2011 des agglomérations UMZ", 
+       y = "Nombre de participations aux projets Interreg \ndes entités localisées dans une UMZ") 
 
-cumz <- countP(umz, sfParticipations_snap) %>% select(n_umz = n) %>% st_drop_geometry()
-cfua <- countP(fua, sfParticipations_snap) %>% select(n_fua = n) %>% st_drop_geometry()
+regFua <- ggplot(fua %>% filter(URAU_POPL< 10000000), aes(x = URAU_POPL, y = n)) +
+  geom_point () +
+  geom_label_repel(data = fua %>% filter(URAU_POPL< 10000000)%>%filter(URAU_POPL> 4500000 | n>510) , 
+                   aes(x = URAU_POPL, y = n, label = URAU_NAME),  na.rm = TRUE, nudge_y = 0.05, color = "black", size = 4)+
+  theme( axis.title.x = element_text(size = 14),
+         axis.title.y = element_text(size = 14)) +
+  labs(x = "Population des aires urbaines (FUA) en 2006", 
+       y = "Nombre de participations aux projets Interreg \ndes entités localisées dans une FUA") +
+  labs(caption = "Sources : EUCICOP 2019 ; Tradeve 2015 ; URBAN AUDIT 2012")
+
+library(cowplot)
+
+duogg<-plot_grid(regUmz, regFua)
+ggsave2(duogg, filename = "AD/OUT/lm_umz_fua.pdf",
+        width = 10, height = 7, units = "in", dpi = 600)
