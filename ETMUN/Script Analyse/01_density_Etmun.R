@@ -14,7 +14,9 @@
 # 2. Mapping: density of adhesions by nuts
 # 3. Barplots adhesions/type of nuts - fig. 3.14
 # 4. Barplots nb adhésion/country
+# 4. ANOVA adhesions/type of nuts
 # 5. Barplots nb seats/country
+# 6. Barplots nb seats/country
 
 
 # Working directory huma-num
@@ -220,7 +222,113 @@ dens_map <- function(frame, bgmap, sf, titleLeg, sources, labels, labels2){
   
 }
 
+## ANOVA
+## Commenges H. (2016) ExploratR : outil interactif d'exploration statistique uni- bi- tri- et multi-variée avec R, UMR 8504 Géographie-cités. 
+## APPLI : https://analytics.huma-num.fr/geographie-cites/ExploratR/
+## CODE : https://zenodo.org/record/155333#.XdZn7dVCfIU
 
+### Function Anova parameters (1 factor)  
+AnovaTab <- function(df, varx, vary){
+  groupMean <- round(tapply(df[, vary], df[, varx], mean, na.rm = TRUE), digits = 2)
+  groupMedian <- round(tapply(df[, vary], df[, varx], median, na.rm = TRUE), digits = 2)
+  groupVar <- round(tapply(df[, vary], df[, varx], var, na.rm = TRUE), digits = 2)
+  tabGroup <- data.frame(Modalité = names(groupMean), 
+                         Moyenne = groupMean,
+                         Médiane = groupMedian,
+                         Variance = groupVar, 
+                         stringsAsFactors = FALSE)
+  tabAll <- data.frame(Modalité = "Ensemble", 
+                       Moyenne = round(mean(df[, vary]), digits = 2), 
+                       Médiane = round(median(df[, vary]), digits = 2), 
+                       Variance = round(var(df[, vary]), digits = 2), 
+                       stringsAsFactors = FALSE)
+  
+  tabVariance <- rbind(tabGroup, tabAll)
+  
+  return(tabVariance)
+}
+
+### Anova plot (1 factor) -- modifié
+AnovaPlot <- function(df, varx, vary, tx, ty){
+  
+  xLevels <- sort(unique(df[, varx]))
+  df$ID <- df[, varx]
+  df$VAR <- df[, vary]
+  
+  if(length(xLevels) == 2){
+    colPal <- brewer.pal(n = 3, name = "Set1")[1:2]
+  } else if (length(xLevels) > 2){
+    colPal <- brewer.pal(n = length(xLevels), name = "Set1")
+  }
+  
+  # jitter points
+  set.seed(99)
+  df$JIT <- as.numeric(as.factor(df[, varx])) + sample(x = seq(-0.3, 0.3, 0.01), size = nrow(df), replace = TRUE)
+  
+  # mean segments
+  groupMean <- tapply(df[, vary], df[, varx], mean, na.rm = TRUE)
+  avgSegment <- data_frame(ID = names(groupMean), 
+                           XMIN = seq(1, length(groupMean), 1) - 0.4,  
+                           XMAX = seq(1, length(groupMean), 1) + 0.4, 
+                           YMIN = groupMean, 
+                           YMAX = groupMean)
+  
+  # residuals segments
+  df <- df %>% left_join(x = ., y = avgSegment[, c(1, 4)], by = "ID")
+  
+  aovPlot <- ggplot() +
+    geom_hline(yintercept = mean(df$VAR, na.rm = TRUE), color = "grey60", size = 1, linetype = 2) +
+    geom_segment(data = avgSegment, aes(x = XMIN, xend = XMAX, y = YMIN, yend = YMAX), color = "grey40", size = 2) +
+    geom_segment(data = df, aes(x = JIT, xend = JIT, y = YMIN, yend = VAR), color = "grey40", alpha = 0.5) +
+    geom_point(data = df, aes(JIT, VAR, color = ID), show.legend = FALSE) +
+    scale_color_manual(values = colPal) +
+    scale_x_continuous(name = tx, breaks = seq(1, length(groupMean), 1), labels = xLevels) +
+    scale_y_continuous(name = ty) +
+    labs(x = tx, y = ty) +
+    theme_bw() +
+    labs(caption = "Source : ETMUN, 2019 / PG, AD, 2019") +
+    theme(axis.text.x = element_text(size = 9, angle = 20, vjust = 0.6),
+          plot.caption = element_text(size = 6))
+  
+  return(aovPlot)
+}
+
+### Compute linear model -- 
+ComputeRegression <- function(df, vardep, varindep, interact = FALSE){
+  if(interact == FALSE){
+    linMod <- lm(formula = formula(eval(paste(vardep, "~", paste(varindep, collapse = "+")))), data = df)
+    linModSumry <- summary(linMod)
+  } else {
+    linMod <- lm(formula = formula(eval(paste(vardep, "~", paste(varindep, collapse = "*")))), data = df)
+    linModSumry <- summary(linMod)
+  }
+  coefReg <- round(linModSumry$coefficients, digits = 4)[, 1:2]
+  rawR2 <- round(linModSumry$r.squared, digits = 2)
+  adjR2 <- round(linModSumry$adj.r.squared, digits = 2)
+  
+  tabResid <- data.frame(ABSRESID = round(linModSumry$residuals, digits = 3), 
+                         RELRESID = round(linModSumry$residuals / (df[, vardep] - linModSumry$residuals), digits = 3))
+  
+  tabResults <- data.frame(CONCEPT = c("Coef. de détermination",
+                                       "Coef. de détermination ajusté",
+                                       row.names(coefReg)),
+                           VALEUR = c(rawR2, adjR2, coefReg[, 1]),
+                           stringsAsFactors = FALSE)
+  
+  return(list(TABCOEF = tabResults, TABRESID = tabResid, COEF = coefReg))
+}
+
+## Count participations in Nuts
+countP <- function(df1, df2){
+  
+  ### Intersect umz and participations
+  inter <- st_intersects(df1, df2)
+  ### Count points in polygons
+  df1 <- st_sf(df1, 
+               n = sapply(X = inter, FUN = length), 
+               geometry = st_geometry(df1))
+  return(df1)
+}
 
   
 # ===== 1. Mapping: adhesions/cell 2019 - Fig. 3.13 ===== 
@@ -355,8 +463,55 @@ dev.off()
 
 
 
+# ===== 4. ANOVA adhesions/type of nuts ===== 
 
-# ===== 4. Barplots nb adhésion/country ===== 
+
+## load nuts
+sf_nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>% 
+  st_make_valid()
+
+## first recode variable Typo7
+sf_nutsUR <- sf_nutsUR %>% 
+  mutate(Typo7_v2 = recode(Typo_7Clv2,
+                           "4" = "Régions sous dominance\nd'une métropole",         
+                           "6" = "Régions avec densité\nurbaine élevée",            
+                           "5" = "Régions à majorité\nde villes moyennes",         
+                           "7" = "Régions avec densité\nurbaine et rurale élevées",   
+                           "1" = "Régions rurales\nsous influence métropolitaine",
+                           "2" = "Régions rurales\navec villes petites et moyennes",
+                           "3" = "Régions rurales isolées"))
+
+
+## Count participations in each nuts
+sf_nutsUR <- countP(sf_nutsUR, sfETMUN_snap)
+nutsUR <- sf_nutsUR %>% as.data.frame() %>% select(-geometry) 
+sum(nutsUR$n)
+
+## Stat summary (varx = quali, vary = quanti)
+anovaTab <- AnovaTab(df = nutsUR, varx = c("Typo7_v2"), vary = c("n")) 
+resume <- ComputeRegression(nutsUR, vardep = "n", varindep = "Typo7_v2")
+resume$TABCOEF
+### R2 = 11%
+
+### save tab
+require(gridExtra)
+require(grid)
+pdf(file = "OUT/ANOVAtab_adh_nutsUR_etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+grid.table(anovaTab, rows = NULL)
+dev.off()
+
+## Anova plot
+anovaPlot <- AnovaPlot(df = nutsUR, varx = c("Typo7_v2"), vary = c("n"), 
+                       tx = "Type de Nuts",
+                       ty = "Nombre dadhésions") 
+
+### save plot
+pdf(file = "OUT/ANOVAboxplot_adh_nutsUR_etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+anovaPlot
+dev.off()
+
+
+# ===== 5. Barplots nb adhésion/country ===== 
 
 
 freq <- as.data.frame(table(sfETMUN_snap$CountryCode))
@@ -383,7 +538,7 @@ dev.off()
 
 
 
-# ===== 5. Barplots nb seats/country ===== 
+# ===== 6. Barplots nb seats/country ===== 
 
 freq <- as.data.frame(table(etmun_orga$'Country (secretariat)'))
 freq <- freq %>% top_n(n = 6)

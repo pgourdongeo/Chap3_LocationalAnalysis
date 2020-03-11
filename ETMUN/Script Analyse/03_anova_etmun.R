@@ -32,6 +32,7 @@ library(mapview)
 library(cartography)
 library(stringr)
 library(readr)
+library(ggrepel)
 
 
 
@@ -40,7 +41,7 @@ library(readr)
 
 ## ----~~ Load data ----
 
-etmun <- readRDS("Data/ETMUN_Membership_GNid.RDS")
+etmun <- readRDS("../CITY/CorrectedDB/ETMUN_Membership_GNidCorr.RDS")
 skim(etmun)
 
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
@@ -100,11 +101,11 @@ citiesEtmun2 <- ggplot() +
   geom_sf(data = sfCitiesEur %>% filter(nbMembers > 3) %>% st_centroid(),
           mapping = aes(size = nbMembers2), shape = 1, colour = "#ff6200", show.legend = NA) +
   scale_size(name = "Nombre d'adhésions par ville\naux associations transnationales\nde municipalités (ETMUN)",
-             breaks = c(1600, 400, 200, 16),
-             labels = c("40", "20", "10", "4"),
+             breaks = c(1849, 400, 200, 16),
+             labels = c("43", "20", "10", "4"),
              range = c(0.5, 13)) +
-  annotate("text", label = "Les villes comptant moins de 4 adhésions\nne figurent pas sur la carte", 
-           size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
+  annotate("text", label = "Nom des villes : top 10\n\nLes villes comptant moins de 4 adhésions\nne figurent pas sur la carte", 
+           size = 2.7, x = 1000000, y = 2600000, hjust = 0) +
   annotate("text", size = 3,
            label = str_c(ceiling(sum(sfCitiesEur$nbMembers)/100)*100, " adhésions\n", 
                    length(unique(etmun$Network_Name)), " associations ETMUN"),
@@ -143,8 +144,8 @@ dev.off()
 
 
 ## ----~~ Load data ----
-etmun <- readRDS("Data/ETMUN_Membership_GNid.RDS")
-uniqueGN <- readRDS("Data/UniqueGNforETMUN.RDS")
+etmun <- readRDS("../CITY/CorrectedDB/ETMUN_Membership_GNidCorr.RDS")
+uniqueGN <- readRDS("../CITY/Data/UniqueGN_info_AllDB_Corr.RDS")
 admin <- read_delim("Script Analyse/admintyposimplifiee.csv", 
                     ";", escape_double = FALSE, trim_ws = TRUE)
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
@@ -225,8 +226,8 @@ AnovaTab <- function(df, varx, vary){
   return(tabVariance)
 }
 
-### Anova plot (1 factor) -- modifié
-AnovaPlot <- function(df, varx, vary, tx, ty){
+### Anova plot (1 factor) -- labels not generalized
+AnovaPlot <- function(df, varx, vary, tx, ty, source){
   
   xLevels <- sort(unique(df[, varx]))
   df$ID <- df[, varx]
@@ -249,21 +250,24 @@ AnovaPlot <- function(df, varx, vary, tx, ty){
                            XMAX = seq(1, length(groupMean), 1) + 0.4, 
                            YMIN = groupMean, 
                            YMAX = groupMean)
-  
+
   # residuals segments
   df <- df %>% left_join(x = ., y = avgSegment[, c(1, 4)], by = "ID")
-  
+
   aovPlot <- ggplot() +
     geom_hline(yintercept = mean(df$VAR, na.rm = TRUE), color = "grey60", size = 1, linetype = 2) +
     geom_segment(data = avgSegment, aes(x = XMIN, xend = XMAX, y = YMIN, yend = YMAX), color = "grey40", size = 2) +
     geom_segment(data = df, aes(x = JIT, xend = JIT, y = YMIN, yend = VAR), color = "grey40", alpha = 0.5) +
     geom_point(data = df, aes(JIT, VAR, color = ID), show.legend = FALSE) +
+    geom_label_repel(data = df %>% filter(VAR > 25 | asciiName == "Rotterdam"), 
+                     aes(JIT, VAR, label = asciiName),
+                     na.rm = TRUE, nudge_y = 0.05, color = "black", size = 2.5) +
     scale_color_manual(values = colPal) +
     scale_x_continuous(name = tx, breaks = seq(1, length(groupMean), 1), labels = xLevels) +
     scale_y_continuous(name = ty) +
     labs(x = tx, y = ty) +
     theme_bw() +
-    labs(caption = "Source : ETMUN, 2019 / PG, AD, 2019") +
+    labs(caption = source) +
     theme(axis.text.x = element_text(size = 9, angle = 20, vjust = 0.6),
           plot.caption = element_text(size = 6))
   
@@ -302,6 +306,7 @@ ComputeRegression <- function(df, vardep, varindep, interact = FALSE){
 anovaTab <- AnovaTab(df = citiesEur, varx = c("adminLevel"), vary = c("nbMembers")) 
 resume <- ComputeRegression(citiesEur, vardep = "nbMembers", varindep = "adminLevel")
 resume$TABCOEF
+## R2 = 30%
 
 ### save tab
 require(gridExtra)
@@ -315,7 +320,8 @@ dev.off()
 require(RColorBrewer)
 anovaPlot <- AnovaPlot(df = citiesEur, c("adminLevel"), c("nbMembers"), 
                        tx = "",
-                       ty = "Nombre d'adhésions au réseau ETMUN") 
+                       ty = "Nombre d'adhésions au réseau ETMUN",
+                       source = "Source : ETMUN, 2019 / PG, AD, 2019")
 
 ### save plot
 pdf(file = "OUT/ANOVAboxplot_adh_admin__etmun.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
@@ -323,6 +329,58 @@ anovaPlot
 dev.off()
 
 
+# ==== annova plot (hors fonction) ==== 
+xLevels <- sort(unique(citiesEur[, c("adminLevel")]))
+citiesEur$ID <- citiesEur[, c("adminLevel")]
+citiesEur$VAR <- citiesEur[, c("nbMembers")]
+
+if(length(xLevels) == 2){
+  colPal <- brewer.pal(n = 3, name = "Set1")[1:2]
+} else if (length(xLevels) > 2){
+  colPal <- brewer.pal(n = length(xLevels), name = "Set1")
+}
+
+# jitter points
+set.seed(99)
+citiesEur$JIT <- as.numeric(as.factor(citiesEur[, c("adminLevel")])) + sample(x = seq(-0.3, 0.3, 0.01), size = nrow(citiesEur), replace = TRUE)
+
+# mean segments
+groupMean <- tapply(citiesEur[, c("nbMembers")], citiesEur[, c("adminLevel")], mean, na.rm = TRUE)
+groupSd <- tapply(citiesEur[, c("nbMembers")], citiesEur[, c("adminLevel")], sd, na.rm = TRUE)
+
+avgSegment <- data_frame(ID = names(groupMean), 
+                         XMIN = seq(1, length(groupMean), 1) - 0.4,  
+                         XMAX = seq(1, length(groupMean), 1) + 0.4, 
+                         YMIN = groupMean, 
+                         YMAX = groupMean)
+bibi <- data_frame(ID = names(groupSd),
+                   mean = groupMean,
+                   sd = groupSd)
+
+# residuals segments
+citiesEur <- citiesEur %>% left_join(x = ., y = avgSegment[, c(1, 4)], by = "ID")
+citiesEur <- citiesEur %>% left_join(x = ., y = bibi, by = "ID")
+
+aovPlot <- ggplot() +
+  geom_hline(yintercept = mean(citiesEur$VAR, na.rm = TRUE), color = "grey60", size = 1, linetype = 2) +
+  geom_segment(data = avgSegment, aes(x = XMIN, xend = XMAX, y = YMIN, yend = YMAX), color = "grey40", size = 2) +
+  geom_segment(data = citiesEur, aes(x = JIT, xend = JIT, y = YMIN, yend = VAR), color = "grey40", alpha = 0.5) +
+  geom_point(data = citiesEur, aes(JIT, VAR, color = ID), show.legend = FALSE) +
+  geom_label_repel(data = citiesEur %>% filter(VAR > 25 | asciiName == "Rotterdam"), 
+                   aes(JIT, VAR, label = asciiName),
+                   na.rm = TRUE, nudge_y = 0.05, color = "black", size = 2.5) +
+  scale_color_manual(values = colPal) +
+  scale_x_continuous(name = "tx", breaks = seq(1, length(groupMean), 1), labels = xLevels) +
+  scale_y_continuous(name = "ty") +
+  labs(x = "tx", y = "ty") +
+  theme_bw() +
+  labs(caption = "Source : ETMUN, 2019 / PG, AD, 2019") +
+  theme(axis.text.x = element_text(size = 9, angle = 20, vjust = 0.6),
+        plot.caption = element_text(size = 6))
+
+pdf(file = "OUT/test.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+aovPlot
+dev.off()
 
 
 

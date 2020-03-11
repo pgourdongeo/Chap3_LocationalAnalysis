@@ -309,25 +309,26 @@ PlotProfile <- function(classifobj, nbclus){
 }
 
 
-myVar <- c("Ncities", "Ncountry", "KPOP1", "KPOP2", "KPOP3", "KPOP4", "Ra", "areaKM2")
-cah <- ComputeClassif(df = network %>% filter(Network_Name != "Covenant of Mayors" & 
-                                                Network_Name != "Climate Alliance"),
-                      varquanti = myVar, method = "ward", stand = TRUE)
+myVar <- c("Ncities", "Ncountry", "KPOP1", "KPOP2", "KPOP3", "KPOP4", 
+           "ch_areaKM2", "medDist", "cvPop")
+# cah <- ComputeClassif(df = dfnetwork %>% filter(Network_Name != "Covenant of Mayors" & 
+#                                                 Network_Name != "Climate Alliance"),
+#                       varquanti = myVar, method = "ward", stand = TRUE)
 
-cah <- ComputeClassif(df = network, varquanti = myVar, method = "ward", stand = TRUE)
+cah <- ComputeClassif(df = dfnetwork, varquanti = myVar, method = "ward", stand = TRUE)
 
 dendro <- PlotDendro(classifobj = cah)
 inert <- PlotHeight(classifobj = cah)
-myProfiles <- PlotProfile(classifobj = cah, nbclus = 4)
+myProfiles <- PlotProfile(classifobj = cah, nbclus = 5)
 
 
-network$cluster <- cutree(tree = cah, k = 4)
-freq <- data.frame(table(networkb$cluster))
+dfnetwork$cluster <- cutree(tree = cah, k = 5)
+freq <- data.frame(table(dfnetwork$cluster))
 
-networkb <- network %>% filter(Network_Name != "Covenant of Mayors"& 
-                                 Network_Name != "Climate Alliance")
-networkb$cluster <- cutree(tree = cah, k = 4)
-freq <- data.frame(table(networkb$cluster))
+# networkb <- network %>% filter(Network_Name != "Covenant of Mayors"& 
+#                                  Network_Name != "Climate Alliance")
+# networkb$cluster <- cutree(tree = cah, k = 4)
+# freq <- data.frame(table(networkb$cluster))
 
 # pdf(file = "OUT/profilesCAH.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
 # myProfiles
