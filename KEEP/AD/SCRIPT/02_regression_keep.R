@@ -10,8 +10,9 @@
 ##==========================================================================##
 
 # CONTENTS
-## 1. partcipation ~ UMZ - Fig. 3.12
+## 1. partcipation ~ UMZ 
 ## 2. partcipation ~ FUA 
+## 3. - Fig. 3.13
 
 
 # Working directory huma-num
@@ -29,6 +30,7 @@ library(skimr)
 library(lwgeom)
 library(ggplot2)
 library(ggrepel)
+library(GGally)
 
 
 
@@ -359,3 +361,21 @@ dev.off()
 #        titleLeg = "résidus standardisés\n")
 # dev.off()
 
+
+
+# ==== 3. partcipation ~ FUA & UMZ ==== 
+
+## Count participations 
+countP <- function(df1, df2){
+  
+  ### Intersect umz and participations
+  inter <- st_intersects(df1, df2)
+  ### Count points in polygons
+  df1 <- st_sf(df1, 
+               n = sapply(X = inter, FUN = length), 
+               geometry = st_geometry(df1))
+  return(df1)
+}
+
+cumz <- countP(umz, sfParticipations_snap) %>% select(n_umz = n) %>% st_drop_geometry()
+cfua <- countP(fua, sfParticipations_snap) %>% select(n_fua = n) %>% st_drop_geometry()
