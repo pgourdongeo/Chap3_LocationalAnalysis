@@ -387,7 +387,7 @@ regFua <- ggplot(fua %>% filter(URAU_POPL< 10000000), aes(x = URAU_POPL, y = n))
   labs(caption = "Sources : EUCICOP 2019 ; Tradeve 2015 ; URBAN AUDIT 2012")
 
 library(cowplot)
-
+# Make a grid with the two plots (increase export dimensions to get all the plot)
 duogg<-plot_grid(regUmz, regFua)
 ggsave2(duogg, filename = "AD/OUT/lm_umz_fua.pdf",
         width = 10, height = 7, units = "in", dpi = 600)
