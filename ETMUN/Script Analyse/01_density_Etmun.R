@@ -17,6 +17,7 @@
 # 4. ANOVA adhesions/type of nuts
 # 5. Barplots nb seats/country
 # 6. Barplots nb seats/country
+# 7. explo évolution EFUS et ICLEI - fig. 3.?
 
 
 # Working directory huma-num
@@ -138,32 +139,86 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels, labels2){
   
 }
 
-## plot a points map
-plot_points <- function(frame, adm, sf, txtLeg, sources, labels){
+## dot plot - 4 maps !!NA non géré
+plot_points_grid <- function(frame, adm, sf, sources){
   
   # stock bbox
   bb <- st_bbox(frame)
   
   # Define margins
-  par(mar = c(0,0,0,0))
+  par(mar = c(0,0,0,0), mfrow = c(2, 2), ps=15)
+  
+  sk <- skim(sf$YEAR)
   
   sf <- st_intersection(rec, sf)
+  sf1 <- sf %>% filter(YEAR <= sk$formatted[7])
+  sf2 <- sf %>% filter(YEAR > sk$formatted[7] & YEAR <= sk$formatted[8])
+  sf3 <- sf %>% filter(YEAR > sk$formatted[8] & YEAR <= sk$formatted[9])
+  sf4 <- sf %>% filter(YEAR > sk$formatted[9] & YEAR <= sk$formatted[10])
   
-  # Plot the map
+  sf50 <- sf %>% filter(YEAR <= sk$formatted[8]) 
+  sf75 <- sf %>% filter(YEAR <= sk$formatted[9])
+  st <- c(nrow(sf1), nrow(sf50), nrow(sf75), nrow(sf))
+  
+  # Plot the map 1
   plot(st_geometry(adm), col = "ivory4")
-  plot(st_geometry(sf), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(sf1), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
   plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
   
-  # Add a legend
-  legend(x = 1000000,
-         y = 4500000,
-         legend = txtLeg, 
-         bty = "n",
-         cex = 0.8)
+  # Add title
+  text(x = 1000000, y = 5300000, labels = str_c("En", sk$formatted[7], sep = " "),
+       cex = 0.7, adj = 0, font = 2)
   
   # Add total
-  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), labels = labels, cex = 0.75)
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), 
+       labels = str_c(sk$stat[7], " :\n", st[1], " adhésions", sep = ""), cex = 0.75)
+  
+  # Plot the map 2
+  plot(st_geometry(adm), col = "ivory4")
+  plot(st_geometry(sf1), col = "grey30", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(sf2), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
+  
+  # Add title
+  text(x = 1000000, y = 5300000, labels = str_c("En", sk$formatted[8], sep = " "),
+       cex = 0.7, adj = 0, font = 2)
+  
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), 
+       labels = str_c(sk$stat[8], " :\n", st[2], " adhésions", sep = ""), cex = 0.75)
+  
+  # Plot the map 3
+  plot(st_geometry(adm), col = "ivory4")
+  plot(st_geometry(sf1), col = "grey30", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(sf2), col = "grey30", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(sf3), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
+  
+  # Add title
+  text(x = 1000000, y = 5300000, labels = str_c("En", sk$formatted[9], sep = " "),
+       cex = 0.7, adj = 0, font = 2)
+  
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), 
+       labels = str_c(sk$stat[9], " :\n", st[3], " adhésions", sep = ""), cex = 0.75)
+  
+  # Plot the map 4
+  plot(st_geometry(adm), col = "ivory4")
+  plot(st_geometry(sf), col = "grey30", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(sf4), col = "#ff6208", pch = 20, cex = 0.5, add = TRUE)
+  plot(st_geometry(adm), col = NA, border = "ivory3", lwd =0.3, add = TRUE)
+  plot(st_geometry(frame), border = "ivory4", lwd = 0.5, col = NA, add = TRUE)
+  
+  # Add title
+  text(x = 1000000, y = 5300000, labels = str_c("En", sk$formatted[10], sep = " "),
+       cex = 0.7, adj = 0, font = 2)
+  
+  # Add total
+  text(x = c(bb[3]-1000000), y = c(bb[4]-800000), 
+       labels = str_c(sk$stat[10], " :\n", st[4], " adhésions", sep = ""), cex = 0.75)
   
   # Add scalebar
   barscale(500, pos = c(6500000, 1000000))
@@ -171,9 +226,9 @@ plot_points <- function(frame, adm, sf, txtLeg, sources, labels){
   # Add sources
   mtext(text = sources,
         side = 1, 
-        line = -1.2, 
-        adj = 0.935,
-        cex = 0.50)
+        line = -1, 
+        adj = 0.85,
+        cex = 0.38)
   
 }
 
@@ -558,3 +613,42 @@ top <- ggplot(data = freq,
 
 
 
+# ===== 7. explo evol EFUS et ICLEI ===== 
+
+
+##EFUS
+efus <- sfETMUN_snap %>% 
+  filter(Network_Name == "EFUS") %>% 
+  mutate(YEAR = as.numeric(Year_of_Joining))
+
+mapview(efus)
+
+sort(unique(efus$YEAR))
+table(efus$YEAR)
+skim(efus$YEAR)
+
+
+##ECLEI
+iclei <- sfETMUN_snap %>% 
+  filter(Network_Name == "ICLEI")%>% 
+  mutate(YEAR = as.numeric(Year_of_Joining))
+
+mapview(iclei)
+
+sort(unique(iclei$YEAR))
+table(iclei$YEAR)
+skim(iclei$YEAR)
+
+
+## save pdf EFUS
+pdf(file = "OUT/efus_evol.pdf", width = 8.3, height = 5.8)
+plot_points_grid(frame = rec, adm = sfEU, sf = efus, 
+            sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA / PG, AD, 2020") 
+dev.off()
+
+
+## save pdf ICLEI
+pdf(file = "OUT/iclei_evol.pdf", width = 8.3, height = 5.8)
+plot_points_grid(frame = rec, adm = sfEU, sf = iclei, 
+                 sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA / PG, AD, 2020") 
+dev.off()
