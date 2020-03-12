@@ -968,31 +968,154 @@ dev.off()
 
 # ==== 9. Map extreme participation values by type of nuts - fig. 3.12 ==== 
 
-##
-extr_nuts <- sf_nutsUR %>% 
-  filter(n > (mean(n) + 2*sd(n)))
+## Prepare data
+### load nuts
+sf_nutsUR <- st_read("../OtherGeometry/NUTS_UrbainRural.geojson", crs = 3035) %>%
+  st_make_valid()
 
+### first recode variable Typo7
+sf_nutsUR <- sf_nutsUR %>% 
+  mutate(Typo7_v2 = recode(Typo_7Clv2,
+                           "4" = "Régions sous dominance\nd'une métropole",         
+                           "6" = "Régions avec densité\nurbaine élevée",            
+                           "5" = "Régions à majorité\nde villes moyennes",         
+                           "7" = "Régions avec densité\nurbaine et rurale élevées",   
+                           "1" = "Régions rurales\nsous influence métropolitaine",
+                           "2" = "Régions rurales\navec villes petites et moyennes",
+                           "3" = "Régions rurales isolées"))
+
+### Count participations in each nuts
+sf_nutsUR <- countP(sf_nutsUR, sfParticipations_snap)
+
+### Keep extreme values
+extr_nuts <- sf_nutsUR %>% 
+  filter(n > (mean(n) + 2*sd(n))) %>% #798.9331
+  select(Nuts_Id, Name, Typo7_v2, n)
+
+### typo as factor
 unique(extr_nuts$Typo7_v2)
+extr_nuts$TYPO <- factor(extr_nuts$Typo7_v2,
+                         levels = c("Régions sous dominance\nd'une métropole",
+                                    "Régions avec densité\nurbaine élevée",
+                                    "Régions à majorité\nde villes moyennes",
+                                    "Régions avec densité\nurbaine et rurale élevées",
+                                    "Régions rurales\navec villes petites et moyennes",
+                                    "Régions rurales isolées"))
+
+### rename nuts
+extr_nuts <- extr_nuts %>% 
+  mutate(name2 = recode(Name, "Prov. West-Vlaanderen" = "1",
+                              "Bruxelles-Capitale" = "Bruxelles",
+                              "Jihocecký kraj" = "10",
+                              "Jihomoravský kraj" = "9",
+                              "Moravskoslezský kraj" = "Moravskoslezský",
+                              "Nord (FR)" = "2",
+                              "Northern Ireland (UK)" = "Northern Ireland",
+                              "Mecklenburg-Vorpommern" = "13",
+                              "Dusseldorf//Arnsberg" = "4",
+                              "Sjeverozapadna Hrvatska" = "6",
+                              "Milano//Varese//Como" = "12",
+                              "Stockholms län" = "Stockholms",
+                              "Skåne län" = "Skåne",
+                              "Västerbottens län" = "Västerbottens",
+                              "Gelderland" = "3",
+                              "Osrednjeslovenska" = "5",
+                              "Steiermark" = "7",
+                              "Niederösterreich" = "8",
+                              "Île de France" = "IdF",
+                              "Oberbayern" = "11"))
+
+
+indexlab <- c("1: West-Vlaanderen
+2: Nord
+3: Gelderland
+4: Dusseldorf/Arnsberg
+5: Osrednjeslovenska
+6: Sjeverozapadna Hrvatska
+7: Steiermark
+8: Niederösterreich
+9: Jihomoravský
+10: Jihocecký
+11: Oberbayern
+12: Milano/Varese/Como
+13: Mecklenburg-Vorpommern")
+                                       
+## mapping with ggplot
 
 mapview(extr_nuts)
 
-bbox <- st_bbox(extr_nuts)
 
-breaks <- c("Régions sous dominance\nd'une métropole",
-            "Régions avec densité\nurbaine élevée",
-            "Régions à majorité\nde villes moyennes",
-            "Régions avec densité\nurbaine et rurale élevées",
-            "Régions rurales\navec villes petites et moyennes",
-            "Régions rurales isolées")
-
+### Use same colors as Barplot participations by typo NUTS U/R (cf. 04_explo_urbact.R)
 colNuts <- c("#135D89", "#4D95BA", "#96D1EA", 
            "#9F7C59", "#36842E", "#7CB271")
 
-bibi <- st_as_sfc(bbox) %>% 
-  st_sf
+### stock bbox of extreme nuts
+bb <- st_bbox(extr_nuts)
+
+
+
+# devtools::install_github("yutannihilation/ggsflabel")
+# require(ggsflabel)
+
+topoup <- c("Northern Ireland", "Sevilla", "Barcelona", "Roma", "Attiki", "Thessaloniki",
+            "Csongrád", "Venezia", "Torino", "Bruxelles", "Dresden", "Skåne",
+            "Stockholms", "Põhja-Eesti", "Oberbayern", "Île de France", "Bas-Rhin",
+            "Schleswig-Holstein", "Västerbottens")
+toponum <- c("1", "2", "3", "5", "6", "7", "8", "9", "10", "12")
+toporepel <- c("Wien", "Budapest", "Niederösterreich", "Jihomoravský", "Münster",
+               "Freiburg", "Mecklenburg-\nVorpommern")
+
+bibi <- st_as_sfc(bb) %>% st_sf
 plot(bibi)
 
+### create a simple and pretty scale bar 500km
+myScaleBar <- data.frame(X = c(c(bb[3]-900000), c(bb[3]-400000)),
+                         Y = c(c(bb[2]+200000), c(bb[2]+200000)))
+myScaleBar <- data.frame(X = c(c(bb[3]+500000), c(bb[3]+1000000)),
+                         Y = c(c(bb[2]+200000), c(bb[2]+200000)))
 
+pdf(file = "AD/OUT/extrPart_nutsUR_keep.pdf", width = 8.3, height = 5.8)
+ggplot() + 
+  geom_sf(data = sfEU, fill = "grey80", color = "grey60", lwd = 0.5) +
+  geom_sf(data = extr_nuts, aes(fill = TYPO), colour = "grey60", lwd = 0.4, show.legend = TRUE) +
+  scale_fill_manual(name = "Typologie urbain/rural\n des NUTs (2 & 3)*", values = colNuts) +
+  ggsflabel::geom_sf_text_repel(data = extr_nuts %>% filter(!name2 %in% toponum),
+                                aes(label = name2), size = 2.5, color = "#4d4d4d",
+                                force = 1, nudge_x = 20, direction = "x",
+                                segment.size = 0.1, min.segment.length = 0.2) +
+  geom_sf_text(data = extr_nuts %>% filter(name2 %in% toponum),
+               aes(label = name2), size = 2.5, color = "#4d4d4d",
+               check_overlap = TRUE) +
+  annotate("text", label = "*Seuls apparaissent sur la carte\nles NUTs comptant au moins\n368 participations\n(n>mean(n) + 2*sd(n))",
+           size = 2.8, hjust = 0,
+           x = c(bb[3]+120000), y = c(bb[2]+1800000)) +
+  annotate("text", label = indexlab,
+           size = 2.2,  hjust = 0, vjust = 1,
+           x = c(bb[1]-200000), y = c(bb[4])) +
+  annotate("text", label = "EUCICOP 2019 ; ESPON DB, 2013 / PG, AD, 2020",
+           size = 2.2, 
+           hjust = 1, 
+           x = c(bb[3]+1250000), y = c(bb[2]-70000)) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
+  annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
+           x = c(bb[3]+680000), y = c(bb[2]+250000)) +
+  #geom_sf(data = bibi, fill = NA, color = "ivory4", size = 0.5) +
+  coord_sf(xlim = c(bb[1]-250000, bb[3]+1300000), 
+           ylim =  c(bb[2]-100000, bb[4]+100000), 
+           datum = sf::st_crs(3035), expand = FALSE) +
+  theme_void() +
+  theme(legend.position = c(0.85, 0.8),
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 7.5),
+        rect = element_rect(fill = NA, colour = "ivory4",
+                            size = 0.5, linetype = 1),
+        legend.background = element_rect(colour = NA),
+        legend.key = element_rect(fill = NA, colour = NA))
+dev.off()
+
+
+
+### version de travail
 pdf(file = "AD/OUT/extrPart_nutsUR_keep.pdf", width = 8.3, height = 5.8)
 par(mar = c(0, 0, 0, 0)) 
 plot(st_geometry(sfEU), col = "ivory3", border = "ivory4", lwd = 0.5,
@@ -1016,28 +1139,4 @@ dev.off()
 
 
 
-
-
-
-NUTSdecroissance$Typo7 <- as.character(NUTSdecroissance$Typo7)
-NUTSdecroissanceUNIQUE <- NUTSdecroissance %>% filter(!duplicated(NUTS_Id_1))
-
-pdf(file = "LocalisatioNuts_DecayUMZ.pdf",width = 20, height = 10)
-
-plot(Europe$geometry, col = "ivory3", border="ivory4", xlim = bbox[c(1,3)], ylim =  bbox[c(2,4)])
-typoLayer(NUTSdecroissance,var = "Typo7", 
-          legend.values.order = Breaks,
-          col = ColNuts,
-          lwd = 0.4, legend.pos = "topleft", 
-          legend.title.txt = "Typologie Nuts", add=T )
-labelLayer(NUTSdecroissanceUNIQUE,txt = "Name",  cex = 0.7,  
-           font = 3, overlap = F)
-
-layoutLayer(title = "NUTs comprenant au moins 5 petites agglomérations avec une trajectoire démographique décroissante", 
-            sources = "Tradeve, 2015. Espon DB, 2013", author = "P. Gourdon 2018", 
-            col = "darkgrey", coltitle = "white", tabtitle = F,
-            frame = F, scale =0, north = FALSE)
-
-
-dev.off()
 
