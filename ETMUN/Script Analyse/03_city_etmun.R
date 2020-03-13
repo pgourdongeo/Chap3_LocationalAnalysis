@@ -172,7 +172,7 @@ sfCitiesEur <- sfCitiesEur %>%
   ungroup()
 
 
-## recode 'fcodeName'
+## join 'fcodeName'
 uniqueGN <- left_join(uniqueGN, admin, by = "fcodeName")
 
 ### Add admin level to the data
@@ -258,7 +258,7 @@ AnovaPlot <- function(df, varx, vary, tx, ty, source){
     geom_segment(data = avgSegment, aes(x = XMIN, xend = XMAX, y = YMIN, yend = YMAX), color = "grey40", size = 2) +
     geom_segment(data = df, aes(x = JIT, xend = JIT, y = YMIN, yend = VAR), color = "grey40", alpha = 0.5) +
     geom_point(data = df, aes(JIT, VAR, color = ID), show.legend = FALSE) +
-    geom_label_repel(data = df %>% filter(VAR > 25 | asciiName == "Rotterdam"), 
+    geom_label_repel(data = df %>% filter(VAR > 25 | asciiName == "Rotterdam"), # not generalized
                      aes(JIT, VAR, label = asciiName),
                      na.rm = TRUE, nudge_y = 0.05, color = "black", size = 2.5) +
     scale_color_manual(values = colPal) +

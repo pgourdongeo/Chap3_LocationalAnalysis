@@ -17,7 +17,7 @@
 # 4. ANOVA adhesions/type of nuts
 # 5. Barplots nb seats/country
 # 6. Barplots nb seats/country
-# 7. explo évolution EFUS et ICLEI - fig. 3.?
+# 7. Evolution maps of EFUS & ICLEI networks - fig. 3.?
 
 
 # Working directory huma-num
@@ -139,7 +139,7 @@ plot_grid <- function(grid, adm, frame, sources, titleLeg, labels, labels2){
   
 }
 
-## dot plot - 4 maps !!NA non géré
+## dot plot - 4 maps !! Check NA !!
 plot_points_grid <- function(frame, adm, sf, sources){
   
   # stock bbox
@@ -148,6 +148,7 @@ plot_points_grid <- function(frame, adm, sf, sources){
   # Define margins
   par(mar = c(0,0,0,0), mfrow = c(2, 2), ps=15)
   
+  # Prepare data
   sk <- skim(sf$YEAR)
   
   sf <- st_intersection(rec, sf)
@@ -613,7 +614,7 @@ top <- ggplot(data = freq,
 
 
 
-# ===== 7. explo evol EFUS et ICLEI ===== 
+# ===== 7. Evolution maps of EFUS & ICLEI networks - fig. 3.? ===== 
 
 
 ##EFUS
