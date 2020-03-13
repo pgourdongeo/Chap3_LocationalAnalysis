@@ -3,8 +3,7 @@
 ##            ANALYSE UNI et BIVARIEE : VILLES ET MEMBRES ETMUN             ##
 ##                                                                          ##
 ##                                                                          ##    
-## DESCRIPTION : Base ETMUN / régression linéaire et                        ##
-##               cartographie des résidus                                   ##
+## DESCRIPTION : Base ETMUN / régression linéaire et ANOVA                  ##
 ##                                                                          ##
 ## PG, AD, janvier 2020                                                     ##
 ##==========================================================================##
@@ -18,7 +17,7 @@
 
 
 # Working directory huma-num
-# setwd("~/BD_Keep_Interreg/KEEP")
+# setwd("~/BD_Keep_Interreg/ETMUN")
 
 setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
