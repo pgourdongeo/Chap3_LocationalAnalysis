@@ -23,7 +23,7 @@
 
 
 # Working directory huma-num
-# setwd("~/BD_Keep_Interreg/KEEP")
+setwd("~/BD_Keep_Interreg/KEEP")
 
 setwd("~/git/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
@@ -1136,6 +1136,31 @@ mtext(text = "EUCICOP 2019 ; ESPON DB, 2013 / PG, AD, 2020",
       cex = 0.50)
 dev.off()
 
+
+
+### ==== 9.bIs Exploration top 3 of extrem nuts to comment Map ==== 
+
+NUTsExtremID <- extr_nuts$Nuts_Id %>% as.character()
+
+ParticNuts <- st_join(sfParticipations_snap, nutsUR, join= st_intersects)
+
+ParticNutsExtrem <- ParticNuts %>% mutate(Nuts_Id = as.character(Nuts_Id))%>% 
+  filter(Nuts_Id %in% NUTsExtremID)
+
+ProgTop3Nuts <- ParticNutsExtrem %>%mutate(Name= as.character(Name))%>% st_drop_geometry()%>%
+                group_by(Name, Programme)%>% tally() %>% top_n(3)
+
+
+library(ggforce)
+
+for(i in 1:round(length(unique(ProgTop3Nuts$Name))/4)){
+  
+print(ggplot(ProgTop3Nuts)+
+   geom_bar(aes(x = Programme, y = n),  stat="identity")+ 
+  facet_wrap_paginate(~Name, scales = "free", nrow = 4, ncol = 1, strip.position = "top", as.table = F, page = i) + 
+    coord_flip())
+
+  }
 
 
 
