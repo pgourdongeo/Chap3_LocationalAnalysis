@@ -40,6 +40,8 @@ lau <- readRDS("Data/AdminDelimPop0611.RDS")
 sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", 
                 stringsAsFactors = FALSE, crs = 3035)
 
+rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
+
 
 # ==== Spatial join with LAU2, UMZ and FUA ====
 
@@ -79,22 +81,26 @@ typo <- read_delim("../CountryInfo_PoliticalTypo.csv",
 sfCity <- left_join(sfCity,
                     select(typo, countryCode = iso_a2, LocGovType_HorizontalPwrRelation,
                            LocGovType_VerticalPwrRelation, LocGovType_PoliticalLeadership,
-                           LocGovTyp_EasternEurope, LocGovType_MunicipalAdmin, subregion),
+                           LocGovTyp_EasternEurope, LocGovType_MunicipalAdmin, subregion,
+                           MeanLAI_9014),
                     by = "countryCode")
-##◘ !!!!!! ajout var meanlau truc
+
+rm(typo)
+
+
 
 ## ==== Spatial extent for ACP ====
 
-# load europe frame
-rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
-## filter cities in Europe
-sfCityEur <- st_intersection(sfCity, rec)
 
-# UE 
+## filter cities in Europe frame
+#sfCityEur <- st_intersection(sfCity, rec)
+
+# filter cities in UE 
 iso <- c("IE", "GB", "PT", "ES", "FR", "BE", "NL", "LU", "DE", "DK",
          "AT", "IT", "GR", "SI", "HR", "CZ", "PL", "SK", "HU", "BG", 
          "RO", "EE", "LT", "LV", "CY", "FI", "SE", "MT")
 sfCityEur <- sfCity %>% filter(countryCode %in% iso)
+
 
 
 ## ==== ACP ====
@@ -106,38 +112,35 @@ df <- sfCityEur %>% st_drop_geometry()
 df[ , 23:29] <- data.frame(apply(df[23:29], 2, as.factor))
 
 df<- df %>% 
-  mutate(label = paste(sfCityEur$geonameId, sfCityEur$asciiName, sep = "_")) %>% 
-  mutate_at(vars("population","PopAdmin11", "PopAdmin11", "POPUMZ11", "POPFUA06"), replace_na, 0) %>% 
-  mutate(subregion = recode(subregion, "Western Asia"= "Southern Europe",
-                            "Middle East & North Africa" = "Southern Europe")) # recode Chypre & malta
-  
-df <- df %>% mutate(PopAdmin11 = 
-                      as.numeric(ifelse(PopAdmin11==0,population,PopAdmin11)))
+  mutate(label = paste(df$geonameId, df$asciiName, sep = "_")) %>% 
+  mutate_at(vars("population","PopAdmin11", "PopAdmin11", "POPUMZ11", "POPFUA06"), 
+            replace_na, 0) %>% 
+  mutate(subregion = recode(subregion, "Western Asia"= "Southern Europe",  # recode Chypre & malta
+                            "Middle East & North Africa" = "Southern Europe")) %>%  
+  mutate(PopAdmin11 = as.numeric(ifelse(PopAdmin11 == 0, population, PopAdmin11)))
 
-rownames(df) <- df[ , 30]
-
-
-#res.pca <- PCA(df[ , c(3:5, 12, 20)], scale.unit = TRUE, graph = FALSE)
+rownames(df) <- df[ , 31]
 
 
-df2 <- df %>% select(c(3:5, 16, 19, 22, 28))
+
+df2 <- df %>% select(c(3:6, 16, 23))
 res.pca <- PCA(df2,
                scale.unit = TRUE,
                #ind.sup = df[ , 1],
-               #quanti.sup = ,
-               quali.sup = 7,
+               #quanti.sup = 6,
+               quali.sup = 6,
                graph = FALSE)
 
 library(explor)
 explor(res.pca)
 
-library(GGally)
-ggpairs(df2, columns = c(1:6))
-
-hist(df2$members_urbact)
-myVar <- df2 %>% 
-  filter(members_urbact>0)
-summary(myVar$members_urbact)
+# library(GGally)
+# ggpairs(df2, columns = c(1:6))
+# 
+# hist(df2$members_urbact)
+# myVar <- df2 %>% 
+#   filter(members_urbact>0)
+# summary(myVar$members_urbact)
 
 
 ## ==== linear regression ====
@@ -173,7 +176,7 @@ sdRez <- sd(sfCityEur$rezStand)
 
 ## residuals map (residuals standart)
 rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2, 
-                             title1, title2, labels, source) {
+                             title1, labFilter, source) {
   
   par(mar = c(0, 0, 0, 0)) 
   
@@ -186,7 +189,7 @@ rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2,
   plot(st_geometry(frame), border = "ivory4", lwd = 0.5, add = TRUE)
   
   # Add legend
-  legendSquaresSymbols(pos = c(1000000, 4200000),
+  legendSquaresSymbols(pos = c(1000000, 4400000),
                        cex = 1,
                        var = myVal,
                        inches = 0.3, border = "grey60", lwd = 0.5, col = NA,
@@ -194,51 +197,65 @@ rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2,
   
   legendChoro(pos = c(1000000, 3000000), 
               cex = 0.9,
-              title.txt = title2, title.cex = 0.8, values.cex = 0.7,
-              breaks = bks, col = cols, values.rnd = 2, nodata = F)
-  
+              title.txt = "Résidus Standardisés*", title.cex = 0.8, values.cex = 0.6,
+              breaks = bks, col = cols, values.rnd = 2, nodata = F, 
+              border = "grey60")
   
   # Add an explanation text
-  text(x = 1000000, y = 2600000, labels = labels, cex = 0.7, adj = 0)
+  labels <-  paste("*Résidus de la régression :\n", eq, 
+                 ",\ndiscrétisés selon la moyenne\ndes résidus et 2 écarts-types", 
+                 labFilter, sep = "")
+  text(x = 1000000, y = 2300000, labels = labels, cex = 0.65, adj = 0)
   
-  # Add a layout
-  layoutLayer(title = "", 
-              sources = source, 
-              author = "PG, AD, 2019", 
-              horiz = FALSE,
-              col = NA, 
-              frame = F, 
-              scale = 500, 
-              posscale = c(6500000, 1000000))
+  # Add scalebar
+  barscale(500, pos = c(6500000, 1000000))
+  
+  # Add sources
+  mtext(text = source,
+        side = 1, 
+        line = -1.2, 
+        adj = 0.935,
+        cex = 0.50)
+  
+  # # Add a layout
+  # layoutLayer(title = "", 
+  #             sources = source, 
+  #             author = "PG, AD, 2019", 
+  #             horiz = FALSE,
+  #             col = NA, 
+  #             frame = F, 
+  #             scale = 500, 
+  #             posscale = c(6500000, 1000000))
   
 }
+
 ### defines a set of breaks and colors 
 require(cartography)
+
+skim(ol$PopAdmin11)
+
 ol <- sfCityEur %>% filter(rezStand < -2*sdRez | rezStand > 2*sdRez | PopAdmin11 > 1000000)
 bks <- c(min(ol$rezStand), -6 * sdRez, -4 * sdRez, -2 * sdRez, 
          2 * sdRez, 4 * sdRez, 6 * sdRez, max(ol$rezStand))
 cols <- carto.pal("green.pal",3, "wine.pal",3, middle = TRUE)
-carto.pal("green.pal")
+
 skim(ol$PopAdmin11)
-
-
 
 ### Plot and save
 pdf(file = "OUT/rez_eucicope_etmun.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 rezMap_propChoro(units = ol,
                  var = "PopAdmin11", 
-                 myVal = c(10000, 200000, 1000000, 3000000),
+                 myVal = c(10000, 500000, 3000000, 9000000),
                  var2 = "rezStand",
-                 title1 = "Population des villes (admin) en 2011", 
-                 title2 = "Résidus Standardisés*",
-                 labels = paste("*Résidus de la régression :\n", eq,",\ndiscrétisés selon la moyenne\ndes résidus (=0) et 2 écart-type", sep = ""),
-                 source = "Sources :")
+                 title1 = "Population administrative des villes en 2011", 
+                 labFilter = "\n\nNB : Les villes comptant moins\nde 1 million d'habitants\nou sans résidus extrêmes\nn'apparaissent pas sur la carte", 
+                 source = "Sources : EUCICOP 2019 ; ETMUN 2019 ; GEOSTAT LAU 2017, POPGRID 2011/ PG, AD, 2020")
 dev.off()
 
 
 
-
-
+mean(sfCityEur$rezStand)
+sum(sfCityEur$rezStand)
 
 
 
@@ -253,89 +270,8 @@ df <- cbind(df, .)
 
 
 
-#==================================
-# K-means
-#==================================
 
-# K-means vectors population
-
-## Compute explained variance (setting K) on AFC results
-
-var.expl <- c()
-for (i in 1:40){
-  result <- kmeans(x=indi,
-                   centers=i,
-                   iter.max=100,
-                   nstart=5)
-  var.expl <- append(var.expl,result$betweenss/result$totss)
-}
-
-var.expl <- data.frame(n=1:164,
-                       var=var.expl)
-
-
-ggplot(var.expl, aes(x = n, y = var))+
-  geom_point() + scale_x_continuous(breaks = seq(0,60,5)) +
-  theme(plot.subtitle = element_text(vjust = 1),
-        plot.caption = element_text(vjust = 1),
-        plot.title = element_text(colour = "brown")) +
-  labs(x = "k", y = "variance explained") +
-  labs(title = "K-Means Clustering on Population Vectors ")
-
-# Performing simple K-mean Partition
-## Dendrogram
-K=6
-clusters <- kmeans(x=indi,
-                   centers=K,
-                   iter.max=100,
-                   nstart=5)
-clusters$size/sum(clusters$size)
-clusters$centers
-#apply(clusters$withinss, 1, sum)
-
-clusters$size
-
-
-clustersCenters <- as.data.frame(clusters$centers)
-clustersCenters <- clustersCenters %>%
-  mutate(Cluster = row.names(.))%>%
-  mutate(n = clusters$size)
-
-#library(reshape2)
-clusLong <- clustersCenters %>% 
-  select(-n) %>% 
-  melt(., id.vars = "Cluster") 
-
-profilePlot <- ggplot(clusLong) +
-  geom_bar(aes(x = variable, y = value), fill = "grey30", position = "identity", stat = "identity") +
-  scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe") +
-  facet_wrap(~ Cluster) + coord_flip() + theme_bw()
-profilePlot
-
-
-# ACP + Kmeans pour typo des villes
-# régression multiple sur les différentes grandeurs de participation + var quali de controle (pays, region)
-# 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## ==== old ====
 
 
 
@@ -534,7 +470,7 @@ rm(id, snap_outsiders, outsiders, st_snap_points, iso)
 
 
 
-#### ------------
+#### ---
 
 
 
@@ -604,9 +540,9 @@ ggplot()+
         legend.title = element_text(size = 10),
         legend.text = element_text(size = 7.5))
 
-#==================================
+#===
 # Corrélation
-#==================================
+#===
 library(GGally)
 cityLog <- sfcity %>% 
   filter(continentCode == "EU") %>% 
@@ -624,9 +560,9 @@ ggpairs(cityLog[ , 5:8])
 
 
 
-#==================================
+#===
 # ACP  it works !
-#==================================
+#===
 
 # http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/73-acp-analyse-en-composantes-principales-avec-r-l-essentiel/
 library("FactoMineR")
@@ -677,9 +613,9 @@ df <- cbind(df, .)
 #http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/80-acp-dans-r-avec-ade4-scripts-faciles/
 
 
-#==================================
-# K-means
-#==================================
+#===
+# ===K-means====
+#===
 
 # K-means vectors population
 
@@ -736,9 +672,9 @@ profilePlot <- ggplot(clusLong) +
   facet_wrap(~ Cluster) + coord_flip() + theme_bw()
 profilePlot
 
-#==================================
+#===
 # CAH
-#==================================
+#===
 
 ## Commenges H. (2016) ExploratR : outil interactif d'exploration statistique uni- bi- tri- et multi-variée avec R, UMR 8504 Géographie-cités. 
 ## APPLI : https://analytics.huma-num.fr/geographie-cites/ExploratR/
@@ -828,9 +764,9 @@ freq <- data.frame(table(networkb$cluster))
 
 
 
-#==================================
+#===
 # MFA
-#==================================
+#===
 #♠ http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/77-afm-analyse-factorielle-multiple-avec-r-l-essentiel/
 df3 <- df %>% 
   select(c(3:5, 12, 20, 22, 24, 26))
@@ -863,9 +799,9 @@ quanti.var <- get_mfa_var(res.mfa, "quanti.var")
 quanti.var$contrib
 quanti.var$coord
 
-#==================================
+#===
 # ACM
-#==================================
+#===
 
 ## clean df to ACM
 city_afc <- sfcity %>% 
