@@ -29,7 +29,7 @@ setwd("~/BD_Keep_Interreg/CITY/")
 AdminEU <- readRDS("Data/AdminDelimPop0611.RDS")
 AdminEU  <- AdminEU %>% rename( COMM_ID = Code_2, NAME_ASCI =  Name_2)
 
-GNall <- readRDS("Data/DBCity.rds")
+GNall <- readRDS("Data/DBCity_beforeCorr.rds")
 
 GNallsf <- st_as_sf(GNall, coords = c("lng_GN", "lat_GN") , crs = 4326) %>% st_transform(crs= 3035)
 
