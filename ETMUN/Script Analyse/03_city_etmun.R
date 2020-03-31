@@ -9,8 +9,8 @@
 ##==========================================================================##
 
 # CONTENTS
-# 1. Fig. 3.19: mapping weight of European cities in ETMUN network 
-# 2. Fig. 3.20: ANOVA nb of members etmun/administration level
+# 1. Fig. 3.21: mapping weight of European cities in ETMUN network 
+# 2. Fig. 3.22: ANOVA nb of members etmun/administration level
 # régression linéaire (pop/nb d'adhésion) - non significatif 
 # Anova sur nb d'adhésion/population - non significatif 
 # Anova sur nb d'adhésion/type de région (Nuts CP 14-20) - non significatif 
@@ -36,7 +36,7 @@ library(ggrepel)
 
 
 
-# ==== 1. Fig. 3.19: mapping weight of European cities in ETMUN network ==== 
+# ==== 1. Fig. 3.21: mapping weight of European cities in ETMUN network ==== 
 
 ## ----~~ Load data ----
 
@@ -44,7 +44,7 @@ etmun <- readRDS("../CITY/CorrectedDB/ETMUN_Membership_GNidCorr.RDS")
 skim(etmun)
 
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
-sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson", stringsAsFactors = FALSE,crs = 3035)
 
 ## ----~~ Prepare data: cities in Europe with nb of members etmun ----
 ## rm na : removed 9 out of 17333 rows (<1%)
@@ -139,7 +139,7 @@ dev.off()
 
 
 
-# ==== 2. Fig. 3.20: ANOVA nb of members etmun/administration level ==== 
+# ==== 2. Fig. 3.22: ANOVA nb of members etmun/administration level ==== 
 
 
 ## ----~~ Load data ----
