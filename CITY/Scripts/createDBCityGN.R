@@ -5,7 +5,7 @@
 #               1. compilation des trois bases ETMUN, KEEP-EUCICOP et 
 #               URBACT selon les uniques geonameId 
 #               2. aggrégation spatiale des geonameId situés dans une même commune
-#               (ex Paris et ses arrondissements) - à faire
+#               (ex Paris et ses arrondissements) - cf. AggregateGN_SpatialJoin
 #
 #
 # PG, AD, février 2020
@@ -23,15 +23,23 @@ library(sf)
 library(mapview)
 library(skimr) 
 
+# Load data - files before correction
+# # Load DB
+# urbact <- readRDS("KEEP/AD/URBACT/URBACT_Membership_GNid.RDS")
+# etmun <- readRDS("ETMUN/Data/ETMUN_Membership_GNid.RDS")
+# ## load eucicop
+# partners <- readRDS("KEEP/Data/UniquePartners_GNid_Eucicop.RDS")
+# participations <- readRDS("KEEP/Data/Participations_All_Eucicop.RDS")
+# projects <- readRDS("KEEP/Data/ProjectsEucicop_all_noduplicated.RDS")
 
-# Load DB
-urbact <- readRDS("KEEP/AD/URBACT/URBACT_Membership_GNid.RDS")
-etmun <- readRDS("ETMUN/Data/ETMUN_Membership_GNid.RDS")
+# Load data 
+etmun <- readRDS("CITY/CorrectedDB/ETMUN_Membership_GNidCorr.RDS")
+urbact <- readRDS("CITY/CorrectedDB/URBACT_Membership_GNidCorr.RDS")
+partners <- readRDS("CITY/CorrectedDB/UniquePartners_GNid_EucicopCorr.RDS")
+participations <- readRDS("CITY/CorrectedDB/Participations_All_Eucicop.RDS")
+projects <- readRDS("CITY/CorrectedDB/ProjectsEucicop_all_noduplicated.RDS")
 
-## load eucicop
-partners <- readRDS("KEEP/Data/UniquePartners_GNid_Eucicop.RDS")
-participations <- readRDS("KEEP/Data/Participations_All_Eucicop.RDS")
-projects <- readRDS("KEEP/Data/ProjectsEucicop_all_noduplicated.RDS")
+
 
 ## Prepare eucicop participations
 ### Add coords partners to participations
@@ -99,8 +107,8 @@ rm(vec)
 allDB <- full_join(., eucicop_gnu)
 
 ## Correction coords of 20 cities (with same geonameId but not same coords)
-bibi <- allDB %>%  
-  filter(duplicated(geonameId)) 
+# bibi <- allDB %>%
+#   filter(duplicated(geonameId)) ## no need anymore
 
 allDB <- allDB %>%  
   mutate_at(vars("members_etmun", "members_urbact",  
@@ -117,33 +125,38 @@ rm (allGNU, bibi, etmun, urbact, eucicop)
 
 # Add GN variables to allDB city
 ## Load DB GN full info
-urbact_gnInfo <- readRDS("KEEP/AD/URBACT/UniqueGNforURBACT.rds")
-etmun_gnInfo <- readRDS("ETMUN/Data/UniqueGNforETMUN.rds")
-eucicop_gnInfo <- readRDS("KEEP/Data/GNid_uniqueCity_Eucicop.RDS")
 
-## Correct Urbact
-urbact_gnInfo <- urbact_gnInfo %>% 
-  rename(lat_GN = lat, lng_GN = lng ) %>% 
-  mutate(lat_GN = as.numeric(lat_GN),
-         lng_GN = as.numeric(lng_GN))
+# OLD
+# urbact_gnInfo <- readRDS("KEEP/AD/URBACT/UniqueGNforURBACT.rds")
+# etmun_gnInfo <- readRDS("ETMUN/Data/UniqueGNforETMUN.rds")
+# eucicop_gnInfo <- readRDS("KEEP/Data/GNid_uniqueCity_Eucicop.RDS")
 
-## All in one
-GNinfoAll <- bind_rows(urbact_gnInfo, etmun_gnInfo) %>% 
-  bind_rows(., eucicop_gnInfo) %>% 
-  filter(!duplicated(geonameId)) 
+# ## Correct Urbact
+# urbact_gnInfo <- urbact_gnInfo %>%
+#   rename(lat_GN = lat, lng_GN = lng ) %>%
+#   mutate(lat_GN = as.numeric(lat_GN),
+#          lng_GN = as.numeric(lng_GN))
+#
+# ## All in one
+# GNinfoAll <- bind_rows(urbact_gnInfo, etmun_gnInfo) %>%
+#   bind_rows(., eucicop_gnInfo) %>%
+#   filter(!duplicated(geonameId))
+#
+# colnames(GNinfoAll)
+# skim(GNinfoAll)
+#
+# ## clean columns
+# GNinfoAll <- GNinfoAll %>%
+#   select(geonameId, asciiName, countryCode, lng_GN, lat_GN,
+#          continentCode, population, fcodeName, fcode,
+#          everything()) %>% select(-distance, -score)
+#
+# ## save -- do not run again ever ever !!
+# #saveRDS(GNinfoAll, "CITY/Data/UniqueGN_info_AllDB.rds")
 
-colnames(GNinfoAll)
-skim(GNinfoAll)
 
-## clean columns
-GNinfoAll <- GNinfoAll %>% 
-  select(geonameId, asciiName, countryCode, lng_GN, lat_GN,
-         continentCode, population, fcodeName, fcode, 
-         everything()) %>% select(-distance, -score)
-
-## save -- do not run again ever ever !!
-#saveRDS(GNinfoAll, "CITY/Data/UniqueGN_info_AllDB.rds")
-
+# After correction
+GNinfoAll <- readRDS("CITY/Data/UniqueGN_info_AllDB_Corr.rds")
 
 ## Finally add wanted info GN to DB city
 allDB <- allDB %>% 
@@ -153,3 +166,5 @@ allDB <- allDB %>%
 
 ## save
 #saveRDS(allDB, "CITY/Data/DBCity.rds")
+
+old <- readRDS("CITY/Data/DBCity_beforeCorr.RDS")

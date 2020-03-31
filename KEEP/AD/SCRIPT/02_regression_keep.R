@@ -36,13 +36,17 @@ library(GGally)
 
 # Import data
 
-sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", crs = 3035)
+sfEU <- st_read("AD/FDCARTE/fondEuropeLarge.geojson", 
+                stringsAsFactors = FALSE, crs = 3035)
 
-rec <- st_read("AD/FDCARTE/rec_3035.geojson")
+rec <- st_read("AD/FDCARTE/rec_3035.geojson", 
+               stringsAsFactors = FALSE)
 
-umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", crs = 3035)
+umz <- st_read("../TradeveShape/Agglo_Perimetre2001_Pop1961_2011.shp", 
+               stringsAsFactors = FALSE, crs = 3035)
 
-fua <- st_read("../OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp") %>% 
+fua <- st_read("../OtherGeometry/ShpUrbanAudit2012_Pop2006/URAU_2012_RG.shp", 
+               stringsAsFactors = FALSE) %>% 
   st_transform(crs = 3035)
 
 ## data with snaped points 
