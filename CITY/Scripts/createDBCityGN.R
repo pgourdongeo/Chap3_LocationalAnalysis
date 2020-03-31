@@ -3,9 +3,11 @@
 #                          
 # DESCRIPTION : Création d'une base de données 'ville' par : 
 #               1. compilation des trois bases ETMUN, KEEP-EUCICOP et 
-#               URBACT selon les uniques geonameId 
+#               URBACT selon les uniques geonameId -> BDCity_beforeCorr.RDS
 #               2. aggrégation spatiale des geonameId situés dans une même commune
-#               (ex Paris et ses arrondissements) - cf. AggregateGN_SpatialJoin
+#               (ex Paris et ses arrondissements) - cf. AggregateGN_SpatialJoin.R
+#               3. Refaire tourner ce script sur les fichiers corrigés -> en sortie,
+#               BDCity.RDS
 #
 #
 # PG, AD, février 2020
@@ -36,8 +38,8 @@ library(skimr)
 etmun <- readRDS("CITY/CorrectedDB/ETMUN_Membership_GNidCorr.RDS")
 urbact <- readRDS("CITY/CorrectedDB/URBACT_Membership_GNidCorr.RDS")
 partners <- readRDS("CITY/CorrectedDB/UniquePartners_GNid_EucicopCorr.RDS")
-participations <- readRDS("CITY/CorrectedDB/Participations_All_Eucicop.RDS")
-projects <- readRDS("CITY/CorrectedDB/ProjectsEucicop_all_noduplicated.RDS")
+participations <- readRDS("KEEP/Data/Participations_All_Eucicop.RDS")
+projects <- readRDS("KEEP/Data/ProjectsEucicop_all_noduplicated.RDS")
 
 
 
