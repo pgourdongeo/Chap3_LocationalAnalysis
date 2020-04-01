@@ -17,7 +17,7 @@
 
 
 # Working directory huma-num
-# setwd("~/BD_Keep_Interreg/ETMUN")
+ setwd("~/BD_Keep_Interreg/ETMUN")
 
 setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
@@ -383,7 +383,111 @@ dev.off()
 
 
 
-# ==== reprendre ici ==== 
+# ==== 3. Correlation Population admin adhésion  ==== 
+
+#Load DbCity with all info and join LAU UMZ FUA
+city <- readRDS("../CITY/Data/DBCity_LauUmzFua.rds")
+cityEtmun <- city %>% filter(members_etmun>0) %>% st_drop_geometry()
+
+EtmunCity <- left_join(sfCitiesEur,cityEtmun, by = "geonameId" )
+EtmunCity <- EtmunCity %>% rename(NbAdh = nbMembers)
+skim(EtmunCity)
+## display graph (filter outlier greater london)
+
+EtmunCity <- EtmunCity %>% filter(PopAdmin11 < 9000000)
+regPopAdh<- ggplot(EtmunCity  , aes(x = PopAdmin11, y = NbAdh)) +
+  geom_point () +
+  theme_light() +
+  labs(x = "Population Administrative des villes (2011)", 
+       y = "Nombre d'adhésions à des associations de municipalités") 
+regPopAdh
+
+### Estimer la regression linéaire
+require(stats)
+reg <- lm( NbAdh ~  PopAdmin11, data = EtmunCity)
+summary(reg)
+
+### Equation de la droite de regression :
+eq = paste0("y = ",round(reg$coefficients[2],7), "x + ", round(reg$coefficients[1],2))  # On fait l'inverse de lg(y), y = 10^b * x^a
+
+### Add line et equation
+regPopAdh + 
+  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
+              linetype = "dashed", size = 1.5) +
+  annotate(geom = "text", x = 3000000, y = 40, label = paste0(eq, "\nR2 = ", 
+                                                              round(summary(reg)$r.squared, 2))) 
+
+
+## Residuals
+### add residuals and standart residuals to df
+
+EtmunCity <- EtmunCity %>% 
+  mutate(rezStand = residuals(reg, type = "pearson")) %>% 
+  ungroup()
+
+sdRez <- sd(EtmunCity$rezStand)
+
+## Outliers
+
+is_outlier <- function(x) {
+  
+  return(x < -10 * sdRez | x > 10 * sdRez)
+  
+}
+
+### Ajout d'une variable Outlier au DF
+
+EtmunCity<- EtmunCity %>%
+  mutate(outlier_rezStand = ifelse(is_outlier(rezStand), 
+                                   rezStand, 
+                                   as.numeric(NA)))
+
+skim(EtmunCity)
+## Plot with outliers and save pdf
+pdf(file = "OUT/lm_etmun_PopLAU_Adh.pdf",width = 8.3, height = 5.8, pagecentre =TRUE)
+regPopAdh  + 
+  geom_label_repel(data = EtmunCity %>% filter(!is.na(outlier_rezStand)), 
+                   aes(label = paste(asciiName.x, countryCode, sep = ", ")),
+                   na.rm = TRUE, nudge_y = 0.05, color = "black", size = 2.5) + 
+  geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
+              linetype = "dashed", size = 1.5) +
+  annotate(geom = "label", x = 2000000, y = 40, label= paste0(eq, "\nR2 = ", 
+                                                              round(summary(reg)$r.squared, 2)), hjust = 0, fill = "#E69F00", size = 3) +
+  labs(caption = "Sources : ETMUN 2019 ; Tradeve 2015", size = 3) 
+dev.off()
+
+
+## residuals map (residuals standart)
+### defines a set of breaks and colors 
+bks <- c(min(umz$rezStand), -2 * sdRez, -1 * sdRez, 1 * sdRez, 2 * sdRez, max(umz$rezStand))
+cols <- c("#1A7832", "#AFD4A0", "#f6f5c5", carto.pal("wine.pal",2))
+
+skim(umz$Pop2011)
+
+### Plot and save
+pdf(file = "OUT/rez_umz_etmun.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+rezMap_propChoro(units = umz %>% filter(n > thrshld),
+                 var = "Pop2011", 
+                 myVal = c(10000, 1000000, 5000000, 10000000),
+                 var2 = "rezStand",
+                 title1 = "Population des UMZ en 2011", 
+                 title2 = "Résidus Standardisés*",
+                 labels = paste("*Résidus de la régression :\n", eq,",\ndiscrétisés selon la moyenne\ndes résidus (=0) et 1 écart-type", sep = ""),
+                 source = "Sources : ETMUN 2019 ; Tradeve 2015")
+dev.off()
+
+
+
+
+
+
+
+
+
+
+########## Aurélie
+
+
 
 #a nettoyer
 

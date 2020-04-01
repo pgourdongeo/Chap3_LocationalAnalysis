@@ -9,7 +9,7 @@
 ##==========================================================================##         
 
 # Working directory huma-num
-#setwd("~/BD_Keep_Interreg/CITY")
+setwd("~/BD_Keep_Interreg/CITY")
 
 setwd("~/git/Chap3_LocationalAnalysis/CITY")
 options(scipen = 999)
@@ -67,6 +67,7 @@ sfCity <- st_join(sfCity,
 admin <- read_delim("../ETMUN/Script Analyse/admintyposimplifiee.csv", 
                     ";", escape_double = FALSE, trim_ws = TRUE)
 
+admin[15,2] <- "seat of a first-order admin. division"
 ### Add admin level to the data
 sfCity <- left_join(sfCity, admin, by = "fcodeName")
 
@@ -88,7 +89,7 @@ sfCity <- left_join(sfCity,
 rm(typo)
 
 
-
+saveRDS(sfCity,"Data/DBCity_LauUmzFua.rds")
 ## ==== Spatial extent for ACP ====
 
 
@@ -123,12 +124,14 @@ rownames(df) <- df[ , 31]
 
 
 
-df2 <- df %>% select(c(3:6, 16, 23))
+df2 <- df %>% select(c(3:5, 16,23))
+skim(df2)
+df2 <- df2 %>% filter(!is.na(adminLevel))
 res.pca <- PCA(df2,
                scale.unit = TRUE,
                #ind.sup = df[ , 1],
                #quanti.sup = 6,
-               quali.sup = 6,
+               quali.sup = 5,
                graph = FALSE)
 
 library(explor)
@@ -856,5 +859,14 @@ explor(res.mca)
 
 
 
-# load data
-admin <- readRDS("Data/AdminDelimPop0611.RDS")
+#### ----- Multiple regression ------
+
+library(performance)
+
+mEucicop<-lm(participations_eucicop ~ PopAdmin11 + MeanLAI_9014, data = df)
+
+summary(mEucicop)
+check_model(mEucicop)
+
+model <- lm(mpg ~ wt * cyl + gear, data = mtcars)
+str(mtcars)
