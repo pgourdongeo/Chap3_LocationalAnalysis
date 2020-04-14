@@ -16,13 +16,15 @@ options(scipen = 999)
 
 
 # library
-library(skimr)
-library(tidylog)
+
 library(tidyverse)
+library(tidylog)
+library(skimr)
 library(readr)
 library(sf)
 library(mapview)
-
+library(FactoMineR)
+library(explor)
 
 # load data
 city <- readRDS("Data/DBCity.rds")
@@ -42,7 +44,7 @@ sfEU <- st_read("../KEEP/AD/FDCARTE/fondEuropeLarge.geojson",
 
 rec <- st_read("../KEEP/AD/FDCARTE/rec_3035.geojson")
 
-
+# mapview(lau%>% filter(str_detect(Code_2, "HU") ))
 # ==== Spatial join with LAU2, UMZ and FUA ====
 
 sfCity <- st_join(sfCity, 
@@ -57,7 +59,6 @@ fua <- fua %>% filter(URAU_CATG == "L")
 sfCity <- st_join(sfCity,
                   select(fua, ID_FUA = URAU_ID, NAME_FUA = URAU_NAME, POPFUA06 = URAU_POPL),
                   join = st_intersects)
-
 
 
 # ==== Attribute join ====
@@ -75,8 +76,7 @@ rm(admin)
 
 ## typo sciencePo
 ### load csv
-typo <- read_delim("../CountryInfo_PoliticalTypo.csv", 
-                   ";", escape_double = FALSE, trim_ws = TRUE)
+typo <-read.csv2("../CountryInfo_PoliticalTypo.csv",  stringsAsFactors = F)
 
 ### Add typo to sfCity
 sfCity <- left_join(sfCity,
@@ -103,40 +103,145 @@ iso <- c("IE", "GB", "PT", "ES", "FR", "BE", "NL", "LU", "DE", "DK",
 sfCityEur <- sfCity %>% filter(countryCode %in% iso)
 
 
-
-## ==== ACP ====
-# http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/73-acp-analyse-en-composantes-principales-avec-r-l-essentiel/
-
-library("FactoMineR")
+## Prepare a tiblle for analysis
 
 df <- sfCityEur %>% st_drop_geometry()
 df[ , 23:29] <- data.frame(apply(df[23:29], 2, as.factor))
 
 df<- df %>% 
-  mutate(label = paste(df$geonameId, df$asciiName, sep = "_")) %>% 
+  mutate(label = paste(df$asciiName, df$countryCode, df$geonameId, sep = ", ")) %>% 
   mutate_at(vars("population","PopAdmin11", "PopAdmin11", "POPUMZ11", "POPFUA06"), 
             replace_na, 0) %>% 
   mutate(subregion = recode(subregion, "Western Asia"= "Southern Europe",  # recode Chypre & malta
                             "Middle East & North Africa" = "Southern Europe")) %>%  
   mutate(PopAdmin11 = as.numeric(ifelse(PopAdmin11 == 0, population, PopAdmin11)))
 
-rownames(df) <- df[ , 31]
 
 
 
-df2 <- df %>% select(c(3:5, 16,23))
-skim(df2)
-df2 <- df2 %>% filter(!is.na(adminLevel))
-res.pca <- PCA(df2,
+## ====== Filter the dataframe ======
+# After exploration of DBcity without filter, it's obvious that all the zero(s) and very low value impact all analysis
+
+# First filter remove city with at least 2  participations (all kinds : eucicop/etmun)
+#and with admin pop lower than 1000
+
+#Tot Participation
+
+    df <- df %>% mutate(TotParticipAllKind = rowSums(.[3:5]))
+
+
+# Try ranking variables
+df <- df %>% arrange(desc(TotParticipAllKind)) %>%  
+  mutate_at(.vars = c("members_etmun", "members_urbact", 
+                  "participations_eucicop","PopAdmin11"), 
+            list( rank = ~ rank(desc(.), ties.method = 'first'))) 
+
+## Ratio participations per hab
+
+df <- df %>%mutate_at(.vars = vars(3:5), 
+            list(per10kInh = ~./PopAdmin11*10000)) 
+
+## First Filter by total participation (melt all kind)
+  df2 <- df %>% tidylog::filter(TotParticipAllKind >2) # remove 62% of the cities
+
+    
+ 
+#Admin Pop
+skim(df$PopAdmin11)
+    df2 <- df %>% tidylog::filter(PopAdmin11> 5000)# 453 rows removed
+
+nrow(df2)/nrow(df)*100
+
+
+
+str(df2)
+# Tranfo en log
+dummy = 1
+dfLogFilter <- df2 %>%  mutate_if(is.numeric, ~.+dummy) %>% mutate_if(is.numeric, log)
+
+#write.csv2(dfLogFilter, "Data/DbCityLogFiltered_exploratR.csv", row.names = F)
+## ==== Uni and bivariates exploration ====
+# filter Paris an london
+
+df3 <- df2 %>% filter_at(.vars = vars(16,19), all_vars(.<9000000))
+
+# Hist continuous variables
+df %>% select(c(3:5, 16, 19, 22)) %>% 
+  gather() %>% 
+  ggplot(aes(value)) + scale_y_continuous(trans = "log10")+
+  facet_wrap(~ key, scales = "free") +
+  geom_histogram()
+
+df3 %>% keep(is.numeric) %>% 
+  gather() %>% 
+  ggplot(aes(value)) + scale_y_continuous(trans = "log10")+
+  facet_wrap(~ key, scales = "free") +
+  geom_histogram()
+
+df3 %>% select(c(3:5, 16, 19, 22)) %>% 
+  gather() %>% 
+  ggplot(aes(value)) + scale_y_continuous(trans = "log10")+
+  facet_wrap(~ key, scales = "free") +
+  geom_histogram()
+
+dfLogFilter%>% select(c(3:5, 16, 19, 22)) %>% 
+  gather(value = "valueLog10") %>% 
+  ggplot(aes(valueLog10)) + scale_y_continuous(trans = "log10")+
+  facet_wrap(~ key, scales = "free") +
+  geom_histogram()
+
+# bivariate exploration
+
+library(GGally)
+ggpairs(df, columns = c(33:39), 
+                lower = list(continuous = wrap("points", alpha = 0.2)))
+
+ggpairs(df3, columns = c(3:5, 16), 
+        lower = list(continuous = wrap("points", alpha = 0.1)))
+
+ggpairs(dfLogFilter, columns = c(3:5, 16), 
+        lower = list(continuous = wrap("points", alpha = 0.1)))
+
+ggpairs(df3, columns = c(36:39), 
+        lower = list(continuous = wrap("points", alpha = 0.1)))
+## ==== ACP ====
+# http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/73-acp-analyse-en-composantes-principales-avec-r-l-essentiel/
+
+df4 <- df2 %>% select(c(31,37:39, 3:5, 16))
+skim(df4)
+df4 <- df4 %>% filter(!is.na(adminLevel))
+rownames(df4) <- df4$label
+df4 <- df4 %>% select(-label)
+res.pca <- PCA(df4,
+               scale.unit = TRUE,
+               ind.sup = 7,
+               quanti.sup = 7,
+               # quali.sup = 4,
+               graph = FALSE)
+
+
+
+explor(res.pca)
+
+8125/16614
+
+dfzero <- df4 %>% filter_at(vars(4:6), any_vars(. == 0))
+#PCA normalized on log value
+
+df4 <- dfLogFilter %>% select(c(3:5, 16,31))
+skim(df4)
+df4 <- df4 %>% filter(!is.na(adminLevel))
+rownames(df4) <- df4$label
+df4 <- df4 %>% select(-label)
+res.pca <- PCA(df4,
                scale.unit = TRUE,
                #ind.sup = df[ , 1],
                #quanti.sup = 6,
                quali.sup = 5,
                graph = FALSE)
-
-library(explor)
+ggpairs(df4, 
+        lower = list(continuous = wrap("points", alpha = 0.2)))
 explor(res.pca)
-
 # library(GGally)
 # ggpairs(df2, columns = c(1:6))
 # 
@@ -153,7 +258,7 @@ summary(reg)
 
 
 ### Equation de la droite de regression :
-eq = paste0("y = ", round(reg$coefficients[1],2), " * x + ", round(reg$coefficients[2],2))
+eq = paste0("y = ", round(reg$coefficients[2],2), " * x + ", round(reg$coefficients[1],2))
 
 ### Add line et equation
 regEucEtm <- ggplot(sfCityEur, aes(x = members_etmun, y = participations_eucicop)) +
@@ -274,7 +379,7 @@ df <- cbind(df, .)
 
 
 
-## ==== old ====
+## ==== Discrétisation ====
 
 
 
@@ -286,29 +391,28 @@ df <- cbind(df, .)
 require(cartography)
 
 ### etmun
-myVar <- city %>% filter(members_etmun > 1) 
+myVar <- df %>% filter(members_etmun > 1) 
 myVar <- as.numeric(myVar$members_etmun)
 bks <- c(getBreaks(v = myVar, method = "equal", nclass = 3))
-
-city <- city %>% 
-  mutate(members_etmun_K = case_when(members_etmun == 1 ~ "unique",
-                                     members_etmun >= bks[1] & members_etmun < bks[2] ~ "multiple",
-                                     members_etmun >= bks[2] & members_etmun < bks[3] ~ "forte",
-                                     members_etmun >= bks[3] & members_etmun <= bks[4] ~ "très forte",
+hist(myVar)
+summary(myVar)
+city <- df %>% 
+  mutate(members_etmun_K = case_when(members_etmun >=1 & members_etmun <= 2 ~ "faible",
+                                     members_etmun > 2 & members_etmun <=5  ~ "moyenne",
+                                     members_etmun > 5 & members_etmun<=bks[4]  ~ "forte",
                                      members_etmun == 0 ~ "nulle"))
 
 freq <- as.data.frame(table(city$members_etmun_K))
 
 ### urbact
-myVar <- city %>% filter(members_urbact > 1) 
+myVar <- df %>% filter(members_urbact > 1) 
 myVar <- as.numeric(myVar$members_urbact)
+hist(myVar)
 bks <- c(getBreaks(v = myVar, method = "equal", nclass = 3))
 
 city <- city %>% 
   mutate(members_urbact_K = case_when(members_urbact == 1 ~ "unique",
-                                      members_urbact >= bks[1] & members_urbact < bks[2] ~ "multiple",
-                                      members_urbact >= bks[2] & members_urbact < bks[3] ~ "forte",
-                                      members_urbact >= bks[3] & members_urbact <= bks[4] ~ "très forte",
+                                      members_urbact >= bks[1] & members_urbact <=max(members_urbact) ~ "forte",
                                       members_urbact == 0 ~ "nulle"))
 
 freq <- as.data.frame(table(city$members_urbact_K))
@@ -316,14 +420,14 @@ freq <- as.data.frame(table(city$members_urbact_K))
 ### eucicop - participation
 myVar <- city %>% filter(participations_eucicop > 1) 
 myVar <- as.numeric(myVar$participations_eucicop)
+hist(myVar)
 #bks <- c(getBreaks(v = myVar, method = "equal", nclass = 3))
 bks <- c(2, 50, 200, 700)
 
 city <- city %>% 
-  mutate(participations_eucicop_K = case_when(participations_eucicop == 1 ~ "unique",
-                                              participations_eucicop >= bks[1] & participations_eucicop < bks[2] ~ "multiple",
-                                              participations_eucicop >= bks[2] & participations_eucicop < bks[3] ~ "forte",
-                                              participations_eucicop >= bks[3] & participations_eucicop <= bks[4] ~ "très forte",
+  mutate(participations_eucicop_K = case_when(participations_eucicop >= 1 & participations_eucicop <= 4 ~ "faible",
+                                              participations_eucicop > 4 & participations_eucicop <= 10 ~ "forte",
+                                              participations_eucicop > 10 & participations_eucicop <= bks[4] ~ " très forte",
                                               participations_eucicop == 0 ~ "nulle"))
 
 freq <- as.data.frame(table(city$participations_eucicop_K))
@@ -333,12 +437,12 @@ freq <- as.data.frame(table(city$participations_eucicop_K))
 myVar <- city %>% filter(partners_eucicop > 1) 
 myVar <- as.numeric(myVar$partners_eucicop)
 bks <- c(2, 50, 200, 700)
-
+summary(myVar)
 city <- city %>% 
-  mutate(partners_eucicop_K = case_when(partners_eucicop == 1 ~ "unique",
-                                        partners_eucicop >= bks[1] & partners_eucicop < bks[2] ~ "multiple",
-                                        partners_eucicop >= bks[2] & partners_eucicop < bks[3] ~ "forte",
-                                        partners_eucicop >= bks[3] & partners_eucicop <= bks[4] ~ "très forte",
+  mutate(partners_eucicop_K = case_when(partners_eucicop >= 1 & partners_eucicop <= bks[1] ~ "très faible",
+                                        partners_eucicop > bks[1] & partners_eucicop <= 4 ~ "faible",
+                                        partners_eucicop > 4 & partners_eucicop <= 10 ~ "forte",
+                                        partners_eucicop > 10 & partners_eucicop <= bks[4] ~ " très forte",
                                         partners_eucicop == 0 ~ "nulle"))
 
 freq <- as.data.frame(table(city$partners_eucicop_K))
@@ -620,20 +724,33 @@ df <- cbind(df, .)
 # ===K-means====
 #===
 
-# K-means vectors population
+# == K-means On standardized variables
 
-## Compute explained variance (setting K) on AFC results
+## Normalized variable (filter london)
+dfKmean <- df %>% select(3:5, 16) %>% filter(PopAdmin11 < 9000000)
+dfKmeanNorm <- dfKmean %>% mutate_all(~scale(.))
+rownames(dfKmeanNorm) <- rownames(dfKmean)
+
+
+#Log test
+dfKmeanLog <- dfLogFilter %>% select(3:5, 16,31) 
+dfKmeanLogNorm <- dfKmeanLog %>% select(-label) %>% mutate_all(~scale(.))
+rownames(dfKmeanLogNorm) <- dfKmeanLog $label
+
+
+## Compute explained variance (setting K) 
+
 
 var.expl <- c()
 for (i in 1:40){
-  result <- kmeans(x=indi,
+  result <- kmeans(x=dfKmeanLogNorm,
                    centers=i,
                    iter.max=100,
                    nstart=5)
   var.expl <- append(var.expl,result$betweenss/result$totss)
 }
 
-var.expl <- data.frame(n=1:164,
+var.expl <- data.frame(n=1:40,
                        var=var.expl)
 
 
@@ -646,9 +763,9 @@ ggplot(var.expl, aes(x = n, y = var))+
   labs(title = "K-Means Clustering on Population Vectors ")
 
 # Performing simple K-mean Partition
-## Dendrogram
-K=6
-clusters <- kmeans(x=indi,
+
+K=8
+clusters <- kmeans(x=dfKmeanLogNorm,
                    centers=K,
                    iter.max=100,
                    nstart=5)
@@ -664,16 +781,66 @@ clustersCenters <- clustersCenters %>%
   mutate(Cluster = row.names(.))%>%
   mutate(n = clusters$size)
 
-#library(reshape2)
+
 clusLong <- clustersCenters %>% 
   select(-n) %>% 
-  melt(., id.vars = "Cluster") 
+  gather(key = "variable", value = "value", - Cluster) 
 
 profilePlot <- ggplot(clusLong) +
   geom_bar(aes(x = variable, y = value), fill = "grey30", position = "identity", stat = "identity") +
-  scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe") +
+  scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe (Log normalisé)") +
   facet_wrap(~ Cluster) + coord_flip() + theme_bw()
 profilePlot
+
+
+#### Add K-means clustering in df
+
+OutputClustering <- as.data.frame(clusters$cluster)
+
+colnames(OutputClustering)[1] <- "KmeansCluster"
+
+
+dfKmean <- cbind(dfKmean, OutputClustering)
+dfKmeanMean <- dfKmean %>% group_by(KmeansCluster)%>% summarise_all(~mean(.))
+dfKmeanMean <- dfKmeanMean %>% gather(key = "Variable", value = "Mean", - KmeansCluster)
+
+profilePlot <- ggplot(dfKmeanMean) +
+  geom_bar(aes(x = Variable, y = Mean), fill = "grey30", position = "identity", stat = "identity") +
+  scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe") +
+  facet_wrap(~ KmeansCluster) + coord_flip() + theme_bw()
+profilePlot
+
+
+#### Add K-means clustering in df (log normalisé et filtre)
+
+OutputClustering <- as.data.frame(clusters$cluster)
+
+colnames(OutputClustering)[1] <- "KmeansClusterLog"
+
+
+dfKmeanLog <- cbind(dfKmeanLog, OutputClustering)
+dfKmeanMean <- dfKmeanLog %>% select(-label) %>% group_by(KmeansClusterLog)%>% summarise_all(~median(.))
+dfKmeanMean <- dfKmeanMean %>% gather(key = "Variable", value = "Median", - KmeansClusterLog)
+
+profilePlot <- ggplot(dfKmeanMean) +
+  geom_bar(aes(x = Variable, y = Median), fill = "grey30", position = "identity", stat = "identity") +
+  scale_x_discrete("Variable") + scale_y_continuous("Valeur médiane par classe (log)") +
+  facet_wrap(~ KmeansClusterLog) + coord_flip() + theme_bw()
+profilePlot
+
+#### Plot with Mean Pop
+
+library(tidyr)
+meanPopK <- UMZ %>%
+  select(7:12, KmeansPop) %>%
+  group_by(KmeansPop) %>%
+  summarise_each(funs(mean(., na.rm=TRUE))) %>%
+  gather(key = year, value = Pop, -KmeansPop) %>%
+  mutate(year = gsub(pattern = "X", replacement = "", x = year))
+
+library(ggplot2)
+ggplot(meanPopK, aes(year, Pop, group=KmeansPop, color = factor(KmeansPop))) +
+  geom_line()
 
 #===
 # CAH
@@ -803,25 +970,22 @@ quanti.var$contrib
 quanti.var$coord
 
 #===
-# ACM
+# ==== ACM =====
 #===
 
 ## clean df to ACM
-city_afc <- sfcity %>% 
+city_afc <- city %>% 
   #filter(continentCode == "EU") %>% 
-  select(geonameId, members_etmun_K, members_urbact_K, participations_eucicop_K, partners_eucicop_K,
-         KPOP_GN, KPOP_UMZ, adminLevel, TYPO_NUTS, region) %>% 
-  as.data.frame() %>% 
-  select(-geometry)
-
+  select(geonameId, members_etmun_K, members_urbact_K, participations_eucicop_K) %>% 
+ drop_na()
 # http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/84-acm-dans-r-avec-factominer-scripts-faciles-et-cours/
 library(FactoMineR)
 
-df<- Map(paste, city_afc, names(city_afc), sep = '_') %>% 
+dfACM<- Map(paste, city_afc, names(city_afc), sep = '_') %>% 
   as.data.frame() %>% 
   select(-geonameId)
 
-res.mca <- MCA(df, graph=FALSE)
+res.mca <- MCA(dfACM, graph=FALSE)
 eig.val <- res.mca$eig
 barplot(eig.val[, 2], 
         names.arg = 1:nrow(eig.val), 
@@ -834,7 +998,7 @@ barplot(eig.val[, 2],
 plot(res.mca, 
      invisible = "ind",
      cex = 0.8,
-     autoLab = "yes")
+     autoLab = "no")
 
 df2 <- df %>% select(members_etmun_K, KPOP_UMZ, adminLevel)
 
@@ -870,3 +1034,47 @@ check_model(mEucicop)
 
 model <- lm(mpg ~ wt * cyl + gear, data = mtcars)
 str(mtcars)
+
+
+
+#### ----- Poisson GLM -----
+
+
+# VOir : https://statistique-et-logiciel-r.com/tutoriel-glm-sur-donnees-de-comptage-regression-de-poisson-avec-r/
+
+ggplot(df, aes(x=PopAdmin11, y=members_etmun))+
+  geom_point()
+
+ggplot(df2, aes(x=log10(PopAdmin11), y=members_etmun))+
+  geom_point()
+dfpois <- df%>% drop_na(PopAdmin06, members_etmun)%>% 
+ filter(PopAdmin11>0)
+
+mod.pois1 <- glm(members_etmun~log10(PopAdmin11),family="poisson", data=dfpois)
+
+
+mean(dfpois$members_etmun)
+## [1] 1.556918
+
+
+
+set.seed(1234) # permet de simuler toujours les mêmes comptages.
+theoretic_count <-rpois(nrow(dfpois),mean(dfpois$members_etmun))
+
+# on incorpore ces comptages théoriques dans un data frame
+tc_df <-data.frame(theoretic_count)
+
+# on plot simultanémaent les comptages observés et les comptages théoriques
+library(ggplot2)
+ggplot(dfpois,aes(members_etmun))+
+  geom_bar(fill="#1E90FF")+
+  geom_bar(data=tc_df, aes(theoretic_count,fill="#1E90FF", alpha=0.5))+
+  theme_classic()+
+  theme(legend.position="none")
+
+
+
+summary(mod.pois1)
+
+14791 /16317 
+exp(mod.pois1$coefficients[2])
