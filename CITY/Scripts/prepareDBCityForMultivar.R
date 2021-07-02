@@ -60,7 +60,7 @@ sfCity <- st_join(sfCity,
                   select(fua, ID_FUA = URAU_ID, NAME_FUA = URAU_NAME, POPFUA06 = URAU_POPL),
                   join = st_intersects)
 
-GNinfo <- readRDS("Data/UniqueGN_info_AllDB_Corr.rds")
+
 # ==== Attribute join ====
 
 ## Simplified administration level
@@ -89,7 +89,7 @@ sfCity <- left_join(sfCity,
 rm(typo)
 
 
-# saveRDS(sfCity,"Data/DBCity_LauUmzFua.rds")
+saveRDS(sfCity,"Data/DBCity_LauUmzFua.rds")
 ## ==== Spatial extent for ACP ====
 
 
@@ -116,11 +116,9 @@ df<- df %>%
                             "Middle East & North Africa" = "Southern Europe")) %>%  
   mutate(PopAdmin11 = as.numeric(ifelse(PopAdmin11 == 0, population, PopAdmin11)))
 
-# DBcityBeforeCorr<- readRDS("Data/DBCity_beforeCorr.rds")
-# nrow(DBcityBeforeCorr)-nrow(city)
-# 
- 1- nrow(df)/nrow(city)
-# skim(df)
+
+
+
 ## ====== Filter the dataframe ======
 # After exploration of DBcity without filter, it's obvious that all the zero(s) and very low value impact all analysis
 
@@ -130,24 +128,7 @@ df<- df %>%
 #Tot Participation
 
     df <- df %>% mutate(TotParticipAllKind = rowSums(.[3:5]))
- 
- ## Histogramme pour la thèse
- 
- DfFr <- df %>% rename("Nombre d'adhésions\naux associations ETMUN" = members_etmun ,
-                       "Nombre de participations\nau programme URBACT" = members_urbact ,
-                       "Nombre de participations\nEUCICOP" = participations_eucicop,
-                       "Population 2011 (LAU)" = PopAdmin11 )
- 
- 
- DfFr %>% select(c(3:5, 16)) %>% 
-   gather() %>% 
-   ggplot(aes(value)) + scale_y_continuous(trans = "log10")+
-   facet_wrap(~ key, scales = "free") +
-   geom_histogram()+
-   labs(x = "Valeurs", 
-        y = "Nombres d'entités GN (log10)",
-        caption = "Sources : EUCICOP 2019 ; ETMUN, 2019 / PG. 2020")
- ggsave("OUT/HistDBcity_EU.pdf", width = 8.3, height = 5.8, units = "in")
+
 
 # Try ranking variables
 df <- df %>% arrange(desc(TotParticipAllKind)) %>%  
@@ -160,10 +141,8 @@ df <- df %>% arrange(desc(TotParticipAllKind)) %>%
 df <- df %>%mutate_at(.vars = vars(3:5), 
             list(per10kInh = ~./PopAdmin11*10000)) 
 
-
-
 ## First Filter by total participation (melt all kind)
-  # df2 <- df %>% tidylog::filter(TotParticipAllKind >2) # remove 62% of the cities
+  df2 <- df %>% tidylog::filter(TotParticipAllKind >2) # remove 62% of the cities
 
     
  
@@ -173,16 +152,12 @@ skim(df$PopAdmin11)
 
 nrow(df2)/nrow(df)*100
 
-# description du filtre pop sur le nombre de zéros
 
-N0df <- df %>% filter_at(vars(3,5), any_vars(.== 0)) ## 17 % non zero Etmun and Eucicop
-
-NOdf2 <- df2 %>% filter_at(vars(3,5), any_vars(.== 0)) ## 29% non zero Etmun and EUcicop
 
 str(df2)
 # Tranfo en log
 dummy = 1
-dfLogFilter <- df %>%  mutate_at(vars(3:5), ~.+dummy) %>% mutate_at(vars(3:5), list(log10 = ~log10(.)))
+dfLogFilter <- df2 %>%  mutate_if(is.numeric, ~.+dummy) %>% mutate_if(is.numeric, log)
 
 #write.csv2(dfLogFilter, "Data/DbCityLogFiltered_exploratR.csv", row.names = F)
 ## ==== Uni and bivariates exploration ====
@@ -191,7 +166,7 @@ dfLogFilter <- df %>%  mutate_at(vars(3:5), ~.+dummy) %>% mutate_at(vars(3:5), l
 df3 <- df2 %>% filter_at(.vars = vars(16,19), all_vars(.<9000000))
 
 # Hist continuous variables
-df %>% select(c(3:5, 37:39)) %>% 
+df %>% select(c(3:5, 16, 19, 22)) %>% 
   gather() %>% 
   ggplot(aes(value)) + scale_y_continuous(trans = "log10")+
   facet_wrap(~ key, scales = "free") +
@@ -215,38 +190,16 @@ dfLogFilter%>% select(c(3:5, 16, 19, 22)) %>%
   facet_wrap(~ key, scales = "free") +
   geom_histogram()
 
-df2FR %>% select(c(16, 37:39)) %>% 
-  gather(value = "valueLog10") %>% 
-  ggplot(aes(valueLog10)) + scale_y_continuous(trans = "log10")+
-  scale_x_continuous(trans = "log10")+
-  facet_wrap(~ key, scales = "free") +
-  geom_histogram()
-### GGpairs pour la thèse (filtre 5000 hab uniquement)
-library(GGally)
-
-df3FR <- df2  %>% filter(PopAdmin11<9000000)%>%
-                            rename("NbAdh\nETMUN" = members_etmun ,
-                               "NbPart\nURBACT" = members_urbact ,
-                               "NbPart\nEUCICOP" = participations_eucicop,
-                               "Pop2011" = PopAdmin11,
-                        "ETMUN\n10kHab" = members_etmun_per10kInh,
-                        "URBACT\n10kHab" = members_urbact_per10kInh,
-                        "EUCICOP\n10kHab" = participations_eucicop_per10kInh)
-
-ggpairs(df2FR, columns = c(3:5,16,37:39), 
-        lower = list(continuous = wrap("points", alpha = 0.2)))
-
-ggsave("OUT/GGallyDBCity_EU_5K.png", width = 8.3, height = 5.8, units = "in")
 # bivariate exploration
 
 library(GGally)
-ggpairs(df, columns = c(36,3,5), 
+ggpairs(df, columns = c(33:39), 
                 lower = list(continuous = wrap("points", alpha = 0.2)))
 
 ggpairs(df3, columns = c(3:5, 16), 
         lower = list(continuous = wrap("points", alpha = 0.1)))
 
-ggpairs(dfLogFilter, columns = c(36, 40:42), 
+ggpairs(dfLogFilter, columns = c(3:5, 16), 
         lower = list(continuous = wrap("points", alpha = 0.1)))
 
 ggpairs(df3, columns = c(36:39), 
@@ -254,26 +207,15 @@ ggpairs(df3, columns = c(36:39),
 ## ==== ACP ====
 # http://www.sthda.com/french/articles/38-methodes-des-composantes-principales-dans-r-guide-pratique/73-acp-analyse-en-composantes-principales-avec-r-l-essentiel/
 
-
-df3FR <- df2  %>% 
-  rename("NbAdh\nETMUN" = members_etmun ,
-         "NbPart\nURBACT" = members_urbact ,
-         "NbPart\nEUCICOP" = participations_eucicop,
-         "Pop2011" = PopAdmin11,
-         "ETMUN\n10kHab" = members_etmun_per10kInh,
-         "URBACT\n10kHab" = members_urbact_per10kInh,
-         "EUCICOP\n10kHab" = participations_eucicop_per10kInh)
-df4 <- df %>% select(c(31,37:39, 43,32, 16))%>% 
-  filter(!is.na(members_etmun_per10kInh))%>%
-  filter(is.finite(members_etmun_per10kInh))
+df4 <- df2 %>% select(c(31,37:39, 3:5, 16))
 skim(df4)
-
+df4 <- df4 %>% filter(!is.na(adminLevel))
 rownames(df4) <- df4$label
 df4 <- df4 %>% select(-label)
 res.pca <- PCA(df4,
                scale.unit = TRUE,
-               #ind.sup = 7,
-               quanti.sup = 6,
+               ind.sup = 7,
+               quanti.sup = 7,
                # quali.sup = 4,
                graph = FALSE)
 
@@ -281,12 +223,7 @@ res.pca <- PCA(df4,
 
 explor(res.pca)
 
-CoordPCA<- as.data.frame(res.pca$ind$coord)
-
-df2 <- cbind(df2, CoordPCA)
-
 8125/16614
-clean_name
 
 dfzero <- df4 %>% filter_at(vars(4:6), any_vars(. == 0))
 #PCA normalized on log value
@@ -771,6 +708,7 @@ explor(res.pca)
 
 
 
+
 library("factoextra")
 indi <- get_pca_ind(res.pca)
 indi <- as.data.frame(indi$coord)
@@ -800,15 +738,12 @@ dfKmeanLogNorm <- dfKmeanLog %>% select(-label) %>% mutate_all(~scale(.))
 rownames(dfKmeanLogNorm) <- dfKmeanLog $label
 
 
-## Kmeans on ACP coord
-CoordPCA4 <- CoordPCA %>% select(-5)
-
 ## Compute explained variance (setting K) 
 
 
 var.expl <- c()
 for (i in 1:40){
-  result <- kmeans(x=CoordPCA4,
+  result <- kmeans(x=dfKmeanLogNorm,
                    centers=i,
                    iter.max=100,
                    nstart=5)
@@ -829,8 +764,8 @@ ggplot(var.expl, aes(x = n, y = var))+
 
 # Performing simple K-mean Partition
 
-K=7
-clusters <- kmeans(x=CoordPCA4,
+K=8
+clusters <- kmeans(x=dfKmeanLogNorm,
                    centers=K,
                    iter.max=100,
                    nstart=5)
@@ -853,8 +788,8 @@ clusLong <- clustersCenters %>%
 
 profilePlot <- ggplot(clusLong) +
   geom_bar(aes(x = variable, y = value), fill = "grey30", position = "identity", stat = "identity") +
-  scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe") +
-  facet_wrap(~ Cluster, scales = "free") + coord_flip() + theme_bw()
+  scale_x_discrete("Variable") + scale_y_continuous("Valeur moyenne par classe (Log normalisé)") +
+  facet_wrap(~ Cluster) + coord_flip() + theme_bw()
 profilePlot
 
 
@@ -977,7 +912,7 @@ PlotProfile <- function(classifobj, nbclus){
 
 
 myVar <- c("Dim.1", "Dim.2", "Dim.3", "Dim.4")
-cah <- ComputeClassif(df = df2,
+cah <- ComputeClassif(df = df,
                       varquanti = myVar, method = "ward", stand = FALSE)
 
 
@@ -986,8 +921,8 @@ inert <- PlotHeight(classifobj = cah)
 myProfiles <- PlotProfile(classifobj = cah, nbclus = 4)
 
 
-df2$cluster <- cutree(tree = cah, k = 4)
-freq <- data.frame(table(df2$cluster))
+df$cluster <- cutree(tree = cah, k = 4)
+freq <- data.frame(table(networkb$cluster))
 
 
 # pdf(file = "OUT/profilesCAH.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)

@@ -9,7 +9,7 @@
 ##==========================================================================##         
 
 # Working directory huma-num
-#setwd("~/BD_Keep_Interreg/CITY")
+# setwd("~/BD_Keep_Interreg/CITY")
 
 setwd("~/git/Chap3_LocationalAnalysis/CITY")
 options(scipen = 999)
@@ -95,7 +95,7 @@ summary(reg)
 
 
 ## Equation de la droite de regression :
-eq = paste0("y = ", round(reg$coefficients[1],2), " * x + ", round(reg$coefficients[2],2))
+eq = paste0("y = ", round(reg$coefficients[2],2), " * x + ", round(reg$coefficients[1],2))
 
 ## Residuals
 ### add residuals and standart residuals to df
@@ -118,8 +118,8 @@ require(ggrepel)
 regEucEtm <- ggplot(sfCityEur_filter, aes(x = members_etmun, y = participations_eucicop)) +
   geom_point () +
   theme_light() +
-  labs(x = "Membres ETMUN", 
-       y = "Nombre de participations aux projets Interreg") + 
+  labs(x = "Nombre d'adhésions aux associations ETMUN", 
+       y = "Nombre de participations aux projets Interreg (EUCICOP)") + 
   geom_abline(intercept = reg$coefficients[1], slope = reg$coefficients[2], color="#E69F00",
               linetype = "dashed", size = 1.5) +
   geom_label_repel(data = sfCityEur_filter %>% filter(rezStand > 300), 
@@ -166,7 +166,7 @@ rezMap_propChoro <- function(frame = rec, bgmap = sfEU, units, var, myVal, var2,
   
   # display labels 
   labelLayer(x = units %>% top_n(TOT_PART, n = 20), txt = "asciiName", overlap = FALSE,
-             col = "#4d4d4d", show.lines = TRUE, cex = 0.5, pos = 2, offset = 1.2)
+             col = "#4d4d4d", show.lines = TRUE, cex = 0.5, pos = 4, offset = 0.2)
   
   # Add an explanation text
   labels <-  paste("*Résidus de la régression :\n", eq, 
@@ -200,13 +200,13 @@ cols <- carto.pal("green.pal",3, "wine.pal",3, middle = TRUE)
 
 
 ### Plot 
-pdf(file = "OUT/rez_eucicope_etmun.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
+pdf(file = "OUT/rez1_eucicope_etmun.pdf",width = 8.3, height = 5.8, pagecentre =FALSE)
 rezMap_propChoro(units = ol,
                  var = "PopAdmin11", 
                  myVal = c(10000, 500000, 3000000, 9000000),
                  var2 = "rezStand",
                  title1 = "Population administrative des villes en 2011", 
-                 labFilter = "\n\nNB : Les villes comptant moins\nde 1 million d'habitants\nou sans résidus extrêmes\nn'apparaissent pas sur la carte", 
+                 labFilter = "\n\nNB : Les villes comptant moins\nde 1 million d'habitants\nou sans résidus extrêmes\nn'apparaissent pas sur la carte.\nNom des villes = Top 20\nde la somme des participations\nEucicop/Etmun", 
                  source = "Sources : EUCICOP 2019 ; ETMUN 2019 ; GEOSTAT LAU 2017, POPGRID 2011/ PG, AD, 2020")
 dev.off()
 

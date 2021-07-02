@@ -14,7 +14,7 @@
 ##############################################################################
 
 # Working directory huma-num
-#setwd("~/BD_Keep_Interreg")
+setwd("~/BD_Keep_Interreg")
 
 setwd("~/git/Chap3_LocationalAnalysis")
 
@@ -167,6 +167,6 @@ allDB <- allDB %>%
             by = "geonameId")
 
 ## save
-#saveRDS(allDB, "CITY/Data/DBCity.rds")
+saveRDS(allDB, "CITY/Data/DBCity.rds")
 
 old <- readRDS("CITY/Data/DBCity_beforeCorr.RDS")

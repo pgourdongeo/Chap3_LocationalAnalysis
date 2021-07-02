@@ -78,7 +78,7 @@ AdminEU <- AdminEU %>% left_join(inter2011df, by = c( "idInter" = "Group.1"))
 AdminEU <- AdminEU %>% rename(PopAdmin11 = TOT_P)
 ## save
 saveRDS(AdminEU, "CITY/Data/AdminDelimPop0611.RDS")
-
+AdminEU<- readRDS("CITY/Data/AdminDelimPop0611.RDS")
 
 ## Fine file
 
@@ -93,11 +93,31 @@ Paris <- Paris %>% mutate(Code_2 = "FR75056", Name_2 = "Paris", idInter = NA)
 Paris <- Paris %>% select(Code_2, Name_2,PopAdmin06, PopAdmin11, geometry)
 
 mapview(Paris)
+
 # Final file, Paris replacement
 AdminEU <- AdminEU %>% filter(!str_detect(Code_2, "FR75")) %>% select(-idInter)
 AdminEU <- AdminEU %>% select(-Paris)
 
 AdminEU <- AdminEU %>%rbind(Paris)
+
+## Deal with Budapest arrondissements
+
+
+Budapest <- AdminEU %>% filter(str_detect(Name_2, "Budapest"))
+
+BudapestPop <- Budapest %>% summarise(PopAdmin06 = sum(PopAdmin06), PopAdmin11 = sum(PopAdmin11))
+
+BudapestPop<- BudapestPop %>% mutate(Code_2 = "HU-BU", Name_2 = "Budapest")
+Budapest <- BudapestPop %>% select(Code_2, Name_2,PopAdmin06, PopAdmin11, geometry)
+
+mapview(Budapest)
+
+# Final file, budapest replacement
+AdminEU <- AdminEU %>% filter(!str_detect(Name_2, "Budapest")) 
+
+
+AdminEU <- AdminEU %>%rbind(Budapest)
+
 
 ## Final files
 
