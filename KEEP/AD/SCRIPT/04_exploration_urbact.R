@@ -23,7 +23,7 @@
 # Working directory huma-num
 # setwd("~/BD_Keep_Interreg/KEEP")
 
-setwd("~/git/Chap3_LocationalAnalysis/KEEP")
+setwd("~/git/PG_chap3/Chap3_LocationalAnalysis/KEEP")
 
 # Library
 library(readr)
@@ -55,12 +55,17 @@ NUTS_EF_0613 <-st_read("AD/SHP/NUTS2_StructuralFonds/NUTS2_EuropeanFunds_2006_20
 #                        col_types = cols(Code_Network = col_character()), 
 #                        trim_ws = TRUE)
 
-urbactCities <- readRDS("AD/URBACT/URBACT_Membership_GNid.RDS")
+urbactCities <- read.csv2("AD/URBACT/UrbactDB_Vfinal/URBACT_Membership_GNidCorr_complete_V2.csv")
+projet <- read.csv2("AD/URBACT/UrbactDB_Vfinal/UrbactNetworks_complete_V2.csv")
+
+
 
 
 # ================ Prepare data ================
 
-
+## Add phase to urbactCities
+urbactCities <- urbactCities %>% 
+  left_join(., select(projet, Code_Network, Phase))
 
 ## Number of city by network 
 urbactCities <- urbactCities %>% 
@@ -75,23 +80,24 @@ summary(urbactCities$nbCity)
 ## Prepare df
 urbactCitiesAggr <- urbactCities %>%
   mutate(Lead = ifelse(City.Statut == "Lead Partner", 1, 0)) %>%
-  select(geonameId, asciiName, Lead, Country, Region.x, Continent.x, 
+  select(geonameId, asciiName, Lead, Country, Region, Continent, 
          lng_GN, lat_GN, nbCity) %>%
   group_by(geonameId) %>%
   mutate(NbPart = n(), NbLeader = sum(Lead)) %>% 
   select(-Lead) %>%
   distinct() %>%
   filter(!duplicated(geonameId)) %>% 
-  filter(!is.na(lat_GN))
+  filter(!is.na(lat_GN)) %>% 
+  ungroup()
 
 sum(urbactCitiesAggr$NbPart)
 sum(urbactCitiesAggr$NbLeader)
 
 sfUrbactCitiesAggr <- st_as_sf(urbactCitiesAggr, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
-  st_transform(crs = 3035)
+  st_transform(crs = 3035) 
 
-#mapview(sfEU) + mapview(sfUrbactCitiesAggr)
+mapview(sfEU) + mapview(sfUrbactCitiesAggr)
 
 # ## villes qui participent le plus en espagne
 # esp <- urbactCitiesAggr %>% filter(Country == "ES")
@@ -99,6 +105,8 @@ sfUrbactCitiesAggr <- st_as_sf(urbactCitiesAggr, coords = c("lng_GN", "lat_GN"),
 # ## les projets qui ont lead partner en espagne
 # espLead <- urbactCities %>% filter(City.Statut == "Lead Partner" & Country == "ES")
 
+
+class(sfUrbactCitiesAggr)
 
 
 
@@ -125,9 +133,9 @@ freq_nbpart <- ggplot(data = freq,
   theme(plot.caption = element_text(size = 6))
 
 ## display end save
-pdf(file = "AD/OUT/freq_nbpartByCity_urbact.pdf", width = 8.3, height = 5.8)
-freq_nbpart
-dev.off()
+# pdf(file = "AD/OUT/freq_nbpartByCity_urbact.pdf", width = 8.3, height = 5.8)
+# freq_nbpart
+# dev.off()
 
 
 ## ----~barplot Nb participation/city% ----
@@ -150,9 +158,9 @@ freq_pctPart <- ggplot(data = freq,
   theme(plot.caption = element_text(size = 6))
 
 ## display and save
-pdf(file = "AD/OUT/freq_pctpart_urbact.pdf", width = 8.3, height = 5.8)
-freq_pctPart
-dev.off()
+# pdf(file = "AD/OUT/freq_pctpart_urbact.pdf", width = 8.3, height = 5.8)
+# freq_pctPart
+# dev.off()
 
 
 ## ----~Fig. 3.16: barplot Nb city/country ---- 
@@ -168,7 +176,7 @@ freq_NbVille <- ggplot(data = freq2,
        aes(x = reorder(Var1, -Freq), y = Freq)) +
   geom_bar(stat = "Identity") +
   labs(x = "Pays impliqués dans des projets URBACT", 
-       y = "Nombre de villes du réseau URBACT") +
+       y = "Nombre de villes du programme URBACT") +
   labs(caption = "Sources : EUCICOP-URBACT 2019 / PG, AD, 2019") +
   theme_light() +
   annotate("text", x = 15, y = 40, hjust = 0,
@@ -222,51 +230,59 @@ sfEUR <-  left_join(sfEUR, select(urbactCntry, ISO, RATIO), by = "ISO")
 ## Explo distribution
 skim(sfEUR$RATIO) 
 
-### distrib without extreme value (EE)
-distrib <- sfEUR %>% 
-  group_by(ISO) %>% 
-  slice(1) %>% 
-  filter(ISO != "EE")
-myVar <- sort(unique(distrib$RATIO))
-skim(myVar)
-hist(myVar)
-
-### distrib with extreme value (EE)
-distrib2 <- sfEUR %>% 
-  group_by(ISO) %>% 
-  slice(1) 
-myVar2 <- sort(unique(distrib2$RATIO))
-skim(myVar2) # mean = 1.99
-hist(myVar2)
+### distrib without extreme value (EE) - OLD
+# distrib <- sfEUR %>% 
+#   group_by(ISO) %>% 
+#   slice(1) %>% 
+#   filter(ISO != "EE")
+# myVar <- sort(unique(distrib$RATIO))
+# skim(myVar)
+# hist(myVar)
+# 
+# ### distrib with extreme value (EE)
+# distrib2 <- sfEUR %>% 
+#   group_by(ISO) %>% 
+#   slice(1) 
+# myVar2 <- sort(unique(distrib2$RATIO))
+# skim(myVar2) # mean = 1.99
+# hist(myVar2)
 
 ### defines a set of breaks and colors
-mybks <- c(min(myVar), 
-           mean(myVar) - 1.5 * sd(myVar), 
-           mean(myVar), 
-           mean(myVar) + 1.5 * sd(myVar), 
-           max(myVar))
+mybks <- c(min(sfEUR$RATIO), 
+           mean(sfEUR$RATIO) - 1.5 * sd(sfEUR$RATIO), 
+           mean(sfEUR$RATIO), 
+           mean(sfEUR$RATIO) + 1.5 * sd(sfEUR$RATIO), 
+           max(sfEUR$RATIO))
 
-cols <- cols <- carto.pal("turquoise.pal", length(mybks))
+cols <- carto.pal("turquoise.pal", length(mybks))
 
 ## Create a "typo"" variable
 sfEUR <- sfEUR %>%
   mutate(typo = cut(RATIO, breaks = mybks, dig.lab = 2, 
                     include.lowest = TRUE))
 
-### Add extreme value to the typo and rewrite a pretty legend 
-maxrm <- max(sfEUR$RATIO, na.rm = TRUE)
-extreme <- sfEUR %>% 
-  filter(RATIO == maxrm) %>% 
-  mutate(typo = recode(ISO, "EE" = "ext"))
-sfEUR <- rbind(sfEUR %>% filter(RATIO != maxrm | is.na(RATIO)), extreme)
-sfEUR <- sfEUR %>% 
+### Add extreme value to the typo and rewrite a pretty legend - OLD
+# maxrm <- max(sfEUR$RATIO, na.rm = TRUE)
+# extreme <- sfEUR %>% 
+#   filter(RATIO == maxrm) %>% 
+#   mutate(typo = recode(ISO, "EE" = "ext"))
+# sfEUR <- rbind(sfEUR %>% filter(RATIO != maxrm | is.na(RATIO)), extreme)
+# sfEUR <- sfEUR %>% 
+#   mutate(TYPO = recode(typo,
+#                        "NA" = "NA",
+#                        "ext" = "4,5 (Estonie)",
+#                         "[1,1.3]" = "1 - 1,3",
+#                         "(1.3,1.9]" = "1,3 - 1,9",
+#                         "(1.9,2.4]" = "1,9 - 2,4",
+#                         "(2.4,2.5]" = "2,4 - 2,5"))
+
+sort(unique(sfEUR$typo))
+sfEUR <- sfEUR %>%
   mutate(TYPO = recode(typo,
-                       "NA" = "NA",
-                       "ext" = "4,5 (Estonie)",
-                        "[1,1.3]" = "1 - 1,3",
-                        "(1.3,1.9]" = "1,3 - 1,9",
-                        "(1.9,2.4]" = "1,9 - 2,4",
-                        "(2.4,2.5]" = "2,4 - 2,5"))
+                        "[1,1.4]" = "1 - 1,4",
+                        "(1.4,2.5]" = "1,5 - 2,5",
+                        "(2.5,3.7]" = "2,6 - 3,7",
+                        "(3.7,5]" = "3,8 - 5"))
 
 ## Stock frame limits
 bbrec <- st_bbox(rec)
@@ -282,9 +298,9 @@ ratioMap <- ggplot() +
           aes(fill = TYPO), colour = "ivory3", size = 0.4) +
   scale_fill_manual(name = "Ratio\n(nb de participations /\nnb de villes participantes)*",
                     values = cols, na.value = "ivory4") +
-  annotate("text", label = "Ratio moyen* = 1.9", size = 3.5, hjust = 0,
+  annotate("text", label = paste0("Ratio moyen* = ", round(mean(sfEUR$RATIO),1)), size = 3.5, hjust = 0,
            x = bbrec[1] + 270000, y = bbrec[2] + 2200000) +
-  annotate("text", label = "*Discrétisation effectuée\nselon la moyenne et\n1/2 écart-type et calculée\nsans la valeur maximum",
+  annotate("text", label = "*Discrétisation effectuée\nselon la moyenne et\n1,5 écart-type",
            x = bbrec[1] + 270000, y = bbrec[2] +1500000, size = 2.8, hjust = 0) +
   annotate("text", label = str_c(sum(urbactCitiesAggr$NbPart), " participations\n", 
                                  length(unique(urbactCitiesAggr$geonameId)), " villes"),
@@ -393,14 +409,16 @@ urbact_typoUR <- st_join(sfUrbactCitiesAggr, select(nutsUR, Nuts_Id, Typo7_v2),
 TabCroisUR <- urbact_typoUR %>% 
   group_by(Typo7_v2) %>%
   summarise(N = n(), "Ensemble des participations" = sum(NbPart), 
-            "Participations des lead partners" = sum(NbLeader))
+            "Participations des lead partners" = sum(NbLeader)) %>% 
+  ungroup()
 
 plotTabCroisUR <- TabCroisUR %>%
   gather(key = "Type", value = "NB", 
          "Ensemble des participations", 
          "Participations des lead partners") %>%
   group_by(Type) %>%
-  mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N)
+  mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N) %>% 
+  ungroup()
 
 plotTabCroisUR <- plotTabCroisUR %>% 
   mutate(Typo7_v2 = replace_na(Typo7_v2, "Hors typologie"))
@@ -434,7 +452,7 @@ typo7 <- ggplot(data = plotTabCroisUR,
   facet_wrap(~Type, scales = "free") +
   labs(title = "",
        x = "", 
-       y = "Ratio (nb de participations / nb de types de région)") +
+       y = "Nombre moyen de participations URBACT par type de région") +
   scale_fill_manual(name = "Typologie urbain/rural\n des NUTS (2 & 3)", values = myPal) +
   theme_light() +
   labs(caption = "sources : EUCICOP, 2019 ; ESPON DB, 2013 / PG, AD, 2019", size = 3) +
@@ -455,17 +473,18 @@ dev.off()
 # ===== 4. Barplot participations by typo Nuts EF 2006-2013 ======
 
 
-urbactCities0713 <- urbactCities %>% filter(Start.x < 2013)
+urbactCities0713 <- urbactCities %>% filter(Start > 2005 & Start < 2014)
 
 ## prepare data
 urbactCities0713Aggr <- urbactCities0713 %>%
   mutate(Lead = ifelse(City.Statut == "Lead Partner", 1, 0)) %>%
-  select(geonameId, asciiName, Lead, Country, Region.x, Continent.x, 
+  select(geonameId, asciiName, Lead, Country, Region, Continent, 
          lng_GN, lat_GN) %>%
   group_by(geonameId) %>%
   mutate(NbParticipation = n(), NbLeader = sum(Lead)) %>% 
   distinct() %>%
-  filter(!duplicated(geonameId))
+  filter(!duplicated(geonameId)) %>% 
+  ungroup()
 
 sfurbactCities0713 <- st_as_sf(urbactCities0713Aggr, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
@@ -487,7 +506,8 @@ TabCroisEF <- urbact_typoEF %>%
   summarise(N= n(), 
             "Ensemble des participations" = sum(NbParticipation), 
             "Participations des lead partners" = sum(NbLeader)) %>%
-  mutate(TYPE = as.character(TYPE))
+  mutate(TYPE = as.character(TYPE)) %>% 
+  ungroup()
 
 TabCroisEF[3, 1] <- c("Hors typologie")
 
@@ -497,7 +517,8 @@ TabCroisEFPlot <- TabCroisEF %>%
          "Participations des lead partners") %>%
   group_by(Type) %>%
   mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N) %>% 
-  filter(!TYPE == "NA")
+  filter(!TYPE == "NA") %>% 
+  ungroup()
 
 ### %
 ggplot(data = TabCroisEFPlot, 
@@ -518,15 +539,16 @@ ggplot(data = TabCroisEFPlot,
 library(ggsci)
 myPal <- c(pal_rickandmorty()(4), "grey")
 scales::show_col(pal_rickandmorty()(18))
-myPal <- c("#24325FFF",  "#82491EFF","#FAFD7CFF", "#B7E4F9FF", "grey")
+myPal <- c("#24325FFF",  "#82491EFF", "grey","#FAFD7CFF",  "#B7E4F9FF")
 ### ratio
 typo0713urbact <- ggplot(data = TabCroisEFPlot, 
-       aes(x = reorder(TYPE, -Ratio), y = Ratio)) + 
+       aes(x = reorder(TYPE, -Ratio), y = Ratio, fill = TYPE)) + 
   geom_bar(stat = "Identity") + 
+  scale_fill_manual(values = myPal) +
   facet_wrap(~Type, scales = "free") +
   labs(title = "",
        x= "Eligibilité des régions aux Fonds structurels pour 2007-2013", 
-       y = "Ratio (nb de participations / nb de type de régions)") +
+       y = "Nombre moyen de participations URBACT par type de région") +
   #scale_fill_manual(values = myPal) +
   theme_light() +
   labs(caption = "sources : EUCICOP, 2019 ; FSE \nPG, AD, 2019", size = 3) +
@@ -545,17 +567,18 @@ dev.off()
 # ===== 5. Barplot participations by typo Nuts CP 2014-2020 ======
 
 
-urbactCities1420 <- urbactCities %>% filter(Start.x >= 2013)
+urbactCities1420 <- urbactCities %>% filter(Start > 2013)
 
 ## prepare data
 urbactCities1420Aggr <- urbactCities1420 %>%
   mutate(Lead = ifelse(City.Statut == "Lead Partner", 1, 0)) %>%
-  select(geonameId, asciiName, Lead, Country, Region.x, Continent.x, 
+  select(geonameId, asciiName, Lead, Country, Region, Continent, 
          lng_GN, lat_GN) %>%
   group_by(geonameId) %>%
   mutate(NbParticipation = n(), NbLeader = sum(Lead)) %>% 
   distinct()%>%filter(!duplicated(geonameId)) %>% 
-  filter(!is.na(lat_GN))
+  filter(!is.na(lat_GN)) %>% 
+  ungroup()
 
 sfurbactCities1420 <- st_as_sf(urbactCities1420Aggr, coords = c("lng_GN", "lat_GN"), crs = 4326) %>%
   st_sf(sf_column_name = "geometry") %>%
@@ -571,7 +594,8 @@ TabCroisCP <- urbact_typoCP %>%
   summarise(N= n(), 
             "Ensemble des participations" = sum(NbParticipation), 
             "Participations des lead partners" = sum(NbLeader))%>%
-  mutate(TYPE = as.character(TYPE))
+  mutate(TYPE = as.character(TYPE)) %>% 
+  ungroup()
 
 TabCroisCP[3, 1] <- "Hors typologie"
 
@@ -580,7 +604,8 @@ TabCroisCPPlot <- TabCroisCP %>%
          "Ensemble des participations", 
          "Participations des lead partners")%>%
   group_by(Type) %>%
-  mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N) %>% filter(!TYPE == "NA")
+  mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N) %>% filter(!TYPE == "NA") %>% 
+  ungroup()
 
 ### %
 ggplot(data = TabCroisCPPlot, 
@@ -612,7 +637,7 @@ typo1420 <- ggplot(data = TabCroisCPPlot,
   facet_wrap(~Type, scales = "free") +
   labs(title = "",
        x= "Eligibilité des régions aux Fonds structurels pour 2014-2020", 
-       y = "Ratio (nb de participations / nb de type de régions)") +
+       y = "Nombre moyen de participations URBACT par type de région") +
   # scale_fill_manual(name = "Typologie du SFE",
   #                   #breaks = c("nLeaderCity", "nParticipation"),
   #                   #labels = c("As Lead Partner", "All Participations"),
@@ -654,8 +679,8 @@ citiesUrbact <- ggplot() +
   geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
           mapping = aes(size = NbPart2), shape = 1, colour = "#D20195", show.legend = NA) +
   scale_size(name = "Nombre de projets URBACT\npar ville (URBACT II & III)",
-             breaks = c(81, 36, 16, 4),
-             labels = c("9", "6", "4", "2"),
+             breaks = c(400, 100, 36, 16, 2),
+             labels = c("20", "10", "6", "4", "1"),
              range = c(0.5, 10)) +
   annotate("text", label = "Nom des villes : à partir de 5 participations", 
            size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
@@ -690,7 +715,7 @@ citiesUrbact <- ggplot() +
 
 
 ## display end save
-pdf(file = "AD/OUT/propCitiesUrbact2.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+pdf(file = "AD/OUT/propCitiesUrbact2_new.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
 citiesUrbact
 dev.off()
 
