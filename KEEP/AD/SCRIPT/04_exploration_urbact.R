@@ -13,7 +13,7 @@
 
 # CONTENTS
 ## 1. Headcount - Fig. 3.17
-## 2. Fig. 3.1?: Mapping ratio participations/city by country   
+## 2. Fig. 3.19: Mapping ratio participations/city by country   
 ## 3. Barplot participations by typo NUTS U/R
 ## 4. Barplot participations by typo Nuts EF 2006-2013
 ## 5. Barplot participations by typo Nuts CP 2014-2020
@@ -193,7 +193,7 @@ dev.off()
 
 
 
-# ===== 2. Fig. 3.1?: Mapping ratio participations/city by country ======
+# ===== 2. Fig. 3.19: Mapping ratio participations/city by country ======
 
 
 ## count
@@ -463,9 +463,9 @@ typo7 <- ggplot(data = plotTabCroisUR,
         legend.title = element_text(size = 10))
 
 ### display and save
-# pdf(file = "AD/OUT/barplot_typo7_nutsUR_urbact.pdf", width = 8.3, height = 5.8)
-# typo7
-# dev.off()
+pdf(file = "AD/OUT/barplot_typo7_nutsUR_urbact.pdf", width = 8.3, height = 5.8)
+typo7
+dev.off()
 
 
 
@@ -558,9 +558,9 @@ typo0713urbact <- ggplot(data = TabCroisEFPlot,
         legend.text = element_text(size = 8))
 
 ### display and save
-# pdf(file = "AD/OUT/barplot_typo_nuts0713_urbact.pdf", width = 8.3, height = 5.8)
-# typo0713urbact
-# dev.off()
+pdf(file = "AD/OUT/barplot_typo_nuts0713_urbact.pdf", width = 8.3, height = 5.8)
+typo0713urbact
+dev.off()
 
 
 
@@ -629,19 +629,20 @@ ggplot(data = TabCroisCPPlot,
 #### Need 4 colors
 library(ggsci)
 myPal <- c(pal_rickandmorty()(3), "grey")
-
+scales::show_col(pal_rickandmorty()(18))
+myPal <- c("grey", "#E762D7FF", "#526E2DFF", "#24325FFF")
 ### ratio
 typo1420 <- ggplot(data = TabCroisCPPlot, 
-       aes(x = reorder(TYPE, -Ratio), y = Ratio)) + 
+       aes(x = reorder(TYPE, -Ratio), y = Ratio, fill = TYPE)) + 
   geom_bar(stat = "Identity") + 
   facet_wrap(~Type, scales = "free") +
   labs(title = "",
        x= "Eligibilité des régions aux Fonds structurels pour 2014-2020", 
        y = "Nombre moyen de participations URBACT par type de région") +
-  # scale_fill_manual(name = "Typologie du SFE",
-  #                   #breaks = c("nLeaderCity", "nParticipation"),
-  #                   #labels = c("As Lead Partner", "All Participations"),
-  #                   values = myPal) +
+  scale_fill_manual(name = "Typologie du SFE",
+                    #breaks = c("nLeaderCity", "nParticipation"),
+                    #labels = c("As Lead Partner", "All Participations"),
+                    values = myPal) +
   theme_light() +
   labs(caption = "sources : EUCICOP, 2019 ; CP \nPG, AD, 2019", size = 3) +
   theme(legend.position = "none",
@@ -651,9 +652,9 @@ typo1420 <- ggplot(data = TabCroisCPPlot,
 
 
 ### display and save
-# pdf(file = "AD/OUT/barplot_typo_nuts1420_urbact.pdf", width = 8.3, height = 5.8)
-# typo1420
-# dev.off()
+pdf(file = "AD/OUT/barplot_typo_nuts1420_urbact.pdf", width = 8.3, height = 5.8)
+typo1420
+dev.off()
 
 
 
