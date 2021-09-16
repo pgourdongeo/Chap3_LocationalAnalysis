@@ -847,90 +847,60 @@ pdf(file = "AD/OUT/nbLeadPbyCtry_urbact.pdf", width = 8.3, height = 5.8)
 plotLeadCtry
 dev.off()
 
+rm(df, n)
+
+# ===== 9. Fig. 3.?: participation et classe de taille ======
 
 
 
+## load 
+bdcity <- readRDS("../CITY/Data/DBCity_LauUmzFua.rds")
+
+bdcity <- bdcity %>% 
+  st_drop_geometry() %>% 
+  select(geonameId, 12:22)
+
+ 
+pop <- sfUrbactCitiesAggr %>% 
+  inner_join(., bdcity)
+
+pop <- pop %>% 
+  mutate(population = as.numeric(population),
+         PopAdmin11 = ifelse(is.na(PopAdmin11), population, PopAdmin11),
+         kpop11 = case_when(PopAdmin11<50000 ~ "4.Small city",
+                            PopAdmin11>=50000 & PopAdmin11<150000 ~ "3.Medium-sized city",
+                            PopAdmin11>=150000 & PopAdmin11<500000 ~ "2.Large city",
+                            PopAdmin11>=500000 ~ "1.Very large city"))
+
+table(pop$kpop11)
+
+popPart <- pop %>% 
+  group_by(kpop11) %>% 
+  summarise(nPart = sum(NbPart),
+            nLead = sum(NbLeader)) %>% 
+  ungroup %>% 
+  mutate(PPart = nPart/sum(nPart)*100,
+         PLead = nLead/sum(nLead)*100) %>% 
+  st_drop_geometry()
+
+popPartLong <- popPart %>% 
+  select(-nPart, -nLead) %>% 
+  pivot_longer(-kpop11, names_to = "var", values_to = "val") %>% 
+  mutate(var = recode(var, "PLead" = "Participation Lead Partner", "PPart" = "Ensemble des participations"))
+
+plotPopPart <- ggplot(data = popPartLong, aes(x = kpop11, y = val)) +
+  geom_col() +
+  facet_wrap(~var) +
+  labs(x = "Classe de taille (pop. admin. 2011)", y = "Pourcentage de participations",
+       caption = "Seuils : 50k, 150k, 500k") +
+  theme_light()
 
 
 
-
-
-### map lead partners
-sfUrbactCitiesAggrP <- sfUrbactCitiesAggrP %>% 
-  mutate(NbLeader2 = na_if(NbLeader, 0))
-sfUrbactCitiesAggr <- sfUrbactCitiesAggr %>% 
-  mutate(NbLeader2 = na_if(NbLeader, 0))
-
-## mapping
-citiesUrbactPT <- ggplot() + 
-  geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
-  geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
-          mapping = aes(size = NbLeader2), colour = "#D2019550", show.legend = NA) +
-  geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
-          mapping = aes(size = NbLeader2), shape = 1, colour = "#D20195", show.legend = NA) +
-  # scale_size(name = "Nombre de projets URBACT par ville",
-  #            breaks = c(9, 4, 2, 1),
-  #            labels = c("9", "4", "2", "1"),
-  #            range = c(0.5, 6)) +
-  # annotate("text", label = "Source : EUCICOP-URBACT, 2019 / PG, AD, 2019",
-  #          size = 2.2, 
-  #          hjust = 1,
-  #          x = c(st_bbox(rec)[3]), y = c(st_bbox(rec)[2]-130000)) +
-  labs(x = "", y = "", 
-       caption = "Source : EUCICOP-URBACT, 2019 / PG, AD, 2019") +
-  # facet_wrap(~Phase, nrow = 2) +
-  
-  # geom_text(data = n, mapping = aes(x = c(st_bbox(rec)[3]-1000000), 
-  #                                   y = c(st_bbox(rec)[4]-800000), 
-  #                                   label = paste0(n$np, " participations\n",
-  #                                                  n$nv, " villes")),
-  #           size = 2) +
-  # annotate("text", label = "Nom des villes : à partir de 7 participations", 
-  #          size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
-  # annotate("text", label = str_c(sum(sfUrbactCitiesAggrP$NbPart), " participations\n", 
-  #                                length(unique(sfUrbactCitiesAggrP$geonameId)), " villes"),
-  #          size = 3,
-  #          x = c(st_bbox(rec)[3]-1000000), y = c(st_bbox(rec)[4]-800000)) +
-  
-  # geom_sf_text(data = sfUrbactCitiesAggrP %>% filter(NbPart > 6),
-  #              aes(label = asciiName), size = 2.2, color = "black",
-  #              check_overlap = TRUE) +
-  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
-  
-  annotate("text", label = "500 km", size = 1.5, color = "#333333", hjust = 0,
-           x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
-  
-  geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
-  
-  coord_sf(crs = 3035, datum = NA,
-           xlim = st_bbox(rec)[c(1,3)],
-           ylim = st_bbox(rec)[c(2,4)]) +
-  theme_void() +
-  theme(legend.position =  c(0.65, 0.36),
-        legend.title = element_text(size = 8),
-        legend.text = element_text(size = 6),
-        strip.text.x = element_text(size = 12),
-        plot.caption = element_text(size = 5.5, vjust = 15, hjust = 0.97))
-
-
-
-
-
-
-# ===== 8. Fig. 3.?: participation et classe de taille ======
-
-
-
-
-
-
-
-
-
-
-
-
-
+## display end save
+pdf(file = "AD/OUT/nbPart_ktaille_urbact.pdf", width = 8.3, height = 5.8)
+plotPopPart
+dev.off()
 
 
 
