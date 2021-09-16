@@ -12,12 +12,12 @@
 
 
 # CONTENTS
-## 1. Headcount - Fig. 3.16
-## 2. Fig. 3.18: Mapping ratio participations/city by country   
+## 1. Headcount - Fig. 3.17
+## 2. Fig. 3.1?: Mapping ratio participations/city by country   
 ## 3. Barplot participations by typo NUTS U/R
 ## 4. Barplot participations by typo Nuts EF 2006-2013
 ## 5. Barplot participations by typo Nuts CP 2014-2020
-## 6. Fig. 3.17: mapping nb participations URBACT by city
+## 6. Fig. 3.18: mapping nb participations URBACT by city
 
 
 # Working directory huma-num
@@ -163,7 +163,7 @@ freq_pctPart <- ggplot(data = freq,
 # dev.off()
 
 
-## ----~Fig. 3.16: barplot Nb city/country ---- 
+## ----~Fig. 3.17: barplot Nb city/country ---- 
 
 #Luxembourg is not in the network
 
@@ -193,7 +193,7 @@ dev.off()
 
 
 
-# ===== 2. Fig. 3.18: Mapping ratio participations/city by country ======
+# ===== 2. Fig. 3.1?: Mapping ratio participations/city by country ======
 
 
 ## count
@@ -323,9 +323,9 @@ ratioMap <- ggplot() +
   
 
 ### display and save
-pdf(file = "AD/OUT/map_ratioPV_urbact.pdf", width = 8.3, height = 5.8)
-ratioMap
-dev.off()
+# pdf(file = "AD/OUT/map_ratioPV_urbact.pdf", width = 8.3, height = 5.8)
+# ratioMap
+# dev.off()
 
 
 
@@ -463,9 +463,9 @@ typo7 <- ggplot(data = plotTabCroisUR,
         legend.title = element_text(size = 10))
 
 ### display and save
-pdf(file = "AD/OUT/barplot_typo7_nutsUR_urbact.pdf", width = 8.3, height = 5.8)
-typo7
-dev.off()
+# pdf(file = "AD/OUT/barplot_typo7_nutsUR_urbact.pdf", width = 8.3, height = 5.8)
+# typo7
+# dev.off()
 
 
 
@@ -558,9 +558,9 @@ typo0713urbact <- ggplot(data = TabCroisEFPlot,
         legend.text = element_text(size = 8))
 
 ### display and save
-pdf(file = "AD/OUT/barplot_typo_nuts0713_urbact.pdf", width = 8.3, height = 5.8)
-typo0713urbact
-dev.off()
+# pdf(file = "AD/OUT/barplot_typo_nuts0713_urbact.pdf", width = 8.3, height = 5.8)
+# typo0713urbact
+# dev.off()
 
 
 
@@ -651,14 +651,14 @@ typo1420 <- ggplot(data = TabCroisCPPlot,
 
 
 ### display and save
-pdf(file = "AD/OUT/barplot_typo_nuts1420_urbact.pdf", width = 8.3, height = 5.8)
-typo1420
-dev.off()
+# pdf(file = "AD/OUT/barplot_typo_nuts1420_urbact.pdf", width = 8.3, height = 5.8)
+# typo1420
+# dev.off()
 
 
 
 
-# ===== 6. Fig. 3.17: mapping nb participations URBACT by city ======
+# ===== 6. Fig. 3.18: mapping nb participations URBACT by city ======
 
 
 ### with squared values (to emphase the differences of proportionnality)
@@ -669,8 +669,7 @@ sfUrbactCitiesAggr <- sfUrbactCitiesAggr %>%
 myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-400000)),
                          Y = c(c(st_bbox(rec)[2]+200000), c(st_bbox(rec)[2]+200000)))
 
-### "Nom des villes : à partir de 5 participations":
-### miss "Antwerpen" and "Nagykallo"
+### "Nom des villes : à partir de 7 participations":
 summary(sfUrbactCitiesAggr$NbPart)
 ##4d4d4d
 
@@ -680,7 +679,7 @@ citiesUrbact <- ggplot() +
           mapping = aes(size = NbPart2), colour = "#D2019550", show.legend = NA) +
   geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
           mapping = aes(size = NbPart2), shape = 1, colour = "#D20195", show.legend = NA) +
-  scale_size(name = "Nombre de projets URBACT\npar ville (URBACT II & III)",
+  scale_size(name = "Nombre de projets URBACT\npar ville (2003-2019)",
              breaks = c(400, 100, 36, 16, 1),
              labels = c("20", "10", "6", "4", "1"),
              range = c(0.5, 10)) +
