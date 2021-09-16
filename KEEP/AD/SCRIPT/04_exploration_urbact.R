@@ -886,7 +886,7 @@ popPart <- pop %>%
 popPartLong <- popPart %>% 
   select(-nPart, -nLead) %>% 
   pivot_longer(-kpop11, names_to = "var", values_to = "val") %>% 
-  mutate(var = recode(var, "PLead" = "Participation Lead Partner", "PPart" = "Ensemble des participations"))
+  mutate(var = recode(var, "PLead" = "Participations Lead Partner", "PPart" = "Ensemble des participations"))
 
 plotPopPart <- ggplot(data = popPartLong, aes(x = kpop11, y = val)) +
   geom_col() +
