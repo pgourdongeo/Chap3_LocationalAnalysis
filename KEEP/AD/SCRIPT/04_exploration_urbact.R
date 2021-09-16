@@ -787,11 +787,11 @@ citiesUrbactP <- ggplot() +
                           y = c(st_bbox(rec)[4]-800000), 
                           label = paste0(np, " participations\n",
                                          nv, " villes")),
-            size = 2) +
+            size = 2.5) +
 
   geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
   
-  annotate("text", label = "500 km", size = 1.5, color = "#333333", hjust = 0,
+  annotate("text", label = "500 km", size = 1.8, color = "#333333", hjust = 0,
            x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
   
   geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
@@ -803,8 +803,8 @@ citiesUrbactP <- ggplot() +
   scale_y_continuous(expand=c(0,0)) +
   theme_void() +
   theme(legend.position =  c(0.65, 0.36),
-        legend.title = element_text(size = 8),
-        legend.text = element_text(size = 6),
+        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
         strip.text.x = element_text(size = 12),
         plot.caption = element_text(size = 5.5, vjust = 10, hjust = 0.97))
 
@@ -814,6 +814,45 @@ citiesUrbactP <- ggplot() +
 pdf(file = "AD/OUT/propCitiesUrbactP.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
 citiesUrbactP
 dev.off()
+
+
+
+
+# ===== 8. Fig. 3.?: barplot nb leadPartner/ctry ======
+
+### nb de leadPartners par pays
+df <- urbactCitiesAggrP %>% 
+  group_by(Country) %>% 
+  summarise(nbL = sum(NbLeader))
+df <- df %>% 
+  filter(nbL>0)
+
+plotLeadCtry <- ggplot(data = df,
+                      aes(x = reorder(Country, -nbL), y = nbL)) +
+  geom_bar(stat = "Identity") +
+  # geom_text(aes(label = paste(nbL, "\nLead Partners", sep = "")), 
+  #           position = position_dodge(0.9), 
+  #           vjust = 1.42, color = "white", size = 4) +
+  labs(y = "Nombre de participations Lead Partner",
+       x = NULL) +
+  labs(caption = "Sources : EUCICOP-URBACT 2019 / PG, AD, 2019") +
+  theme_light() +
+  annotate("text", x = 14, y = 30, hjust = 0,
+           label = str_c(sum(df$nbL), " participations\n",
+                         length(unique(df$Country)), " pays")) +
+  theme(plot.caption = element_text(size = 6))
+
+## display end save
+pdf(file = "AD/OUT/nbLeadPbyCtry_urbact.pdf", width = 8.3, height = 5.8)
+plotLeadCtry
+dev.off()
+
+
+
+
+
+
+
 
 
 ### map lead partners
