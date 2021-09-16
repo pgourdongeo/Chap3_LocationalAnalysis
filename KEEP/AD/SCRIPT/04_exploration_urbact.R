@@ -671,18 +671,20 @@ myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-4000
 
 ### "Nom des villes : à partir de 5 participations":
 ### miss "Antwerpen" and "Nagykallo"
+summary(sfUrbactCitiesAggr$NbPart)
+##4d4d4d
 
 citiesUrbact <- ggplot() + 
   geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
   geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
-          mapping = aes(size = NbPart2), colour = "#D2019580", show.legend = NA) +
+          mapping = aes(size = NbPart2), colour = "#D2019550", show.legend = NA) +
   geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
           mapping = aes(size = NbPart2), shape = 1, colour = "#D20195", show.legend = NA) +
   scale_size(name = "Nombre de projets URBACT\npar ville (URBACT II & III)",
-             breaks = c(400, 100, 36, 16, 2),
+             breaks = c(400, 100, 36, 16, 1),
              labels = c("20", "10", "6", "4", "1"),
              range = c(0.5, 10)) +
-  annotate("text", label = "Nom des villes : à partir de 5 participations", 
+  annotate("text", label = "Nom des villes : à partir de 7 participations", 
            size = 2.7, x = 1000000, y = 2800000, hjust = 0) +
   annotate("text", label = str_c(sum(sfUrbactCitiesAggr$NbPart), " participations\n", 
                                  length(unique(sfUrbactCitiesAggr$geonameId)), " villes"),
@@ -693,14 +695,14 @@ citiesUrbact <- ggplot() +
            hjust = 1,
            x = c(st_bbox(rec)[3]), y = c(st_bbox(rec)[2]-130000)) +
   labs(x = "", y = "") +
-  geom_sf_text(data = sfUrbactCitiesAggr %>% filter(NbPart > 4),
-               aes(label = asciiName), size = 2.2, color = "#4d4d4d",
+  geom_sf_text(data = sfUrbactCitiesAggr %>% filter(NbPart > 6),
+               aes(label = asciiName), size = 2.2, color = "black",
                check_overlap = TRUE) +
-  geom_sf_text(data = sfUrbactCitiesAggr %>% filter(asciiName %in% c("Suceava")),
-               aes(label = asciiName), size = 2.2, color = "#4d4d4d",
-               nudge_x = 10000,
-               nudge_y = 10000,
-               check_overlap = FALSE) +
+  # geom_sf_text(data = sfUrbactCitiesAggr %>% filter(asciiName %in% c("Suceava")),  #OLD
+  #              aes(label = asciiName), size = 2.2, color = "black",
+  #              nudge_x = 10000,
+  #              nudge_y = 10000,
+  #              check_overlap = FALSE) +
   geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
   annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
            x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
