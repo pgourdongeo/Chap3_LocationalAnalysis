@@ -18,8 +18,9 @@
 ## 4. Fig.3.22: Barplot participations by typo Nuts EF 2006-2013
 ## 5. Barplot participations by typo Nuts CP 2014-2020
 ## 6. Fig. 3.18: mapping nb participations URBACT by city
-## 7. Fig. 3.9: planche participation by phase
-
+## 7. Fig. 3.19: planche participation by phase
+## 8. Fig. 3.?: barplot nb leadPartner/ctry
+## 9. Fig. 3.21: participation et classe de taille
 
 # Working directory huma-num
 # setwd("~/BD_Keep_Interreg/KEEP")
@@ -546,7 +547,7 @@ scales::show_col(pal_rickandmorty()(18))
 myPal <- c("#24325FFF", "#82491EFF", "grey", "#B7E4F9FF", "#FAFD7CFF")
 
 TabCroisEFPlot <- TabCroisEFPlot %>% 
-  mutate(TYPE = recode(TYPE, "Competitiveness\nand\nEmployment" = "Competitiveness and\nEmployment"))
+  mutate(TYPE = recode(TYPE, "Competitiveness and Employment" = "Competitiveness and\nEmployment"))
 ### ratio
 typo0713urbact <- ggplot(data = TabCroisEFPlot, 
        aes(x = reorder(TYPE, -Ratio), y = Ratio, fill = TYPE)) + 
@@ -854,7 +855,9 @@ dev.off()
 
 rm(df, n)
 
-# ===== 9. Fig. 3.?: participation et classe de taille ======
+
+
+# ===== 9. Fig. 3.21: participation et classe de taille ======
 
 
 
@@ -865,20 +868,23 @@ bdcity <- bdcity %>%
   st_drop_geometry() %>% 
   select(geonameId, 12:22)
 
- 
+## join
 pop <- sfUrbactCitiesAggr %>% 
   inner_join(., bdcity)
 
+## classe
 pop <- pop %>% 
   mutate(population = as.numeric(population),
          PopAdmin11 = ifelse(is.na(PopAdmin11), population, PopAdmin11),
-         kpop11 = case_when(PopAdmin11<50000 ~ "4.Small city",
-                            PopAdmin11>=50000 & PopAdmin11<150000 ~ "3.Medium-sized city",
-                            PopAdmin11>=150000 & PopAdmin11<500000 ~ "2.Large city",
-                            PopAdmin11>=500000 ~ "1.Very large city"))
+         kpop11 = case_when(PopAdmin11<50000 ~ "4.Petite ville",
+                            PopAdmin11>=50000 & PopAdmin11<150000 ~ "3.Ville moyenne",
+                            PopAdmin11>=150000 & PopAdmin11<500000 ~ "2.Grande ville",
+                            PopAdmin11>=500000 ~ "1.Très grande ville"))
 
 table(pop$kpop11)
 
+
+## calcul
 popPart <- pop %>% 
   group_by(kpop11) %>% 
   summarise(nPart = sum(NbPart),
@@ -893,12 +899,33 @@ popPartLong <- popPart %>%
   pivot_longer(-kpop11, names_to = "var", values_to = "val") %>% 
   mutate(var = recode(var, "PLead" = "Participations Lead Partner", "PPart" = "Ensemble des participations"))
 
-plotPopPart <- ggplot(data = popPartLong, aes(x = kpop11, y = val)) +
+## palette
+myPal <- c("#135D89", "#4D95BA", "#96D1EA", "#9F7C59",
+           "#186D2E", "#36842E", "#7CB271", "grey")
+myPal <- c("#135D89", "#4D95BA", "#36842E", "#7CB271")
+
+## annotate une seule facet
+ann_text <- data.frame(kpop11 = "4.Petite ville", val = 25, lab = "Text",
+                       var = factor("Participations Lead Partner",
+                                    levels = c("Ensemble des participations","Participations Lead Partner")))
+
+
+## plot
+plotPopPart <- ggplot(data = popPartLong, aes(x = kpop11, y = val, fill = kpop11)) +
   geom_col() +
   facet_wrap(~var) +
-  labs(x = "Classe de taille (pop. admin. 2011)", y = "Pourcentage de participations",
-       caption = "Seuils : 50k, 150k, 500k") +
-  theme_light()
+  scale_fill_manual(name = "Classe de taille*\n(pop. admin. 2011)", values = myPal) +
+  geom_text(data = ann_text, label = "*Seuils : 50k; 150k; 500k", size = 2, hjust = 0.8) +
+  labs(x = "", y = "Pourcentage de participations",
+       caption = "Sources : EUCICOP-URBACT 2019 / PG, AD, 2019") +
+  theme_light() +
+  theme(legend.position = c(0.9, 0.8),
+        plot.caption = element_text(vjust= 1.5, size = 6), 
+        axis.text.x = element_blank(),
+        legend.text = element_text(size = 7), 
+        legend.title = element_text(size = 9),
+        strip.text.x = element_text(size = 12, face = "bold"))
+
 
 
 
