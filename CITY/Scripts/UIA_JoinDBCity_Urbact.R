@@ -143,11 +143,11 @@ colnames(DFcompare) <- VarName
 DFcompare <- DFcompare %>% 
   mutate_at(vars(2:4), ~ round(., 2))
 
-DFcompare$"Nombre de villes" <- c("16 614", "67") 
+DFcompare$"Nombre de villes" <- c(nrow(DBCityEur), nrow(UIAParticip)) 
 
 DF <- as.data.frame(t(DFcompare))
 
-colnames(DF) <- c("Ensemble des\nVilles de l'UE", "Villes du\nprogramme UIA")
+colnames(DF) <- c("Ensemble des\nVilles de l'UE\n(table CITY)", "Villes du\nprogramme UIA")
 
 DF$Variable <- rownames(DF)
 
@@ -157,7 +157,7 @@ DF <- DF %>%
 DF <- DF[-1,]
 library(gridExtra)
 tt <- ttheme_minimal(base_size = 6)
-pdf(file = "OUT/df_CompareUIAparticipation.pdf", width = 8.3, height = 5.8)
+pdf(file = "OUT/df_CompareUIAparticipation2.pdf", width = 8.3, height = 5.8)
 grid.table(DF, rows = NULL) 
 dev.off()
 
