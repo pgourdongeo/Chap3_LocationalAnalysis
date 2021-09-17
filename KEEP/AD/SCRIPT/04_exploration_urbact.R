@@ -900,8 +900,6 @@ popPartLong <- popPart %>%
   mutate(var = recode(var, "PLead" = "Participations Lead Partner", "PPart" = "Ensemble des participations"))
 
 ## palette
-myPal <- c("#135D89", "#4D95BA", "#96D1EA", "#9F7C59",
-           "#186D2E", "#36842E", "#7CB271", "grey")
 myPal <- c("#135D89", "#4D95BA", "#36842E", "#7CB271")
 
 ## annotate une seule facet
@@ -915,15 +913,15 @@ plotPopPart <- ggplot(data = popPartLong, aes(x = kpop11, y = val, fill = kpop11
   geom_col() +
   facet_wrap(~var) +
   scale_fill_manual(name = "Classe de taille*\n(pop. admin. 2011)", values = myPal) +
-  geom_text(data = ann_text, label = "*Seuils : 50k; 150k; 500k", size = 2, hjust = 0.8) +
+  geom_text(data = ann_text, label = "*Seuils : 50k; 150k; 500k", size = 2.5, hjust = 0.8) +
   labs(x = "", y = "Pourcentage de participations",
        caption = "Sources : EUCICOP-URBACT 2019 / PG, AD, 2019") +
   theme_light() +
   theme(legend.position = c(0.9, 0.8),
         plot.caption = element_text(vjust= 1.5, size = 6), 
         axis.text.x = element_blank(),
-        legend.text = element_text(size = 7), 
-        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 8), 
+        legend.title = element_text(size = 10),
         strip.text.x = element_text(size = 12, face = "bold"))
 
 
