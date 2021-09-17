@@ -903,7 +903,7 @@ popPartLong <- popPart %>%
 myPal <- c("#135D89", "#4D95BA", "#36842E", "#7CB271")
 
 ## annotate une seule facet
-ann_text <- data.frame(kpop11 = "4.Petite ville", val = 25, lab = "Text",
+ann_text <- data.frame(kpop11 = "4.Petite ville", val = 24, lab = "Text",
                        var = factor("Participations Lead Partner",
                                     levels = c("Ensemble des participations","Participations Lead Partner")))
 
