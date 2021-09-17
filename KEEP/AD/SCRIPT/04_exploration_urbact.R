@@ -15,9 +15,10 @@
 ## 1. Headcount - Fig. 3.17
 ## 2. Fig. 3.19: Mapping ratio participations/city by country   
 ## 3. Barplot participations by typo NUTS U/R
-## 4. Barplot participations by typo Nuts EF 2006-2013
+## 4. Fig.3.22: Barplot participations by typo Nuts EF 2006-2013
 ## 5. Barplot participations by typo Nuts CP 2014-2020
 ## 6. Fig. 3.18: mapping nb participations URBACT by city
+## 7. Fig. 3.9: planche participation by phase
 
 
 # Working directory huma-num
@@ -196,7 +197,7 @@ dev.off()
 
 
 
-# ===== 2. Fig. 3.19: Mapping ratio participations/city by country ======
+# ===== 2. Fig. 3.1?: Mapping ratio participations/city by country ======
 
 
 ## count
@@ -473,7 +474,7 @@ dev.off()
 
 
 
-# ===== 4. Barplot participations by typo Nuts EF 2006-2013 ======
+# ===== 4. Fig.3.22: Barplot participations by typo Nuts EF 2006-2013 ======
 
 
 urbactCities0713 <- urbactCities %>% filter(Start > 2005 & Start < 2014)
@@ -517,7 +518,7 @@ TabCroisEF[3, 1] <- c("Hors typologie")
 TabCroisEFPlot <- TabCroisEF %>%
   gather(key = "Type", value= "NB", 
          "Ensemble des participations", 
-         "Participations des lead partners") %>%
+         "Participations Lead Partner") %>%
   group_by(Type) %>%
   mutate(Pct = (NB/sum(NB)) * 100, Ratio = NB/N) %>% 
   filter(!TYPE == "NA") %>% 
@@ -542,7 +543,10 @@ ggplot(data = TabCroisEFPlot,
 library(ggsci)
 myPal <- c(pal_rickandmorty()(4), "grey")
 scales::show_col(pal_rickandmorty()(18))
-myPal <- c("#24325FFF",  "#82491EFF", "grey","#FAFD7CFF",  "#B7E4F9FF")
+myPal <- c("#24325FFF", "#82491EFF", "grey", "#B7E4F9FF", "#FAFD7CFF")
+
+TabCroisEFPlot <- TabCroisEFPlot %>% 
+  mutate(TYPE = recode(TYPE, "Competitiveness\nand\nEmployment" = "Competitiveness and\nEmployment"))
 ### ratio
 typo0713urbact <- ggplot(data = TabCroisEFPlot, 
        aes(x = reorder(TYPE, -Ratio), y = Ratio, fill = TYPE)) + 
@@ -558,7 +562,8 @@ typo0713urbact <- ggplot(data = TabCroisEFPlot,
   theme(legend.position = "none",
         plot.caption = element_text(vjust= 1.5, size = 6),
         axis.text.x = element_text(size = 9, angle = 20, vjust = 0.8),
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 8),
+        strip.text = element_text(size=12, face = "bold"))
 
 ### display and save
 pdf(file = "AD/OUT/barplot_typo_nuts0713_urbact.pdf", width = 8.3, height = 5.8)
@@ -683,7 +688,7 @@ citiesUrbact <- ggplot() +
           mapping = aes(size = NbPart2), colour = "#D2019550", show.legend = NA) +
   geom_sf(data = sfUrbactCitiesAggr %>% st_centroid(),
           mapping = aes(size = NbPart2), shape = 1, colour = "#D20195", show.legend = NA) +
-  scale_size(name = "Nombre de projets URBACT\npar ville (2003-2019)",
+  scale_size(name = "Nombre de participations URBACT\npar ville (2003-2019)",
              breaks = c(400, 100, 36, 16, 1),
              labels = c("20", "10", "6", "4", "1"),
              range = c(0.5, 10)) +
@@ -726,7 +731,7 @@ dev.off()
 
 
 
-# ===== 7. Fig. 3.?: participation par période ======
+# ===== 7. Fig. 3.19: participation par période ======
 
 ## Prepare df
 urbactCitiesAggrP <- urbactCities %>%
@@ -774,7 +779,7 @@ citiesUrbactP <- ggplot() +
           mapping = aes(size = NbPart), colour = "#D2019550", show.legend = NA) +
   geom_sf(data = sfUrbactCitiesAggrP %>% st_centroid(),
           mapping = aes(size = NbPart), shape = 1, colour = "#D20195", show.legend = NA) +
-  scale_size(name = "Nombre de projets URBACT par ville",
+  scale_size(name = "Nombre de participations URBACT par ville",
              breaks = c(9, 4, 2, 1),
              labels = c("9", "4", "2", "1"),
              range = c(0.5, 6)) +
@@ -787,7 +792,7 @@ citiesUrbactP <- ggplot() +
                           y = c(st_bbox(rec)[4]-800000), 
                           label = paste0(np, " participations\n",
                                          nv, " villes")),
-            size = 2.5) +
+            size = 3) +
 
   geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
   
@@ -802,7 +807,7 @@ citiesUrbactP <- ggplot() +
   scale_x_continuous(expand=c(0,0)) +
   scale_y_continuous(expand=c(0,0)) +
   theme_void() +
-  theme(legend.position =  c(0.65, 0.36),
+  theme(legend.position =  c(0.68, 0.36),
         legend.title = element_text(size = 9),
         legend.text = element_text(size = 7),
         strip.text.x = element_text(size = 12),
