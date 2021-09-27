@@ -25,7 +25,7 @@
 # Working directory huma-num
 setwd("~/BD_Keep_Interreg/KEEP")
 
-setwd("~/git/Chap3_LocationalAnalysis/KEEP")
+setwd("~/git/PG_chap3/Chap3_LocationalAnalysis/KEEP")
 options(scipen = 999)
 
 # Library
@@ -783,7 +783,7 @@ grid <- st_sf(n = sapply(X = ., FUN = length),
 sum(grid$n)
 
 ### add pop
-grid <- st_join(select(interpolate_grid, -Group.1), grid, join = st_equals)
+grid <- st_join(interpolate_grid, grid, join = st_equals)
 mapview(grid)
 
 
@@ -814,7 +814,7 @@ pdf(file = "AD/OUT/density_popgrid_eucicopall.pdf",width = 8.3, height = 5.8)
 dens_map(frame = rec, 
          bgmap = sfEU, 
          sf = grid %>% filter(density < 100), 
-         titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants\net par carreaux de 2 500km2*",
+         titleLeg = "Nombre de participations\naux projets de l'UE\npour 10 000 habitants\net par carreau de 2 500km2*",
          sources = "Sources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 ; ESPON DB 2013 ; Geostat 2006 / PG, AD 2020",
          labels = "*Discrétisation en\nprogression géométrique",
          labels2 = str_c(floor(sum(grid$n)/100)*100, " participations\n19000 projets"))

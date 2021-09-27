@@ -23,7 +23,7 @@
 # Working directory huma-num
 # setwd("~/BD_Keep_Interreg/ETMUN/")
 
-setwd("~/git/Chap3_LocationalAnalysis/ETMUN")
+setwd("~/git/PG_chap3/Chap3_LocationalAnalysis/ETMUN")
 options(scipen = 999)
 
 # Library
@@ -415,8 +415,8 @@ plot_grid(grid = europegrided[[1]],
           sources = "Sources : ETMUN, Gourdon, 2019 ; Yearbook of International Organizations 2015, UIA / PG, AD, 2019", 
           titleLeg = "Nombre d'adhésions aux associations\nde municipalités par carreau de 2 500 km2*",
           labels = "*Discrétisation en progression\ngéométrique",
-          labels2 = str_c(ceiling(sum(europegrided[[1]]$n)/100)*100, " adhésionss\n", 
-                          sum(gridNW[[1]]$n), " réseaux"))
+          labels2 = paste0(ceiling(sum(europegrided[[1]]$n)/100)*100, " adhésions\n", 
+                          sum(gridNW[[1]]$n), " participations"))
 
 dev.off()
 
