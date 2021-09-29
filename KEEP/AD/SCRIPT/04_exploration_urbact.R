@@ -21,6 +21,8 @@
 ## 7. Fig. 3.19: planche participation by phase
 ## 8. Fig. 3.?: barplot nb leadPartner/ctry
 ## 9. Fig. 3.21: participation et classe de taille
+## 10. annexe : mapping typo7 NUTs
+## 11. annexe : mapping type WB countries
 
 # Working directory huma-num
 # setwd("~/BD_Keep_Interreg/KEEP")
@@ -191,9 +193,9 @@ freq_NbVille <- ggplot(data = freq2,
 
 
 # display and save
-pdf(file = "AD/OUT/freq_NbVille_urbact.pdf", width = 8.3, height = 5.8)
-freq_NbVille
-dev.off()
+# pdf(file = "AD/OUT/freq_NbVille_urbact.pdf", width = 8.3, height = 5.8)
+# freq_NbVille
+# dev.off()
 
 
 
@@ -468,9 +470,9 @@ typo7 <- ggplot(data = plotTabCroisUR,
         legend.title = element_text(size = 10))
 
 ### display and save
-pdf(file = "AD/OUT/barplot_typo7_nutsUR_urbact.pdf", width = 8.3, height = 5.8)
-typo7
-dev.off()
+# pdf(file = "AD/OUT/barplot_typo7_nutsUR_urbact.pdf", width = 8.3, height = 5.8)
+# typo7
+# dev.off()
 
 
 
@@ -567,9 +569,9 @@ typo0713urbact <- ggplot(data = TabCroisEFPlot,
         strip.text = element_text(size=12, face = "bold"))
 
 ### display and save
-pdf(file = "AD/OUT/barplot_typo_nuts0713_urbact.pdf", width = 8.3, height = 5.8)
-typo0713urbact
-dev.off()
+# pdf(file = "AD/OUT/barplot_typo_nuts0713_urbact.pdf", width = 8.3, height = 5.8)
+# typo0713urbact
+# dev.off()
 
 
 
@@ -661,9 +663,9 @@ typo1420 <- ggplot(data = TabCroisCPPlot,
 
 
 ### display and save
-pdf(file = "AD/OUT/barplot_typo_nuts1420_urbact.pdf", width = 8.3, height = 5.8)
-typo1420
-dev.off()
+# pdf(file = "AD/OUT/barplot_typo_nuts1420_urbact.pdf", width = 8.3, height = 5.8)
+# typo1420
+# dev.off()
 
 
 
@@ -725,10 +727,10 @@ citiesUrbact <- ggplot() +
         legend.text = element_text(size = 7.5))
 
 
-## display end save
-pdf(file = "AD/OUT/propCitiesUrbact2_new.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
-citiesUrbact
-dev.off()
+# ## display end save
+# pdf(file = "AD/OUT/propCitiesUrbact2_new.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+# citiesUrbact
+# dev.off()
 
 
 
@@ -817,9 +819,9 @@ citiesUrbactP <- ggplot() +
 
 
 ## display end save
-pdf(file = "AD/OUT/propCitiesUrbactP.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
-citiesUrbactP
-dev.off()
+# pdf(file = "AD/OUT/propCitiesUrbactP.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+# citiesUrbactP
+# dev.off()
 
 
 
@@ -849,9 +851,9 @@ plotLeadCtry <- ggplot(data = df,
   theme(plot.caption = element_text(size = 6))
 
 ## display end save
-pdf(file = "AD/OUT/nbLeadPbyCtry_urbact.pdf", width = 8.3, height = 5.8)
-plotLeadCtry
-dev.off()
+# pdf(file = "AD/OUT/nbLeadPbyCtry_urbact.pdf", width = 8.3, height = 5.8)
+# plotLeadCtry
+# dev.off()
 
 rm(df, n)
 
@@ -927,10 +929,121 @@ plotPopPart <- ggplot(data = popPartLong, aes(x = kpop11, y = val, fill = kpop11
 
 
 
+# ## display end save
+# pdf(file = "AD/OUT/nbPart_ktaille_urbact.pdf", width = 8.3, height = 5.8)
+# plotPopPart
+# dev.off()
+
+
+# ===== 10. annexe : mapping typo7 NUTs ======
+
+
+## reorder typo (factor)
+nutsUR$Typo_f <- factor(nutsUR$Typo7_v2,
+                              levels = c("Régions sous dominance\nd'une métropole",
+                                         "Régions avec densité\nurbaine élevée",
+                                         "Régions à majorité\nde villes moyennes",
+                                         "Régions avec densité\nurbaine et rurale élevées",
+                                         "Régions rurales\nsous influence métropolitaine",
+                                         "Régions rurales\navec villes petites et moyennes",
+                                         "Régions rurales isolées"))
+
+## colours
+myPal <- c("#135D89", "#4D95BA", "#96D1EA", "#9F7C59",
+           "#186D2E", "#36842E", "#7CB271", "grey")
+
+
+
 ## display end save
-pdf(file = "AD/OUT/nbPart_ktaille_urbact.pdf", width = 8.3, height = 5.8)
-plotPopPart
+pdf(file = "AD/OUT/annexe_map_typo7NUTs.pdf", width = 8.3, height = 5.8)
+
+ggplot() +
+  geom_sf(data = sfEU, color = "ivory3", fill = "#f9e8d0", size = 0.4) +
+  geom_sf(data = nutsUR,
+          aes(fill = Typo_f), colour = "ivory4", size = 0.2) +
+  scale_fill_manual(name = "Typologie urbain/rural des NUTs (2 & 3)",
+                    values = myPal, na.value = "ivory4") +
+  geom_sf(data = rec, color = "ivory4", fill = NA) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
+  annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
+           x = c(bbrec[3]-800000), y = c(bbrec[2]+280000)) +
+  annotate("text", label = "Source : ESPON DB, 2013 / PG, AD, 2019",
+           size = 2.2, hjust = 1,
+           x = c(bbrec[3]), y = c(bbrec[2]-130000)) +
+  coord_sf(crs = 3035, datum = NA,
+           xlim = bbrec[c(1,3)],
+           ylim = bbrec[c(2,4)]) +
+  theme_void() +
+  theme(legend.position = c(0.22, 0.7), 
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 11),
+        legend.key.size = unit(0.8, "cm"),
+        legend.key.width = unit(0.6,"cm")) 
+
 dev.off()
+
+# ===== 11. annexe : mapping type WB countries ======
+
+
+unique(sfEU$REGION_WB)
+unique(sfEU$REGION_UN)
+unique(sfEU$SUBREGION)
+
+## subregion WB
+library(countrycode)
+
+sfEU$WB <- countrycode(sfEU$SOVEREIGNT, origin = "country.name", destination = "region23")
+
+## Kosovo
+sfEU$WB[sfEU$SOVEREIGNT=="Kosovo"] <- "Eastern Europe"
+
+unique(sfEU$WB)
+
+## just europe
+sfEU <- sfEU %>% 
+  mutate(WBE = case_when(WB %in% c("Central Asia", "Western Asia", "Northern Africa", "Southern Asia") ~ NA_character_,
+                         TRUE ~ WB)) %>% 
+  mutate(WBE = case_when(NAME_FR=="Chypre" ~ "Southern Europe",
+                         TRUE ~ WBE))
+## coulour
+library(wesanderson)
+myPal <- wes_palette("Darjeeling2", 4, type = "discrete")
+
+
+## display end save
+pdf(file = "AD/OUT/annexe_map_regionWB.pdf", width = 8.3, height = 5.8)
+
+ggplot() +
+  geom_sf(data = sfEU, aes(fill = WBE), colour = "ivory4", size = 0.2) +
+  scale_fill_manual(name = "Typologie des régions européennes\n(Banque Mondiale)",
+                    values = myPal, 
+                    labels = c("Europe de l'Est", "Europe du Nord", "Europe du Sud", "Europe de l'Ouest", "Hors Europe"),
+                    na.value = "ivory4") + 
+  
+  geom_sf(data = rec, color = "ivory4", fill = NA) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
+  annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
+           x = c(bbrec[3]-800000), y = c(bbrec[2]+280000)) +
+  annotate("text", label = "Source : PG, AD, 2019",
+           size = 2.2, hjust = 1,
+           x = c(bbrec[3]), y = c(bbrec[2]-130000)) +
+  coord_sf(crs = 3035, datum = NA,
+           xlim = bbrec[c(1,3)],
+           ylim = bbrec[c(2,4)]) +
+  
+  theme_void() +
+  theme(legend.position = c(0.2, 0.7), 
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size = 11),
+        legend.key.size = unit(0.8, "cm"),
+        legend.key.width = unit(0.6,"cm")) 
+
+dev.off()
+
+
+
+
+
 
 
 
